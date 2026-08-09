@@ -45,3 +45,8 @@ next-env.d.ts
 
 # personal harness prefs, not shared
 .claude/settings.local.json
+
+# screenshot harness output
+shots/
+playwright-report/
+test-results/

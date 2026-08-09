@@ -1,0 +1,1113 @@
+{
+  "filmUniverses": {
+    "vintage": {
+      "name": "Era clássica"
+    },
+    "xmen": {
+      "name": "X-Men (Fox)"
+    },
+    "f4": {
+      "name": "Fantastic Four (Fox)"
+    },
+    "sony": {
+      "name": "Sony / Spider-Man"
+    },
+    "verse": {
+      "name": "Spider-Verse"
+    },
+    "mcu": {
+      "name": "MCU"
+    }
+  },
+  "seriesUniverses": {
+    "classica": {
+      "name": "TV clássica"
+    },
+    "fox": {
+      "name": "Mutantes (Fox)"
+    },
+    "netflix": {
+      "name": "Defenders (Netflix)"
+    },
+    "abc": {
+      "name": "Marvel Television (ABC)"
+    },
+    "hulu": {
+      "name": "Hulu / Freeform"
+    },
+    "mcu": {
+      "name": "MCU Disney+"
+    },
+    "anim": {
+      "name": "Marvel Animation"
+    }
+  },
+  "films": [
+    {
+      "u": "vintage",
+      "t": "Howard the Duck",
+      "r": 1986,
+      "s": "1986",
+      "d": "O primeiro filme baseado numa banda desenhada da Marvel a chegar aos cinemas. Um pato alienígena é arrancado do seu planeta e vai parar a Cleveland. Um fracasso lendário na altura, hoje objeto de culto."
+    },
+    {
+      "u": "vintage",
+      "t": "The Punisher (1989)",
+      "r": 1989,
+      "s": "anos 80",
+      "d": "Dolph Lundgren como Frank Castle, um polícia que se torna justiceiro depois de a máfia lhe matar a família. Versão dura e directa, sem ligação ao resto da Marvel."
+    },
+    {
+      "u": "vintage",
+      "t": "Captain America (1990)",
+      "r": 1990,
+      "s": "1943 e 1990",
+      "d": "Adaptação de baixo orçamento do Capitão América, congelado nos anos 40 e descongelado no presente. Curiosidade histórica mais do que outra coisa."
+    },
+    {
+      "u": "vintage",
+      "t": "Blade",
+      "r": 1998,
+      "s": "1998",
+      "d": "Wesley Snipes como o meio-vampiro caçador de vampiros. Muitos consideram este o filme que provou que a Marvel podia funcionar no cinema, abrindo caminho a X-Men e Spider-Man."
+    },
+    {
+      "u": "vintage",
+      "t": "Blade II",
+      "r": 2002,
+      "s": "2002",
+      "d": "Realizado por Guillermo del Toro. Blade tem de se aliar aos próprios vampiros para travar os Reapers, uma estirpe mutante que ameaça ambas as espécies."
+    },
+    {
+      "u": "vintage",
+      "t": "Hulk (Ang Lee)",
+      "r": 2003,
+      "s": "2003",
+      "d": "A versão de Ang Lee, mais psicológica e formalmente ousada, com montagem em painéis de banda desenhada. Não pertence ao MCU."
+    },
+    {
+      "u": "vintage",
+      "t": "Daredevil",
+      "r": 2003,
+      "s": "2003",
+      "d": "Ben Affleck como o advogado cego Matt Murdock. Estabeleceu o Kingpin e a Elektra no cinema, com um tom noir de Hell's Kitchen."
+    },
+    {
+      "u": "vintage",
+      "t": "Blade: Trinity",
+      "r": 2004,
+      "s": "2004",
+      "d": "Blade junta-se aos Nightstalkers para enfrentar Drácula. Fecha a trilogia e apresenta Ryan Reynolds numa das suas primeiras aproximações ao registo Deadpool."
+    },
+    {
+      "u": "vintage",
+      "t": "The Punisher (2004)",
+      "r": 2004,
+      "s": "2004",
+      "d": "Thomas Jane como Frank Castle, num reboot ambientado na Florida. Mais próximo do tom de vingança metódica dos quadrinhos."
+    },
+    {
+      "u": "vintage",
+      "t": "Elektra",
+      "r": 2005,
+      "s": "depois de Daredevil",
+      "d": "Spin-off de Daredevil com Jennifer Garner. Elektra, ressuscitada, torna-se assassina e acaba a proteger aqueles que devia matar."
+    },
+    {
+      "u": "vintage",
+      "t": "Man-Thing",
+      "r": 2005,
+      "s": "2005",
+      "d": "Terror de baixo orçamento sobre a criatura dos pântanos da Marvel. Lançado directamente em televisão nos EUA."
+    },
+    {
+      "u": "vintage",
+      "t": "Ghost Rider",
+      "r": 2007,
+      "s": "2007",
+      "d": "Nicolas Cage como Johnny Blaze, o motociclista que vendeu a alma ao diabo e se transforma no Motoqueiro Fantasma."
+    },
+    {
+      "u": "vintage",
+      "t": "Punisher: War Zone",
+      "r": 2008,
+      "s": "2008",
+      "d": "Reboot ainda mais violento, com Ray Stevenson. Frank Castle contra Jigsaw, num registo quase de banda desenhada ultraviolenta."
+    },
+    {
+      "u": "vintage",
+      "t": "Ghost Rider: Spirit of Vengeance",
+      "r": 2011,
+      "s": "anos depois do 1.º",
+      "d": "Sequela realizada pela dupla de Crank. Johnny Blaze esconde-se na Europa de Leste e tem de proteger um rapaz do próprio diabo."
+    },
+    {
+      "u": "xmen",
+      "t": "X-Men: First Class",
+      "r": 2011,
+      "s": "1944 e 1962",
+      "d": "A origem: Charles Xavier e Erik Lehnsherr conhecem-se e formam a primeira equipa de mutantes durante a crise dos mísseis de Cuba. É aqui que a amizade que define toda a saga começa — e se parte."
+    },
+    {
+      "u": "xmen",
+      "t": "X-Men: Days of Future Past",
+      "r": 2014,
+      "s": "1973 (e 2023)",
+      "d": "Wolverine é enviado de um futuro apocalíptico para 1973 para impedir o assassinato que dá origem aos Sentinelas. Este filme reescreve a linha temporal e apaga vários acontecimentos dos filmes anteriores."
+    },
+    {
+      "u": "xmen",
+      "t": "X-Men Origins: Wolverine",
+      "r": 2009,
+      "s": "1845 a anos 80",
+      "d": "A história de Logan desde o século XIX até ao programa Arma X. Fica numa zona cinzenta da cronologia depois de Days of Future Past reescrever tudo."
+    },
+    {
+      "u": "xmen",
+      "t": "X-Men: Apocalypse",
+      "r": 2016,
+      "s": "1983",
+      "d": "O primeiro mutante, En Sabah Nur, desperta e reúne os seus Quatro Cavaleiros. Jean Grey, Cyclops e Nightcrawler juntam-se aos X-Men como jovens."
+    },
+    {
+      "u": "xmen",
+      "t": "Dark Phoenix",
+      "r": 2019,
+      "s": "1992",
+      "d": "Jean Grey é tomada por uma força cósmica durante uma missão espacial. O último filme da era Fox dos X-Men antes da compra pela Disney."
+    },
+    {
+      "u": "xmen",
+      "t": "X-Men",
+      "r": 2000,
+      "s": "c. 2000",
+      "d": "O filme que arrancou a era moderna dos super-heróis. Rogue e Wolverine são acolhidos pela escola de Xavier enquanto Magneto prepara uma máquina para transformar líderes mundiais em mutantes."
+    },
+    {
+      "u": "xmen",
+      "t": "X2: X-Men United",
+      "r": 2003,
+      "s": "c. 2003",
+      "d": "O coronel Stryker ataca a escola e os X-Men vêem-se forçados a aliar-se a Magneto. Termina com o sacrifício de Jean Grey e o prenúncio da Fénix."
+    },
+    {
+      "u": "xmen",
+      "t": "X-Men: The Last Stand",
+      "r": 2006,
+      "s": "c. 2006",
+      "d": "Uma cura para o gene mutante divide o mundo, e Jean regressa como Fénix Negra. Vários personagens principais morrem — acontecimentos depois anulados por Days of Future Past."
+    },
+    {
+      "u": "xmen",
+      "t": "The Wolverine",
+      "r": 2013,
+      "s": "pouco depois de X3",
+      "d": "Logan viaja ao Japão para se despedir de um homem que salvou em Nagasaki. Um filme mais íntimo, sobre luto e imortalidade."
+    },
+    {
+      "u": "xmen",
+      "t": "The New Mutants",
+      "r": 2020,
+      "s": "c. 2010s",
+      "d": "Cinco jovens mutantes estão internados numa instalação isolada e percebem que estão presos. Terror gótico dentro do universo X-Men."
+    },
+    {
+      "u": "xmen",
+      "t": "Deadpool",
+      "r": 2016,
+      "s": "c. 2016",
+      "d": "Wade Wilson, mercenário com cancro terminal, é submetido a uma experiência que o cura e o desfigura. Quebra a quarta parede constantemente e é o primeiro grande sucesso Marvel para adultos."
+    },
+    {
+      "u": "xmen",
+      "t": "Deadpool 2",
+      "r": 2018,
+      "s": "c. 2018",
+      "d": "Deadpool forma a X-Force para proteger um jovem mutante de Cable, um soldado vindo do futuro. Acaba a usar o dispositivo temporal para corrigir a sua própria história."
+    },
+    {
+      "u": "xmen",
+      "t": "Logan",
+      "r": 2017,
+      "s": "2029",
+      "d": "O fim da linha. Num futuro em que quase não restam mutantes, um Logan envelhecido e um Xavier doente protegem uma rapariga com os poderes dele. O adeus definitivo à era Fox."
+    },
+    {
+      "u": "f4",
+      "t": "Fantastic Four (2005)",
+      "r": 2005,
+      "s": "2005",
+      "d": "Uma tempestade cósmica dá poderes a quatro astronautas — e a Victor Von Doom. Tom leve e familiar, com Chris Evans como Tocha Humana antes de ser o Capitão América."
+    },
+    {
+      "u": "f4",
+      "t": "Rise of the Silver Surfer",
+      "r": 2007,
+      "s": "2007",
+      "d": "O Surfista Prateado chega à Terra como arauto de Galactus. O casamento de Reed e Sue é constantemente interrompido pelo fim do mundo."
+    },
+    {
+      "u": "f4",
+      "t": "Fant4stic (2015)",
+      "r": 2015,
+      "s": "2015",
+      "d": "Reboot sombrio em que o quarteto ganha os poderes numa dimensão alternativa. Uma produção conturbada que resultou num dos filmes Marvel pior recebidos de sempre."
+    },
+    {
+      "u": "sony",
+      "t": "Madame Web",
+      "r": 2024,
+      "s": "2003",
+      "d": "Cassandra Webb, paramédica de Nova Iorque, descobre que consegue ver o futuro e tenta proteger três jovens destinadas a tornar-se heroínas."
+    },
+    {
+      "u": "sony",
+      "t": "Spider-Man (2002)",
+      "r": 2002,
+      "s": "c. 2002",
+      "d": "Sam Raimi e Tobey Maguire definem o modelo do filme de super-heróis moderno. Peter Parker é mordido por uma aranha e aprende que grande poder traz grande responsabilidade."
+    },
+    {
+      "u": "sony",
+      "t": "Spider-Man 2",
+      "r": 2004,
+      "s": "c. 2004",
+      "d": "Peter perde os poderes por exaustão emocional enquanto enfrenta o Doutor Octopus. Muitas vezes citado como um dos melhores filmes de super-heróis alguma vez feitos."
+    },
+    {
+      "u": "sony",
+      "t": "Spider-Man 3",
+      "r": 2007,
+      "s": "c. 2007",
+      "d": "O simbionte negro corrompe Peter, e Venom e o Homem-Areia entram em cena. Sobrecarregado, mas peça central da nostalgia da trilogia Raimi."
+    },
+    {
+      "u": "sony",
+      "t": "The Amazing Spider-Man",
+      "r": 2012,
+      "s": "c. 2012",
+      "d": "Reboot com Andrew Garfield, centrado na relação com Gwen Stacy e no mistério dos pais de Peter. O vilão é o Lagarto."
+    },
+    {
+      "u": "sony",
+      "t": "The Amazing Spider-Man 2",
+      "r": 2014,
+      "s": "c. 2014",
+      "d": "Electro e o Duende Verde atacam Nova Iorque, e o filme culmina na morte de Gwen Stacy — o momento que Garfield acabaria por revisitar em No Way Home."
+    },
+    {
+      "u": "sony",
+      "t": "Venom",
+      "r": 2018,
+      "s": "c. 2018",
+      "d": "O jornalista Eddie Brock funde-se com um simbionte alienígena. A relação entre os dois é tratada quase como uma comédia romântica disfuncional."
+    },
+    {
+      "u": "sony",
+      "t": "Venom: Let There Be Carnage",
+      "r": 2021,
+      "s": "c. 2021",
+      "d": "O serial killer Cletus Kasady ganha o seu próprio simbionte, Carnage. A cena pós-créditos atira Eddie para o MCU, ligando-se a No Way Home."
+    },
+    {
+      "u": "sony",
+      "t": "Morbius",
+      "r": 2022,
+      "s": "c. 2022",
+      "d": "Um bioquímico com uma doença rara do sangue cura-se com ADN de morcego e torna-se um vampiro vivo."
+    },
+    {
+      "u": "sony",
+      "t": "Kraven the Hunter",
+      "r": 2024,
+      "s": "c. 2024",
+      "d": "Sergei Kravinoff torna-se o maior caçador do mundo depois de um encontro quase fatal com um leão, e vira-se contra o próprio pai criminoso."
+    },
+    {
+      "u": "sony",
+      "t": "Venom: The Last Dance",
+      "r": 2024,
+      "s": "c. 2024",
+      "d": "Eddie e Venom fogem tanto das autoridades como de criaturas enviadas por Knull. O fim da trilogia."
+    },
+    {
+      "u": "verse",
+      "t": "Into the Spider-Verse",
+      "r": 2018,
+      "s": "—",
+      "d": "Miles Morales é mordido por uma aranha e descobre que existem Homens-Aranha de várias dimensões. Revolucionou a animação e ganhou o Óscar."
+    },
+    {
+      "u": "verse",
+      "t": "Across the Spider-Verse",
+      "r": 2023,
+      "s": "—",
+      "d": "Miles atravessa o multiverso e confronta a Sociedade Aranha e a ideia de que certos acontecimentos trágicos são obrigatórios na vida de um Spider-Man."
+    },
+    {
+      "u": "mcu",
+      "t": "Captain America: The First Avenger",
+      "r": 2011,
+      "s": "1942–1945",
+      "d": "Steve Rogers, rejeitado pelo exército, torna-se o primeiro super-soldado e enfrenta o Caveira Vermelha e a HYDRA. Termina com ele congelado no gelo do Ártico."
+    },
+    {
+      "u": "mcu",
+      "t": "Captain Marvel",
+      "r": 2019,
+      "s": "1995",
+      "d": "Carol Danvers descobre que a sua memória foi manipulada pelos Kree. Apresenta um Nick Fury mais jovem e o Tesseract, e explica a origem do nome 'Vingadores'."
+    },
+    {
+      "u": "mcu",
+      "t": "Iron Man",
+      "r": 2008,
+      "s": "2010",
+      "d": "O filme que começou tudo. Tony Stark é raptado no Afeganistão, constrói uma armadura para escapar e decide assumir publicamente a identidade de Homem de Ferro."
+    },
+    {
+      "u": "mcu",
+      "t": "Iron Man 2",
+      "r": 2010,
+      "s": "2011",
+      "d": "Tony está a ser envenenado pelo próprio reactor e enfrenta Ivan Vanko. A S.H.I.E.L.D. começa a montar a Iniciativa Vingadores em segundo plano."
+    },
+    {
+      "u": "mcu",
+      "t": "The Incredible Hulk",
+      "r": 2008,
+      "s": "2011",
+      "d": "Bruce Banner foge pelo Brasil enquanto procura uma cura e é perseguido pelo general Ross. Termina com o confronto contra o Abominável no Harlem."
+    },
+    {
+      "u": "mcu",
+      "t": "Thor",
+      "r": 2011,
+      "s": "2011",
+      "d": "Thor é banido de Asgard para a Terra sem os seus poderes e tem de aprender humildade enquanto Loki toma o trono."
+    },
+    {
+      "u": "mcu",
+      "t": "The Avengers",
+      "r": 2012,
+      "s": "2012",
+      "d": "Loki abre um portal sobre Nova Iorque e Nick Fury reúne pela primeira vez a equipa. A Batalha de Nova Iorque torna-se o acontecimento de referência de todo o MCU."
+    },
+    {
+      "u": "mcu",
+      "t": "Thor: The Dark World",
+      "r": 2013,
+      "s": "2013",
+      "d": "Jane Foster é infectada pelo Éter e os Elfos Negros regressam. Introduz formalmente a segunda Joia do Infinito."
+    },
+    {
+      "u": "mcu",
+      "t": "Iron Man 3",
+      "r": 2013,
+      "s": "Natal de 2013",
+      "d": "Tony sofre de ataques de pânico depois de Nova Iorque e perde tudo. O Mandarim revela-se um embuste."
+    },
+    {
+      "u": "mcu",
+      "t": "Captain America: The Winter Soldier",
+      "r": 2014,
+      "s": "2014",
+      "d": "A S.H.I.E.L.D. está infiltrada pela HYDRA desde dentro. Steve descobre que o Soldado do Inverno é o Bucky. Thriller político que mudou o tom do MCU."
+    },
+    {
+      "u": "mcu",
+      "t": "Guardians of the Galaxy",
+      "r": 2014,
+      "s": "2014",
+      "d": "Um grupo de marginais espaciais junta-se para impedir Ronan de usar uma Joia do Infinito. Abriu o lado cósmico e cómico do MCU."
+    },
+    {
+      "u": "mcu",
+      "t": "Guardians of the Galaxy Vol. 2",
+      "r": 2017,
+      "s": "2014",
+      "d": "Peter Quill conhece o pai, Ego, e percebe que o verdadeiro pai foi sempre Yondu. Passa-se poucos meses depois do primeiro."
+    },
+    {
+      "u": "mcu",
+      "t": "Avengers: Age of Ultron",
+      "r": 2015,
+      "s": "2015",
+      "d": "Tony cria uma inteligência artificial que decide que a humanidade é o problema. Nascem o Visão, a Feiticeira Escarlate e o Mercúrio."
+    },
+    {
+      "u": "mcu",
+      "t": "Ant-Man",
+      "r": 2015,
+      "s": "2015",
+      "d": "O ladrão Scott Lang herda o fato do Homem-Formiga de Hank Pym. Um assalto em pequena escala no meio de um universo cada vez maior."
+    },
+    {
+      "u": "mcu",
+      "t": "Captain America: Civil War",
+      "r": 2016,
+      "s": "2016",
+      "d": "Os Acordos de Sokovia dividem os Vingadores ao meio. Apresenta o Pantera Negra e o Homem-Aranha do MCU, e parte a equipa antes do Thanos chegar."
+    },
+    {
+      "u": "mcu",
+      "t": "Black Widow",
+      "r": 2021,
+      "s": "logo após Civil War",
+      "d": "Natasha, em fuga, confronta o passado na Sala Vermelha e reencontra a família falsa da infância."
+    },
+    {
+      "u": "mcu",
+      "t": "Spider-Man: Homecoming",
+      "r": 2017,
+      "s": "2016",
+      "d": "Peter Parker tenta provar-se digno dos Vingadores enquanto enfrenta o Abutre, um empreiteiro arruinado pela limpeza pós-Nova Iorque."
+    },
+    {
+      "u": "mcu",
+      "t": "Black Panther",
+      "r": 2018,
+      "s": "2016–2017",
+      "d": "T'Challa assume o trono de Wakanda e é desafiado por Killmonger, cuja fúria nasce do isolacionismo do próprio país."
+    },
+    {
+      "u": "mcu",
+      "t": "Doctor Strange",
+      "r": 2016,
+      "s": "2016–2017",
+      "d": "Um neurocirurgião arrogante perde o uso das mãos e descobre as artes místicas em Kamar-Taj. Introduz a Joia do Tempo."
+    },
+    {
+      "u": "mcu",
+      "t": "Thor: Ragnarok",
+      "r": 2017,
+      "s": "2017",
+      "d": "Hela destrói o martelo de Thor e Asgard cai. Taika Waititi reinventa o tom da saga como comédia colorida — e reencontra o Hulk em Sakaar."
+    },
+    {
+      "u": "mcu",
+      "t": "Avengers: Infinity War",
+      "r": 2018,
+      "s": "2018",
+      "d": "Thanos reúne as seis Joias do Infinito e elimina metade de toda a vida do universo com um estalar de dedos. Os heróis perdem."
+    },
+    {
+      "u": "mcu",
+      "t": "Ant-Man and the Wasp",
+      "r": 2018,
+      "s": "pouco antes do estalar",
+      "d": "Scott e Hope procuram Janet van Dyne no Reino Quântico. A cena pós-créditos coloca Scott preso lá durante o Blip."
+    },
+    {
+      "u": "mcu",
+      "t": "Avengers: Endgame",
+      "r": 2019,
+      "s": "2018 e 2023",
+      "d": "Cinco anos depois, os sobreviventes usam o Reino Quântico para viajar no tempo e recuperar as Joias. Culmina no sacrifício de Tony Stark e na despedida de Steve Rogers."
+    },
+    {
+      "u": "mcu",
+      "t": "Spider-Man: Far From Home",
+      "r": 2019,
+      "s": "2024",
+      "d": "Peter, de férias na Europa e a lidar com o luto por Tony, é manipulado por Mysterio — que revela a sua identidade ao mundo."
+    },
+    {
+      "u": "mcu",
+      "t": "Shang-Chi",
+      "r": 2021,
+      "s": "2024",
+      "d": "Shang-Chi confronta o pai, o verdadeiro Mandarim, e o legado dos Dez Anéis. Passa-se depois do regresso das pessoas que tinham desaparecido."
+    },
+    {
+      "u": "mcu",
+      "t": "Eternals",
+      "r": 2021,
+      "s": "5000 a.C. – 2024",
+      "d": "Um grupo de seres imortais viveu escondido na Terra durante milénios sem interferir na história humana. Explica porque nunca apareceram durante o estalar do Thanos."
+    },
+    {
+      "u": "mcu",
+      "t": "Spider-Man: No Way Home",
+      "r": 2021,
+      "s": "2024–2025",
+      "d": "Um feitiço mal executado abre o multiverso e traz vilões — e Homens-Aranha — de outras realidades. O mundo inteiro esquece quem é Peter Parker."
+    },
+    {
+      "u": "mcu",
+      "t": "Multiverse of Madness",
+      "r": 2022,
+      "s": "2025",
+      "d": "Strange protege America Chavez enquanto Wanda, corrompida pelo Darkhold, atravessa realidades para reencontrar os filhos."
+    },
+    {
+      "u": "mcu",
+      "t": "Thor: Love and Thunder",
+      "r": 2022,
+      "s": "2025",
+      "d": "Jane Foster torna-se a Poderosa Thor enquanto Gorr, o Carniceiro dos Deuses, elimina divindades pelo universo."
+    },
+    {
+      "u": "mcu",
+      "t": "Black Panther: Wakanda Forever",
+      "r": 2022,
+      "s": "2025",
+      "d": "Depois da morte de T'Challa, Wakanda enfrenta Namor e o reino submarino de Talokan. Shuri assume o manto."
+    },
+    {
+      "u": "mcu",
+      "t": "Quantumania",
+      "r": 2023,
+      "s": "2026",
+      "d": "A família Lang é sugada para o Reino Quântico e encontra Kang, o Conquistador — a primeira grande apresentação da ameaça multiversal."
+    },
+    {
+      "u": "mcu",
+      "t": "Guardians of the Galaxy Vol. 3",
+      "r": 2023,
+      "s": "2026",
+      "d": "A origem trágica do Rocket é finalmente revelada, e a equipa enfrenta o Alto Evolucionário. O fim desta formação dos Guardiões."
+    },
+    {
+      "u": "mcu",
+      "t": "The Marvels",
+      "r": 2023,
+      "s": "2026",
+      "d": "Carol Danvers, Monica Rambeau e Kamala Khan trocam de lugar sempre que usam os poderes e têm de aprender a trabalhar em conjunto."
+    },
+    {
+      "u": "mcu",
+      "t": "Deadpool & Wolverine",
+      "r": 2024,
+      "s": "2026 (multiverso)",
+      "d": "Wade Wilson é recrutado pela TVA e arrasta um Wolverine de outra realidade numa viagem pelo Void. Traz oficialmente a era Fox para dentro do MCU."
+    },
+    {
+      "u": "mcu",
+      "t": "Captain America: Brave New World",
+      "r": 2025,
+      "s": "2026",
+      "d": "Sam Wilson, agora Capitão América, vê-se no centro de um incidente internacional com o presidente Thaddeus Ross."
+    },
+    {
+      "u": "mcu",
+      "t": "Thunderbolts*",
+      "r": 2025,
+      "s": "2026",
+      "d": "Um grupo de anti-heróis e antigos vilões é forçado a trabalhar em conjunto numa missão armadilhada por Valentina Allegra de Fontaine."
+    },
+    {
+      "u": "mcu",
+      "t": "The Fantastic Four: First Steps",
+      "r": 2025,
+      "s": "anos 60 retro",
+      "d": "O Quarteto Fantástico numa Terra alternativa de estética anos 60, a enfrentar Galactus e o Surfista Prateado."
+    },
+    {
+      "u": "mcu",
+      "t": "Spider-Man: Brand New Day",
+      "r": 2026,
+      "s": "2026",
+      "d": "Peter Parker recomeça do zero num mundo onde ninguém se lembra dele, a reconstruir a vida e a identidade."
+    },
+    {
+      "u": "mcu",
+      "t": "Avengers: Doomsday",
+      "r": 2026,
+      "s": "2026",
+      "d": "A convergência das linhas do multiverso, com o Doutor Destino como ameaça central. O ponto de chegada de toda a Saga do Multiverso."
+    }
+  ],
+  "series": [
+    {
+      "u": "classica",
+      "t": "The Amazing Spider-Man (1977)",
+      "r": 1977,
+      "s": "1977–1979",
+      "d": "A primeira série live-action do Homem-Aranha, com Nicholas Hammond. Modesta nos efeitos e quase sem vilões dos quadrinhos, mas foi a primeira vez que o Peter Parker existiu em imagem real."
+    },
+    {
+      "u": "classica",
+      "t": "The Incredible Hulk (1978)",
+      "r": 1978,
+      "s": "1978–1982",
+      "d": "Bill Bixby como David Banner e Lou Ferrigno como o Hulk. Uma série de fugitivo semanal, mais melancólica do que heróica, e durante décadas a adaptação Marvel mais popular de sempre."
+    },
+    {
+      "u": "classica",
+      "t": "X-Men: The Animated Series",
+      "r": 1992,
+      "s": "1992–1997",
+      "d": "O desenho animado que formou uma geração inteira. Adaptou arcos densos dos quadrinhos como a Saga da Fénix Negra e o Dias de um Futuro Esquecido, sem simplificar."
+    },
+    {
+      "u": "classica",
+      "t": "Spider-Man: The Animated Series",
+      "r": 1994,
+      "s": "1994–1998",
+      "d": "O Homem-Aranha animado dos anos 90, com uma continuidade longa e uma saga final que já brincava com o multiverso."
+    },
+    {
+      "u": "classica",
+      "t": "Blade: The Series",
+      "r": 2006,
+      "s": "2006",
+      "d": "Continuação televisiva dos filmes do Blade, com Kirk 'Sticky Fingaz' Jones no papel. Durou uma única temporada."
+    },
+    {
+      "u": "fox",
+      "t": "The Gifted S1",
+      "r": 2017,
+      "s": "c. 2017",
+      "d": "Uma família descobre que os filhos são mutantes e junta-se a uma rede clandestina. Passa-se num mundo onde os X-Men desapareceram."
+    },
+    {
+      "u": "fox",
+      "t": "The Gifted S2",
+      "r": 2018,
+      "s": "c. 2018",
+      "d": "O Círculo Interno radicaliza-se e o conflito entre mutantes e humanos escala. A série terminou aqui."
+    },
+    {
+      "u": "fox",
+      "t": "Legion S1",
+      "r": 2017,
+      "s": "ambíguo",
+      "d": "David Haller, internado desde jovem, descobre que as vozes que ouve não são esquizofrenia. Visualmente a série Marvel mais arrojada alguma vez feita."
+    },
+    {
+      "u": "fox",
+      "t": "Legion S2",
+      "r": 2018,
+      "s": "ambíguo",
+      "d": "David enfrenta o Rei das Sombras enquanto a própria série questiona se ele é herói ou vilão."
+    },
+    {
+      "u": "fox",
+      "t": "Legion S3",
+      "r": 2019,
+      "s": "ambíguo",
+      "d": "Viagens no tempo, uma nova personagem capaz de as fazer, e um final que reescreve a vida do David desde o nascimento."
+    },
+    {
+      "u": "netflix",
+      "t": "Daredevil S1",
+      "r": 2015,
+      "s": "2015",
+      "d": "Matt Murdock, advogado cego de dia e vigilante à noite, enfrenta Wilson Fisk. Mudou o tom do que uma série Marvel podia ser: violenta, católica e centrada em culpa."
+    },
+    {
+      "u": "netflix",
+      "t": "Jessica Jones S1",
+      "r": 2015,
+      "s": "2015",
+      "d": "Uma detective privada com super-força e stress pós-traumático é perseguida pelo homem que a controlou mentalmente. Kilgrave é um dos melhores vilões da Marvel em qualquer formato."
+    },
+    {
+      "u": "netflix",
+      "t": "Daredevil S2",
+      "r": 2016,
+      "s": "2016",
+      "d": "O Justiceiro e a Elektra entram em Hell's Kitchen ao mesmo tempo, obrigando o Matt a definir os seus limites."
+    },
+    {
+      "u": "netflix",
+      "t": "Luke Cage S1",
+      "r": 2016,
+      "s": "2016",
+      "d": "Um homem à prova de bala no Harlem torna-se símbolo de um bairro. Fortemente ancorada na cultura e na música negra de Nova Iorque."
+    },
+    {
+      "u": "netflix",
+      "t": "Iron Fist S1",
+      "r": 2017,
+      "s": "2017",
+      "d": "Danny Rand regressa a Nova Iorque quinze anos depois de dado como morto, com o punho de ferro e uma empresa para recuperar."
+    },
+    {
+      "u": "netflix",
+      "t": "The Defenders",
+      "r": 2017,
+      "s": "2017",
+      "d": "Os quatro heróis juntam-se contra A Mão. A mini-série que era o objectivo de toda a fase Netflix."
+    },
+    {
+      "u": "netflix",
+      "t": "The Punisher S1",
+      "r": 2017,
+      "s": "2017",
+      "d": "Frank Castle desmonta a conspiração militar por trás da morte da família. Mais thriller de guerra do que série de super-heróis."
+    },
+    {
+      "u": "netflix",
+      "t": "Jessica Jones S2",
+      "r": 2018,
+      "s": "2018",
+      "d": "Jessica investiga a origem dos próprios poderes e encontra a mãe, viva e ainda mais violenta do que ela."
+    },
+    {
+      "u": "netflix",
+      "t": "Luke Cage S2",
+      "r": 2018,
+      "s": "2018",
+      "d": "Bushmaster desafia o Luke pelo controlo do Harlem, e o próprio Luke começa a tornar-se aquilo que combatia."
+    },
+    {
+      "u": "netflix",
+      "t": "Iron Fist S2",
+      "r": 2018,
+      "s": "2018",
+      "d": "Davos toma o punho de ferro e a Colleen Wing assume o centro da história. Bastante melhor recebida do que a primeira."
+    },
+    {
+      "u": "netflix",
+      "t": "Daredevil S3",
+      "r": 2018,
+      "s": "2018",
+      "d": "Adaptação de Born Again: Fisk destrói metodicamente a vida do Matt a partir da prisão, e Bullseye entra em cena. O ponto alto de toda a fase Netflix."
+    },
+    {
+      "u": "netflix",
+      "t": "The Punisher S2",
+      "r": 2019,
+      "s": "2019",
+      "d": "Frank protege uma adolescente enquanto Billy Russo regressa como Jigsaw."
+    },
+    {
+      "u": "netflix",
+      "t": "Jessica Jones S3",
+      "r": 2019,
+      "s": "2019",
+      "d": "Um assassino meticuloso força a Jessica e a Trish a escolherem entre justiça e vingança. Encerrou a era Netflix."
+    },
+    {
+      "u": "abc",
+      "t": "Agent Carter S1",
+      "r": 2015,
+      "s": "1946",
+      "d": "Peggy Carter, subaproveitada na SSR do pós-guerra, investiga sozinha enquanto todos a tratam como secretária. Elegante e furiosa."
+    },
+    {
+      "u": "abc",
+      "t": "Agent Carter S2",
+      "r": 2016,
+      "s": "1947",
+      "d": "Peggy muda-se para Los Angeles e enfrenta a Matéria Zero. Termina a preparar a fundação da S.H.I.E.L.D."
+    },
+    {
+      "u": "abc",
+      "t": "Agents of S.H.I.E.L.D. S1",
+      "r": 2013,
+      "s": "2013–2014",
+      "d": "Coulson monta uma equipa pequena — e a meio da temporada a HYDRA revela-se, em sincronia com o Winter Soldier. A viragem que salvou a série."
+    },
+    {
+      "u": "abc",
+      "t": "Agents of S.H.I.E.L.D. S2",
+      "r": 2014,
+      "s": "2014–2015",
+      "d": "A S.H.I.E.L.D. reconstrói-se na clandestinidade e os Inumanos entram na história com a transformação da Skye."
+    },
+    {
+      "u": "abc",
+      "t": "Agents of S.H.I.E.L.D. S3",
+      "r": 2015,
+      "s": "2015–2016",
+      "d": "Hive, um Inumano antiquíssimo, regressa de outro planeta no corpo do Grant Ward."
+    },
+    {
+      "u": "abc",
+      "t": "Agents of S.H.I.E.L.D. S4",
+      "r": 2016,
+      "s": "2016–2017",
+      "d": "Dividida em três blocos: o Ghost Rider do Robbie Reyes, a inteligência artificial LMD e o mundo virtual Framework."
+    },
+    {
+      "u": "abc",
+      "t": "Agents of S.H.I.E.L.D. S5",
+      "r": 2017,
+      "s": "2017–2018",
+      "d": "A equipa é atirada para um futuro em que a Terra foi destruída e tem de descobrir como impedir isso."
+    },
+    {
+      "u": "abc",
+      "t": "Agents of S.H.I.E.L.D. S6",
+      "r": 2019,
+      "s": "2019",
+      "d": "Sem o Coulson, a equipa lida com um sósia dele e com uma ameaça vinda de outro planeta."
+    },
+    {
+      "u": "abc",
+      "t": "Agents of S.H.I.E.L.D. S7",
+      "r": 2020,
+      "s": "várias épocas",
+      "d": "A temporada final atravessa décadas de história alternativa, dos anos 30 aos 80. Um encerramento generoso para sete anos."
+    },
+    {
+      "u": "abc",
+      "t": "Inhumans",
+      "r": 2017,
+      "s": "2017",
+      "d": "A família real de Attilan, exilada no Havai depois de um golpe do Maximus. Uma única temporada, mal recebida."
+    },
+    {
+      "u": "hulu",
+      "t": "Runaways S1",
+      "r": 2017,
+      "s": "2017",
+      "d": "Seis adolescentes descobrem que os pais fazem parte de um culto assassino e fogem de casa. Uma das melhores adaptações Marvel para público jovem."
+    },
+    {
+      "u": "hulu",
+      "t": "Cloak & Dagger S1",
+      "r": 2018,
+      "s": "2018",
+      "d": "Tyrone e Tandy, ligados desde a infância por um acidente, ganham poderes complementares em Nova Orleães."
+    },
+    {
+      "u": "hulu",
+      "t": "Runaways S2",
+      "r": 2018,
+      "s": "2018",
+      "d": "Os miúdos vivem numa mansão abandonada enquanto tentam expor o Pride."
+    },
+    {
+      "u": "hulu",
+      "t": "Cloak & Dagger S2",
+      "r": 2019,
+      "s": "2019",
+      "d": "A dupla investiga uma rede de tráfico humano. Cruza-se com a Tandy e o Tyrone em registo mais adulto."
+    },
+    {
+      "u": "hulu",
+      "t": "Runaways S3",
+      "r": 2019,
+      "s": "2019",
+      "d": "A temporada final traz um crossover com o Cloak & Dagger e resolve o arco do Pride."
+    },
+    {
+      "u": "hulu",
+      "t": "Helstrom",
+      "r": 2020,
+      "s": "2020",
+      "d": "Dois irmãos, filhos de um assassino em série demoníaco, caçam o pior da humanidade. Durou uma temporada."
+    },
+    {
+      "u": "hulu",
+      "t": "M.O.D.O.K.",
+      "r": 2021,
+      "s": "2021",
+      "d": "Animação em stop-motion sobre o vilão de cabeça gigante a lidar com o divórcio e com a falência da própria organização maligna."
+    },
+    {
+      "u": "hulu",
+      "t": "Hit-Monkey S1",
+      "r": 2021,
+      "s": "2021",
+      "d": "Um macaco japonês treinado pelo fantasma de um assassino profissional vinga a sua tribo em Tóquio."
+    },
+    {
+      "u": "hulu",
+      "t": "Hit-Monkey S2",
+      "r": 2024,
+      "s": "2024",
+      "d": "O macaco muda-se para Nova Iorque e continua a matar, agora com um novo fantasma como conselheiro."
+    },
+    {
+      "u": "mcu",
+      "t": "Loki S1",
+      "r": 2021,
+      "s": "fora do tempo",
+      "d": "A variante do Loki que fugiu com o Tesseract em 2012 é capturada pela TVA. A série que abriu formalmente o multiverso do MCU e apresentou Aquele Que Permanece."
+    },
+    {
+      "u": "mcu",
+      "t": "WandaVision",
+      "r": 2021,
+      "s": "2023",
+      "d": "Wanda, em luto, aprisiona uma cidade inteira dentro de sitcoms de várias décadas. A primeira série da Marvel Studios e ainda uma das melhores."
+    },
+    {
+      "u": "mcu",
+      "t": "The Falcon and the Winter Soldier",
+      "r": 2021,
+      "s": "2024",
+      "d": "Sam e Bucky lidam com o mundo pós-Blip e com um novo Capitão América nomeado pelo governo. Termina com o Sam a aceitar o escudo."
+    },
+    {
+      "u": "mcu",
+      "t": "Hawkeye",
+      "r": 2021,
+      "s": "Natal de 2024",
+      "d": "Clint Barton só quer voltar para casa a tempo do Natal, mas Kate Bishop e o passado como Ronin não deixam. Traz o Kingpin para o MCU."
+    },
+    {
+      "u": "mcu",
+      "t": "Moon Knight",
+      "r": 2022,
+      "s": "2025",
+      "d": "Um funcionário de museu com perturbação dissociativa partilha o corpo com um mercenário e serve um deus egípcio. A série mais isolada do resto do MCU."
+    },
+    {
+      "u": "mcu",
+      "t": "Echo",
+      "r": 2024,
+      "s": "2025",
+      "d": "Maya Lopez regressa à comunidade Choctaw e confronta o Kingpin. A primeira série com selo Marvel Spotlight, mais próxima do tom da Netflix."
+    },
+    {
+      "u": "mcu",
+      "t": "She-Hulk: Attorney at Law",
+      "r": 2022,
+      "s": "2025",
+      "d": "Jennifer Walters ganha os poderes do primo e trabalha em direito sobre-humano. Comédia jurídica que quebra a quarta parede."
+    },
+    {
+      "u": "mcu",
+      "t": "Ms. Marvel",
+      "r": 2022,
+      "s": "2025",
+      "d": "Kamala Khan, adolescente de Jersey City e fã dos Vingadores, descobre poderes ligados à história da Partição da Índia."
+    },
+    {
+      "u": "mcu",
+      "t": "Ironheart",
+      "r": 2025,
+      "s": "2025",
+      "d": "Riri Williams volta a Chicago e vê-se entre a tecnologia que constrói e a magia do Encapuçado."
+    },
+    {
+      "u": "mcu",
+      "t": "Werewolf by Night",
+      "r": 2022,
+      "s": "2025",
+      "d": "Especial de Halloween em preto e branco, filmado como um filme de terror da Universal dos anos 40."
+    },
+    {
+      "u": "mcu",
+      "t": "The Guardians of the Galaxy Holiday Special",
+      "r": 2022,
+      "s": "Natal de 2025",
+      "d": "Drax e Mantis raptam o Kevin Bacon como prenda de Natal para o Quill. Curto, absurdo e sinceramente comovente."
+    },
+    {
+      "u": "mcu",
+      "t": "Secret Invasion",
+      "r": 2023,
+      "s": "2026",
+      "d": "Nick Fury regressa à Terra para travar uma facção de Skrulls infiltrada nos governos mundiais."
+    },
+    {
+      "u": "mcu",
+      "t": "Loki S2",
+      "r": 2023,
+      "s": "fora do tempo",
+      "d": "A TVA desfaz-se enquanto o tear temporal colapsa. O Loki acaba a sustentar sozinho todas as linhas do tempo."
+    },
+    {
+      "u": "mcu",
+      "t": "Agatha All Along",
+      "r": 2024,
+      "s": "2026",
+      "d": "Agatha Harkness reúne um bando de bruxas para percorrer a Estrada das Bruxas. Sequela directa de WandaVision."
+    },
+    {
+      "u": "mcu",
+      "t": "Daredevil: Born Again S1",
+      "r": 2025,
+      "s": "2026",
+      "d": "Matt Murdock tenta viver só como advogado enquanto Wilson Fisk se candidata a presidente da câmara de Nova Iorque. Retoma directamente a série da Netflix."
+    },
+    {
+      "u": "mcu",
+      "t": "Wonder Man",
+      "r": 2026,
+      "s": "2026",
+      "d": "Simon Williams, actor em Hollywood, tenta o papel principal num filme de super-heróis. Sátira da indústria com o Trevor Slattery de volta."
+    },
+    {
+      "u": "mcu",
+      "t": "Daredevil: Born Again S2",
+      "r": 2026,
+      "s": "2026",
+      "d": "Segunda temporada da série, com a cidade sob o controlo do Fisk e o Justiceiro de novo em campo."
+    },
+    {
+      "u": "mcu",
+      "t": "The Punisher: One Last Kill",
+      "r": 2026,
+      "s": "2026",
+      "d": "Especial centrado no Frank Castle, na sequência dos acontecimentos de Born Again."
+    },
+    {
+      "u": "anim",
+      "t": "Eyes of Wakanda",
+      "r": 2025,
+      "s": "vários séculos",
+      "d": "Antologia sobre guerreiros wakandanos enviados através da história para recuperar artefactos de vibranium roubados. O ponto mais antigo de toda a linha temporal do MCU."
+    },
+    {
+      "u": "anim",
+      "t": "I Am Groot S1",
+      "r": 2022,
+      "s": "2014",
+      "d": "Curtas sobre o Groot bebé a meter-se em sarilhos a bordo da nave dos Guardiões."
+    },
+    {
+      "u": "anim",
+      "t": "I Am Groot S2",
+      "r": 2023,
+      "s": "2014",
+      "d": "Mais cinco curtas, na mesma linha e igualmente sem diálogo."
+    },
+    {
+      "u": "anim",
+      "t": "What If...? S1",
+      "r": 2021,
+      "s": "multiverso",
+      "d": "O Vigia observa realidades alternativas: Peggy como super-soldado, T'Challa como Star-Lord, um MCU zombie. Termina com os Guardiões do Multiverso."
+    },
+    {
+      "u": "anim",
+      "t": "Marvel Zombies",
+      "r": 2025,
+      "s": "multiverso",
+      "d": "Expansão do episódio zombie do What If...?, agora como série própria e bastante mais violenta."
+    },
+    {
+      "u": "anim",
+      "t": "What If...? S2",
+      "r": 2023,
+      "s": "multiverso",
+      "d": "Nova ronda de realidades alternativas, incluindo um Natal do Happy Hogan e uma versão de Nova Iorque em 1602."
+    },
+    {
+      "u": "anim",
+      "t": "What If...? S3",
+      "r": 2024,
+      "s": "multiverso",
+      "d": "A temporada final, que encerra o arco do Vigia e do multiverso animado."
+    },
+    {
+      "u": "anim",
+      "t": "X-Men '97 S1",
+      "r": 2024,
+      "s": "c. 1997",
+      "d": "Continuação directa da série animada dos anos 90, retomando o estilo e as vozes originais. Reagiu ao luto pelo Xavier e foi aclamada."
+    },
+    {
+      "u": "anim",
+      "t": "X-Men '97 S2",
+      "r": 2026,
+      "s": "c. 1997",
+      "d": "Segunda temporada, na sequência do final devastador da primeira."
+    },
+    {
+      "u": "anim",
+      "t": "Your Friendly Neighborhood Spider-Man S1",
+      "r": 2025,
+      "s": "realidade própria",
+      "d": "Uma origem alternativa do Peter Parker, orientada pelo Norman Osborn em vez do Tony Stark, com estética inspirada na banda desenhada dos anos 60."
+    }
+  ]
+}

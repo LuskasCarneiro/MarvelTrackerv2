@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
+/*
+  Marvel Tracker v2 — design tokens.
+
+  Direction: a home-video shelf in a room at night, under a lamp. Warm umber ink,
+  never blue-black. There is no fixed accent colour — each title tints the chrome
+  from its own artwork, so the site's colour is the film's colour.
+
+  Reasoning, and the rules that cannot live in CSS, are in docs/02-design-system.md.
+  Contrast ratios in the comments below are measured against --color-shelf-dark and
+  are re-checked in CI; do not adjust a value without re-measuring it.
+*/
+
+@theme {
+  /* The room. */
+  --color-shelf-dark: #14100d; /* page ground                                   */
+  --color-shelf-raised: #1c1713; /* case body, any raised surface               */
+  --color-shelf-edge: #2a231c; /* shelf boards, hairlines, dividers             */
+
+  /* Label paper. Printed white, not screen white. */
+  --color-label-bright: #f2ebe1; /* primary text            16.0:1              */
+  --color-label-mid: #c8bcac; /* secondary text             10.1:1              */
+  --color-label-dim: #8e8272; /* tertiary — THE FLOOR        5.0:1 on shelf-dark
+                                                             4.7:1 on raised    */
+
+  /* The lamp. The only fixed hue in the system, and it is a light source rather
+     than a brand accent: focus rings, live state, and the light pools. Per-title
+     tint does the accent job. */
+  --color-tungsten: #e8a94e; /*                              9.2:1              */
+
+  --font-display: var(--font-archivo);
+  --font-prose: var(--font-newsreader);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Per-title tint, set inline from the artwork palette on detail pages.
+     Falls back to the lamp so nothing is ever unstyled. */
+  --tint: var(--color-tungsten);
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* One pool of light per shelf, falling from above. */
+  --light-pool: radial-gradient(
+    120% 90% at 50% -20%,
+    color-mix(in oklab, var(--color-tungsten) 14%, transparent),
+    transparent 70%
+  );
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-shelf-dark);
+  color: var(--color-label-bright);
+  font-family: var(--font-prose);
+}
+
+/* The lamp finds whatever you are on. Tungsten, never the browser default. */
+:focus-visible {
+  outline: 2px solid var(--color-tungsten);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+
+/*
+  The signature: a spine label. Archivo's wdth axis is what makes this a genuinely
+  compressed face rather than a horizontally squashed one — which is why the font
+  is loaded with axes: ['wdth']. Remove that and this silently renders at normal
+  width and looks wrong for a reason nothing reports.
+*/
+.spine-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: var(--font-display);
+  font-variation-settings:
+    "wdth" 70,
+    "wght" 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+
+  /* In vertical writing the line box runs horizontally, so the default line-height
+     makes the text box wider than the spine and it bleeds over the neighbouring
+     spine. This is load-bearing, not tidying — without it the labels overlap. */
+  line-height: 1;
+
+  /* Real spines truncate long titles. So do these. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Runtimes, years, episode counts — they must line up in a column. */
+.data-figure {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-variation-settings:
+    "wdth" 92,
+    "wght" 500;
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
