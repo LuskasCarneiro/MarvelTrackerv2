@@ -97,9 +97,18 @@ feel it. Full reasoning, including how `press.stripe.com` actually works (three.
 |---|---|
 | `docs/PLAN.md` | The approved plan. Concept, reference teardown, phasing, asset sources. |
 | `docs/06-progress.md` | **Where the work stands. Read this second, always.** |
+| `docs/02-design-system.md` | Tokens' reasoning, the shelf layout, medium eras, motion budget. |
+| `docs/03-data-pipeline.md` | The three scripts, the join keys, the TMDB traps, palette conditioning. |
 
-Docs still to be written as their phases begin: `01-architecture`, `02-design-system`,
-`03-data-pipeline`, `04-auth-and-rls`, `05-3d-shelf`, `07-open-questions`, `adr/`.
+Docs still to be written as their phases begin: `01-architecture`, `04-auth-and-rls`,
+`05-3d-shelf`, `07-open-questions`, `adr/`.
+
+**Two corrections to `PLAN.md`, both load-bearing:**
+
+1. **§2's medium table has overlapping year ranges** (2006, 2013 and 2019 each appear in
+   two rows) and cannot be implemented as written. `docs/02-design-system.md` holds the
+   disambiguated ranges and the pipeline uses those.
+2. **§4 says Next.js 15.** It is **16.3.0**, which has breaking changes.
 
 ## Lessons inherited from v1 — do not re-learn these
 
