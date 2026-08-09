@@ -15,19 +15,17 @@ translations, and then the catalogue and detail pages built on top of both.
 
 **Next action:**
 
-1. Read `data/tmdb-match-report.md` and audit the matches before anything is built on
-   them. It is sorted worst-confidence-first for exactly this reason. The known traps are
-   three separate *Punisher* films, two *Fantastic Four* reboots, and two *Amazing
-   Spider-Man* entries (a 1977 TV series and a film franchise).
-2. Join `data/notes-en.json` onto `data/titles.json` and build the catalogue page — five
-   shelves by era, spines whose width encodes runtime. Full spec in
-   `docs/02-design-system.md`.
-3. Build `/title/[slug]` as the back of a video case. Same doc.
-4. Artwork pass: posters, backdrops, transparent title logos, palette extraction. **Not
-   started, deliberately deferred** — metadata was split from artwork so the matches could
-   be reviewed before anything expensive was built on them. `sharp` 0.35.3 is already
-   present transitively via Next, so palette extraction needs no new dependency, but it
-   should be promoted to an explicit devDependency when that work starts.
+1. **Artwork pass — the main remaining Phase 1 job.** Posters, backdrops, transparent
+   title logos, palette extraction, procedural spine composites. Deliberately deferred
+   until the matches were audited, so nothing expensive got built on a wrong id.
+   `sharp` 0.35.3 is already present transitively via Next, so palette extraction needs no
+   new dependency — promote it to an explicit devDependency when that work starts.
+   Until then the catalogue derives a deterministic tint per title from its slug.
+2. Re-read `data/tmdb-match-report.md` if any match is ever in doubt. It is sorted
+   worst-confidence-first. 33 records are `fuzzy`, and the great majority are benign —
+   TMDB prefixes many series with "Marvel's", and the source abbreviates several film
+   titles (*Shang-Chi*, *Quantumania*, *Multiverse of Madness*). Those are correct.
+3. Phase 2 (Supabase auth + RLS) is unblocked whenever you want it.
 
 **Before writing any App Router code, read `node_modules/next/dist/docs/01-app/`.**
 Next 16 has breaking changes and its own `AGENTS.md` says so. Confirmed this session:
@@ -149,6 +147,47 @@ need judgement (TMDB matching, translation).
 both warn that `.ts` files using ESM syntax are being reparsed. Everything passes; it was
 left alone because two agents were writing scripts at the time and changing the module type
 mid-flight is how you get a confusing failure.
+
+#### The catalogue is joined to TMDB, and three matches were silently wrong
+
+152 records: 84 exact, 33 fuzzy, 35 hand-checked overrides, **0 unresolved**. Two runtimes
+are `null` and stay null — *Marvel Zombies* and *X-Men '97* S2 are unreleased, and an
+invented number would be worse than an honest gap.
+
+Auditing the matches caught three wrong ones, **and none of them failed loudly**:
+
+| Ours | Had matched | Actually |
+|---|---|---|
+| Agents of S.H.I.E.L.D. S3–S6 | `69088` | *Slingshot*, a 6-episode webseries → `1403` |
+| What If…? S2–S3 | `235614` | an unrelated 2024 show called *What If* → `91363` |
+| Runaways S3 | `116521` | a different *Runaways* from 2012 → `67466` |
+
+**Why none of them errored, which is the part worth remembering:** each wrong show was a
+real show that happened to have a season with the number being asked for — one of them a
+season 3 containing zero episodes. So the lookup returned a season, the runtime summed to
+nothing, and the field came out `null`. A null runtime reads as *missing upstream data*,
+not as *wrong programme entirely*. The matcher's own confidence score did not catch the
+Runaways case at all; it rated it the same as the ones it got right.
+
+What caught all three was one structural question: **a show cannot be two different TMDB
+ids.** `scripts/data.test.ts` now asserts that, plus season-uniqueness per id, and all
+three shows are pinned season by season in `data/tmdb-overrides.json` so a re-run cannot
+drift back. The generalisable version is in the second brain as
+*A plausible wrong match fails silently*.
+
+**Audit the nulls.** Sorting them into "expected" and "unexplained" is five minutes and
+pointed straight at the fault: 9 nulls before the fix, 2 after, and the 2 are legitimate.
+
+#### The notes are translated, not regenerated
+
+All 152, verified: no missing keys, no invented ones, no leftover Portuguese, and
+**zero sentence-count drift** — that last check is the rewrite guard, since a "better"
+sentence than the owner's is the failure mode here, not a worse one. Portuguese character
+and property names are restored to their English forms. Universe labels translated too.
+
+One flagged note was a false positive worth recording so nobody re-fixes it: `" de "` in
+*Thunderbolts\** is the nobiliary particle in **Valentina Allegra de Fontaine**, which keeps
+its "de" in English. The test now strips name particles before looking for Portuguese.
 
 ### 2026-08-09 — Phase 0 begun
 
