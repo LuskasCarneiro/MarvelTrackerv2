@@ -7,16 +7,31 @@ any session that changed anything, then commit and push.
 
 ## You are here
 
-**Phase 0 — Foundations. In progress.**
+**Phase 0 — Foundations. COMPLETE.** Nothing is blocked. Nothing is owed by the owner.
 
-Next action: install the Supabase and three.js dependency sets, write the design tokens,
-then run the TMDB pipeline. Blocked on nothing.
+**Next action — start Phase 1, in this order:**
+
+1. `npm i three @react-three/fiber @react-three/drei @supabase/supabase-js @supabase/ssr`
+   and `npm i -D vitest @playwright/test` (three.js is needed in Phase 3, but pinning it
+   now keeps the lockfile in one commit).
+2. Write `scripts/build-data.ts` — the TMDB pipeline. Read the 82 `films` and 70
+   `seriesItems` entries out of `~/Desktop/marvel-vault/index.html`; each has
+   `u` (universe), `t` (title), `r` (release year), `s` (chronology string), `d` (a
+   hand-written paragraph **in European Portuguese**).
+3. **Translate the 152 `d` paragraphs into UK English.** They are hand-written and good —
+   translate them faithfully, do not regenerate them. Good subagent job (sonnet).
+   Ambiguous TMDB matches need a hand-checked override file: there are three separate
+   *Punisher* films, two *Fantastic Four* reboots, and two *Amazing Spider-Man* series.
+4. Design tokens + the DOM catalogue (see `docs/PLAN.md` §3 for the settled direction).
+
+**Before writing any App Router code, read `node_modules/next/dist/docs/01-app/`.**
+Next 16 has breaking changes and its own `AGENTS.md` says so.
 
 ### Phase status
 
 | Phase | State |
 |---|---|
-| 0 — Foundations (repo, scaffold, CI, memory, deploy) | **in progress** |
+| 0 — Foundations (repo, scaffold, CI, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design) | not started |
 | 2 — Accounts (Supabase auth, RLS, ratings) | not started |
 | 3 — The shelf (three.js, material system) | not started |
@@ -24,11 +39,10 @@ then run the TMDB pipeline. Blocked on nothing.
 
 ### Open items
 
-- **⚠ Vercel is deploying `public/` as a static site and never running Next.js.**
-  The one remaining fault. *Fix: Vercel → Settings → Build & Deployment →
-  **Framework Preset: Other → Next.js**, clear any **Output Directory** override (it must
-  be blank, not `public`), then redeploy.* Alternatively delete and re-import the project —
-  auto-detection works now that the repo actually contains Next.js.
+- **✅ RESOLVED 2026-08-09 — Vercel was deploying `public/` as a static site.** Fixed by
+  setting Framework Preset to Next.js. https://marvel-trackerv2.vercel.app now returns 200
+  with `x-nextjs-prerender: 1` and `x-matched-path: /`. Kept below because the *diagnosis*
+  is reusable, not because anything is outstanding.
 
   **Cause:** the Vercel project was created while the repo held only the `HelloWorld` blob,
   so no framework was detected and the preset stuck.
