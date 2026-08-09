@@ -42,3 +42,6 @@ next-env.d.ts
 
 # keep the example, never the real thing
 !.env.example
+
+# personal harness prefs, not shared
+.claude/settings.local.json
