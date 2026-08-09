@@ -67,6 +67,30 @@ background: color-mix(in oklab, var(--tint) 12%, var(--color-shelf-raised));
 The palette is extracted **at build time** and committed. There is no runtime colour
 extraction, so there is no flash of untinted chrome and no canvas work on the client.
 
+#### Hue is the film's. Saturation and lightness are the room's.
+
+The extracted colour is **conditioned** before use, and this is a design decision rather
+than an implementation detail.
+
+"Each title tints from its own artwork" stays true — the **hue** comes straight from the
+poster. But saturation and lightness are set by the medium's era, not by the artwork,
+for two reasons that are not negotiable:
+
+1. **The room.** This is a dark space under one warm lamp. 152 unconditioned poster colours
+   render as an arbitrary rainbow that could belong to any subject at all — observed on a
+   screenshot, not theorised. Low saturation is what makes them read as dusty printed card
+   instead.
+2. **Contrast.** Spines carry `--color-label-bright` text, so lightness is contrast-bearing.
+   After conditioning, the ratio against `#F2EBE1` is computed and lightness is reduced
+   until it clears 4.5:1. Enforced in the pipeline and re-checked independently in
+   `scripts/artwork.test.ts` — never assumed.
+
+Lightness therefore does double duty: it keeps text legible *and* encodes the era, VHS card
+dullest through to steelbook brightest because metal catches the lamp.
+
+The mechanics, including why near-grey pixels are excluded from extraction, are in
+`docs/03-data-pipeline.md`.
+
 ---
 
 ## Type
