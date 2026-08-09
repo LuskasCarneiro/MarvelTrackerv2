@@ -13,6 +13,9 @@ The design system, the screenshot harness, the v1 extraction and CI are all done
 and committed. What remains in Phase 1 is the TMDB metadata join, the UK English
 translations, and then the catalogue and detail pages built on top of both.
 
+**The catalogue is built.** `/` is the shelf wall (five eras, 152 spines, width encodes
+runtime) and `/title/[slug]` is the back of the case, all 152 prerendered at build.
+
 **Next action:**
 
 1. **Artwork pass — the main remaining Phase 1 job.** Posters, backdrops, transparent
@@ -188,6 +191,46 @@ and property names are restored to their English forms. Universe labels translat
 One flagged note was a false positive worth recording so nobody re-fixes it: `" de "` in
 *Thunderbolts\** is the nobiliary particle in **Valentina Allegra de Fontaine**, which keeps
 its "de" in English. The test now strips name particles before looking for Portuguese.
+
+**`chrono` was missed by that pass entirely** and reached the rendered page as
+"CHRONOLOGY: multiverso" on 17 of 152 titles. My briefing named the notes and the universe
+names and never mentioned it. Found by looking at a screenshot, not by any test — the
+guard now sweeps *every* user-facing string rather than the one field that broke. The
+translation lives in `notes-en.json` under `chrono`, because `titles.json` holds the facts
+and `notes-en.json` holds the English copy layer; the split is worth keeping.
+
+Two heuristics in that guard were wrong before they were right, and both are the same
+mistake: `"anos "` matched **Th*anos***, and substring matching generally finds Portuguese
+inside English words. It uses word boundaries now. **A guard that cries wolf gets
+disabled**, so a false positive is not a harmless cost.
+
+#### The catalogue pages are built, and the screenshots earned their keep again
+
+`/` is the shelf wall; `/title/[slug]` is the back of a video case. All 152 prerender.
+
+Three faults looked fine as code and wrong as pixels:
+
+1. **Spine tint at 12%** — the design doc's ratio for tinted *chrome*. A spine is not
+   chrome; it stands in for the artwork and is the only thing distinguishing neighbours, so
+   a shelf rendered as identical dark bars. Raising it exposed the real fault: the
+   placeholder palette ran at 50–65% saturation across the full hue wheel and produced an
+   **arbitrary rainbow that could have belonged to any subject**. Now 14–26% saturation —
+   varied but dusty, like printed card under one lamp. Lightness carries the era instead.
+2. **The page was capped at a reading measure**, hiding two thirds of the catalogue behind
+   a horizontal scrollbar on a 1440px screen — the one thing the layout exists to avoid.
+3. **Four identical "Agents of S.H.I.E.L.D." spines** side by side. 19 titles repeat and
+   that show appears seven times, so the series number is now part of the printed name, as
+   on a real boxset spine.
+
+#### Two faults of my own, recorded because they are the instructive kind
+
+- **I committed a file that broke `next build`.** `scripts/data.test.ts` had ten
+  implicit-any errors. I verified it with `npm test` and **vitest does not typecheck**, so
+  the build stayed broken across two commits until a subagent ran the right command. The
+  lesson is not "run more commands" — it is that *the tool you verify with has to be the
+  tool that would catch the fault*, and I picked one that structurally could not.
+- **The `chrono` gap above.** A briefing that lists specific fields will be followed
+  literally, and everything unlisted goes untranslated in silence.
 
 ### 2026-08-09 — Phase 0 begun
 
