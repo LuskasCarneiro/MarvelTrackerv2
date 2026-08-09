@@ -24,22 +24,36 @@ then run the TMDB pipeline. Blocked on nothing.
 
 ### Open items
 
-- **⚠ Vercel needs two dashboard changes — the site is not publicly reachable.** Diagnosed
-  2026-08-09. The pipeline itself is fine: pushes to `main` trigger builds and they
-  **succeed** (GitHub deployment `eb0124f` → state `success`). Two separate faults:
-  1. **Deployment Protection is on for Production.** The real production alias
-     `marvel-trackerv2-luskas-carneiro.vercel.app` returns **302 → `vercel.com/sso-api`**,
-     so every visitor is bounced to a Vercel login. Fatal for public sign-up.
-     *Fix: Vercel → Settings → Deployment Protection → Vercel Authentication → set to
-     "Only Preview Deployments" (or disable).*
-  2. **`marvel-trackerv2.vercel.app` is not assigned to this project.** It returns
-     `x-vercel-error: NOT_FOUND` — the hostname is known to Vercel but no deployment is
-     aliased to it (distinct from `DEPLOYMENT_NOT_FOUND`, which is what genuinely
-     unregistered hostnames return — confirmed by testing `marvel-tracker-v2.vercel.app`).
-     *Fix: Vercel → Settings → Domains → add it, or just use the working alias above.*
+- **⚠ Vercel is deploying `public/` as a static site and never running Next.js.**
+  The one remaining fault. *Fix: Vercel → Settings → Build & Deployment →
+  **Framework Preset: Other → Next.js**, clear any **Output Directory** override (it must
+  be blank, not `public`), then redeploy.* Alternatively delete and re-import the project —
+  auto-detection works now that the repo actually contains Next.js.
+
+  **Cause:** the Vercel project was created while the repo held only the `HelloWorld` blob,
+  so no framework was detected and the preset stuck.
+
+  **How it was proved**, so nobody re-debugs it: every one of the five files in `public/`
+  (`next.svg`, `vercel.svg`, `globe.svg`, `window.svg`, `file.svg`) returns 200 at the site
+  *root*, while `/public/next.svg`, `/README.md`, `/package.json` and `/` all return 404.
+  The site root **is** the `public/` directory. Builds report `success` because a static
+  copy has nothing to fail.
+
+  **Two diagnostic traps recorded because I fell into both:**
+  1. `x-vercel-error: NOT_FOUND` does **not** mean the domain is unassigned. An attached
+     domain serving a deployment that has no `/` route returns exactly the same thing.
+     `marvel-trackerv2.vercel.app` was correctly attached the whole time — confirmed by
+     `GET /next.svg` → 200 on it. An earlier entry here claimed it was unassigned; that was
+     wrong.
+  2. A green GitHub deployment status means *Vercel finished*, not *the app works*. All
+     four deployments reported `success` while serving nothing.
 
   Local `npm run build` passes clean (compiles, typechecks, `/` prerendered static), so
   nothing here is a code fault. Do not go looking for one.
+
+- **Resolved 2026-08-09:** Deployment Protection removed (production no longer 302s to
+  `vercel.com/sso-api`), and `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` are set as
+  GitHub Actions secrets — so CI can apply migrations.
 
 - **Migrations need a way to reach Supabase.** No secret key or access token on this
   machine, and that is deliberate. Either the owner pastes the generated SQL into the
