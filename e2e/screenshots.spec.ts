@@ -8,7 +8,13 @@ const ROUTES = [
     path: "/",
     slug: "home",
   },
-  // Example: { path: "/title/iron-man", slug: "title-iron-man" }
+  // A film.
+  { path: "/title/iron-man-2008", slug: "title-iron-man-2008" },
+  // A series season (season 2 of 3, and a title that repeats across the catalogue —
+  // exercises both the data block's Year disambiguation and a long note).
+  { path: "/title/daredevil-2016", slug: "title-daredevil-2016" },
+  // One of the two titles with a null runtime — must read as honestly empty, not "0 min".
+  { path: "/title/marvel-zombies-2025", slug: "title-marvel-zombies-2025" },
 ];
 
 // Viewport definitions: width × height

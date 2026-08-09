@@ -169,5 +169,30 @@
     "hulu": "Hulu / Freeform",
     "mcu": "MCU Disney+",
     "anim": "Marvel Animation"
+  },
+  "chrono": {
+    "1845 a anos 80": "1845 to the 1980s",
+    "1943 e 1990": "1943 and 1990",
+    "1944 e 1962": "1944 and 1962",
+    "1973 (e 2023)": "1973 (and 2023)",
+    "2018 e 2023": "2018 and 2023",
+    "2026 (multiverso)": "2026 (multiverse)",
+    "5000 a.C. – 2024": "5000 BC – 2024",
+    "Natal de 2013": "Christmas 2013",
+    "Natal de 2024": "Christmas 2024",
+    "Natal de 2025": "Christmas 2025",
+    "ambíguo": "ambiguous",
+    "anos 60 retro": "retro 1960s",
+    "anos 80": "the 1980s",
+    "anos depois do 1.º": "years after the first",
+    "depois de Daredevil": "after Daredevil",
+    "fora do tempo": "outside time",
+    "logo após Civil War": "just after Civil War",
+    "multiverso": "multiverse",
+    "pouco antes do estalar": "shortly before the Snap",
+    "pouco depois de X3": "shortly after X3",
+    "realidade própria": "its own reality",
+    "várias épocas": "various eras",
+    "vários séculos": "several centuries"
   }
 }

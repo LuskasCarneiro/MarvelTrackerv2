@@ -1,12 +1,41 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const src = JSON.parse(readFileSync('data/v1-source.json', 'utf-8'));
-const titles = JSON.parse(readFileSync('data/titles.json', 'utf-8'));
-const notesFile = JSON.parse(readFileSync('data/notes-en.json', 'utf-8'));
+/**
+ * These read the JSON off disk rather than importing it, so the test sees exactly what
+ * the pipeline wrote. JSON.parse returns `any`, so the shapes are declared here — the
+ * repo typechecks under `strict`, and `next build` sweeps this file too.
+ */
+type SourceRecord = { u: string; t: string; r: number; s: string; d: string };
+type TitleRecord = {
+  slug: string;
+  title: string;
+  kind: 'film' | 'series';
+  universe: string;
+  releaseYear: number;
+  season: number | null;
+  chrono: string;
+  runtimeMin: number | null;
+  medium: string;
+  tmdbId: number;
+  matchConfidence: string;
+};
+
+const src = JSON.parse(readFileSync('data/v1-source.json', 'utf-8')) as {
+  filmUniverses: Record<string, { name: string }>;
+  seriesUniverses: Record<string, { name: string }>;
+  films: SourceRecord[];
+  series: SourceRecord[];
+};
+const titles = JSON.parse(readFileSync('data/titles.json', 'utf-8')) as TitleRecord[];
+const notesFile = JSON.parse(readFileSync('data/notes-en.json', 'utf-8')) as {
+  notes: Record<string, string>;
+  filmUniverses: Record<string, string>;
+  seriesUniverses: Record<string, string>;
+};
 
 const sourceRecords = [...src.films, ...src.series];
-const notes: Record<string, string> = notesFile.notes;
+const notes = notesFile.notes;
 
 /** The medium is derived from release year BY RULE — see docs/02-design-system.md. */
 function mediumFor(year: number): string {

@@ -26,6 +26,38 @@ describe('catalogue', () => {
     expect(unresolved.map((t) => t.title)).toEqual([]);
   });
 
+  /**
+   * Every string this module hands to a page is user-facing copy, and the product is UK
+   * English. `chrono` was missed by the original translation pass and reached the rendered
+   * page as "CHRONOLOGY: multiverso" — caught by looking at a screenshot, not by any test,
+   * which is why this one exists. It sweeps every rendered field rather than just the one
+   * that broke.
+   */
+  it('renders no Portuguese in any user-facing string', () => {
+    // Whole words only. Substring matching finds "anos" inside "Thanos" and "de" inside
+    // half the English language, which is how a guard like this ends up disabled.
+    const giveaways =
+      /\b(de|do|da|dos|das|após|anos|ambíguo|multiverso|natal|própri[oa]|épocas|séculos|depois|antes|pouco|logo|várias|vários)\b/i;
+
+    // Nobiliary particles inside proper names stay in English too — "Valentina Allegra
+    // de Fontaine" keeps its "de".
+    const strip = (s: string) =>
+      s.replace(/(?<=\b[A-Z][a-z]+\s)(?:de|del|della|di|du|van|von|la|le)(?=\s[A-Z])/g, '');
+
+    const offenders: string[] = [];
+    for (const t of titles) {
+      for (const [field, value] of Object.entries({
+        chrono: t.chrono,
+        universeName: t.universeName,
+        note: t.note,
+      })) {
+        const hit = strip(value).match(giveaways);
+        if (hit) offenders.push(`${t.slug}.${field} [${hit[0]}]: ${value.slice(0, 50)}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('puts every title on exactly one shelf', () => {
     const onShelves = shelves.flatMap((s) => s.titles);
     expect(onShelves).toHaveLength(titles.length);

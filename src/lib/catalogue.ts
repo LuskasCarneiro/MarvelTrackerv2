@@ -8,6 +8,13 @@ export type Kind = 'film' | 'series';
 export type Title = {
   slug: string;
   title: string;
+  /**
+   * What to print on the spine and the case. 19 titles repeat across the catalogue —
+   * Agents of S.H.I.E.L.D. appears seven times — so a bare title puts four identical
+   * labels next to each other on one shelf. A real boxset spine carries the season, and
+   * so does this one.
+   */
+  displayTitle: string;
   kind: Kind;
   universe: string;
   universeName: string;
@@ -50,6 +57,16 @@ const universeNames: Record<Kind, Record<string, string>> = {
 };
 
 /**
+ * `chrono` is user-facing copy and most of it is bare years, but 17 of the 152 carry a
+ * written phrase that was still in Portuguese — "Natal de 2013", "pouco antes do estalar".
+ * Only the phrases are mapped; a year or a "c. 2004" is already correct in English.
+ *
+ * titles.json holds the facts as extracted and matched; notes-en.json holds the English
+ * copy layer. Translating here keeps that split rather than mutating the facts file.
+ */
+const chronoEn: Record<string, string> = notesJson.chrono;
+
+/**
  * titles.json carries no prose — the notes live separately and join on the original
  * title string, which is why v1's titles were verified unique before this was written.
  * Series records reuse a title across seasons, so the note is shared by design.
@@ -66,8 +83,10 @@ export const titles: Title[] = titlesJson.map((r) => {
   return {
     ...r,
     kind,
+    displayTitle: r.season === null ? r.title : `${r.title} · Series ${r.season}`,
     medium: r.medium as Medium,
     universeName: universeNames[kind][r.universe] ?? r.universe,
+    chrono: chronoEn[r.chrono] ?? r.chrono,
     note: notes[sourceKeyFor(r)] ?? '',
   };
 });

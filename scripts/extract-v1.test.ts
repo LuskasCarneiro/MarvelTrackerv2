@@ -27,7 +27,7 @@ describe('v1-source.json extraction', () => {
   });
 
   it('all films should have required keys: u, t, r, s, d', () => {
-    data.films.forEach((film, idx) => {
+    data.films.forEach((film) => {
       expect(film).toHaveProperty('u');
       expect(film).toHaveProperty('t');
       expect(film).toHaveProperty('r');
@@ -37,7 +37,7 @@ describe('v1-source.json extraction', () => {
   });
 
   it('all series should have required keys: u, t, r, s, d', () => {
-    data.series.forEach((series, idx) => {
+    data.series.forEach((series) => {
       expect(series).toHaveProperty('u');
       expect(series).toHaveProperty('t');
       expect(series).toHaveProperty('r');

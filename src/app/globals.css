@@ -96,6 +96,20 @@ body {
   letter-spacing: 0.04em;
 }
 
+/*
+  The entire motion budget (docs/02-design-system.md): shelf light pools fade up in
+  sequence, top shelf first, roughly 600ms total. Applied per-shelf with a staggered
+  animation-delay in src/app/page.tsx. Nothing else in this app animates on load.
+*/
+@keyframes shelf-lights-up {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

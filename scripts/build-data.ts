@@ -75,6 +75,43 @@ interface MatchAudit {
   runnerUp: { title: string; year: number | null; score: number } | null;
 }
 
+// TMDB API response types — narrowed to only the fields we use
+interface TmdbSearchResult {
+  id: number;
+  title?: string;
+  name?: string;
+  release_date?: string;
+  first_air_date?: string;
+}
+
+interface TmdbSearchResponse {
+  results?: TmdbSearchResult[];
+}
+
+interface TmdbEpisode {
+  runtime?: number;
+}
+
+interface TmdbSeason {
+  season_number?: number;
+  air_date?: string;
+  episodes?: TmdbEpisode[];
+}
+
+interface TmdbMovieDetail {
+  id?: number;
+  title?: string;
+  release_date?: string;
+  runtime?: number;
+}
+
+interface TmdbTvDetail {
+  id?: number;
+  name?: string;
+  first_air_date?: string;
+  seasons?: TmdbSeason[];
+}
+
 // ---------------------------------------------------------------------------
 // small utilities (no libraries — this is all a few lines each)
 // ---------------------------------------------------------------------------
@@ -152,7 +189,7 @@ function mediumFor(year: number): Medium {
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
-async function tmdbFetch(path: string, params: Record<string, string> = {}): Promise<any> {
+async function tmdbFetch(path: string, params: Record<string, string> = {}): Promise<unknown> {
   const url = new URL(TMDB_BASE + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
@@ -170,22 +207,22 @@ async function tmdbFetch(path: string, params: Record<string, string> = {}): Pro
   throw new Error(`TMDB kept rate-limiting: ${path}`);
 }
 
-async function searchMovie(query: string): Promise<any[]> {
-  const data = await tmdbFetch('/search/movie', { query, include_adult: 'false' });
+async function searchMovie(query: string): Promise<TmdbSearchResult[]> {
+  const data = (await tmdbFetch('/search/movie', { query, include_adult: 'false' })) as TmdbSearchResponse | null;
   return data?.results ?? [];
 }
-async function searchTv(query: string): Promise<any[]> {
-  const data = await tmdbFetch('/search/tv', { query, include_adult: 'false' });
+async function searchTv(query: string): Promise<TmdbSearchResult[]> {
+  const data = (await tmdbFetch('/search/tv', { query, include_adult: 'false' })) as TmdbSearchResponse | null;
   return data?.results ?? [];
 }
-async function movieDetail(id: number): Promise<any | null> {
-  return tmdbFetch(`/movie/${id}`);
+async function movieDetail(id: number): Promise<TmdbMovieDetail | null> {
+  return (await tmdbFetch(`/movie/${id}`)) as TmdbMovieDetail | null;
 }
-async function tvDetail(id: number): Promise<any | null> {
-  return tmdbFetch(`/tv/${id}`);
+async function tvDetail(id: number): Promise<TmdbTvDetail | null> {
+  return (await tmdbFetch(`/tv/${id}`)) as TmdbTvDetail | null;
 }
-async function tvSeasonDetail(id: number, season: number): Promise<any | null> {
-  return tmdbFetch(`/tv/${id}/season/${season}`);
+async function tvSeasonDetail(id: number, season: number): Promise<TmdbSeason | null> {
+  return (await tmdbFetch(`/tv/${id}/season/${season}`)) as TmdbSeason | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -227,7 +264,7 @@ interface Scored {
 }
 
 function scoreCandidates(
-  candidates: any[],
+  candidates: TmdbSearchResult[],
   ourTitle: string,
   ourYear: number,
   titleField: 'title' | 'name',
@@ -235,8 +272,8 @@ function scoreCandidates(
 ): Scored[] {
   return candidates
     .map((c) => {
-      const title = c[titleField] ?? '';
-      const year = c[dateField] ? Number(String(c[dateField]).slice(0, 4)) : null;
+      const title = (c[titleField] as string | undefined) ?? '';
+      const year = (c[dateField] as string | undefined) ? Number(String(c[dateField]).slice(0, 4)) : null;
       const sim = titleSimilarity(ourTitle, title);
       return { id: c.id, title, year, sim, score: combinedScore(sim, ourYear, year) };
     })
@@ -247,15 +284,10 @@ function scoreCandidates(
 // runtime lookups
 // ---------------------------------------------------------------------------
 
-async function filmRuntime(id: number): Promise<number | null> {
-  const data = await movieDetail(id);
-  return typeof data?.runtime === 'number' && data.runtime > 0 ? data.runtime : null;
-}
-
 /** Sum a single season's episode runtimes. Null (not 0) if any episode's runtime is unknown. */
 async function seasonRuntime(showId: number, seasonNumber: number): Promise<{ runtime: number | null; airYear: number | null }> {
   const data = await tvSeasonDetail(showId, seasonNumber);
-  const episodes: any[] = data?.episodes ?? [];
+  const episodes = (data?.episodes ?? []) as TmdbEpisode[];
   const airYear = data?.air_date ? Number(String(data.air_date).slice(0, 4)) : null;
   if (episodes.length === 0) return { runtime: null, airYear };
   let sum = 0;
@@ -267,12 +299,12 @@ async function seasonRuntime(showId: number, seasonNumber: number): Promise<{ ru
 }
 
 /** No season suffix in the source = the whole show. Sum every real season (skip season 0 specials). */
-async function wholeShowRuntime(showId: number, show: any): Promise<number | null> {
-  const seasons: any[] = (show?.seasons ?? []).filter((s: any) => s.season_number > 0);
+async function wholeShowRuntime(showId: number, show: TmdbTvDetail): Promise<number | null> {
+  const seasons = ((show?.seasons ?? []) as TmdbSeason[]).filter((s: TmdbSeason) => (s.season_number ?? 0) > 0);
   if (seasons.length === 0) return null;
   let total = 0;
   for (const s of seasons) {
-    const { runtime } = await seasonRuntime(showId, s.season_number);
+    const { runtime } = await seasonRuntime(showId, s.season_number ?? 0);
     if (runtime == null) return null;
     total += runtime;
   }
@@ -349,7 +381,7 @@ async function matchOne(item: WorkItem, overrides: Record<string, Override>): Pr
         matchedTitle = show.name ?? null;
         if (season != null) {
           const { runtime, airYear } = await seasonRuntime(tmdbId, season);
-          if (runtime == null && show.seasons?.every((s: any) => s.season_number !== season)) {
+          if (runtime == null && show.seasons?.every((s: TmdbSeason) => s.season_number !== season)) {
             throw new Error(`show ${tmdbId} has no season ${season}`);
           }
           runtimeMin = runtime;
@@ -394,7 +426,7 @@ function assignSlugs(audits: MatchAudit[]): void {
   for (const audit of audits) {
     const base = `${kebab(audit.record.title)}-${audit.record.releaseYear}`;
     let slug = base;
-    let suffix = audit.record.season != null ? `-s${audit.record.season}` : '';
+    const suffix = audit.record.season != null ? `-s${audit.record.season}` : '';
     if (used.has(slug) && suffix) slug = base + suffix;
     let n = 2;
     while (used.has(slug)) slug = `${base}${suffix}-${n++}`;
