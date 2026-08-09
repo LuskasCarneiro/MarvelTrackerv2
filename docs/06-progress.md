@@ -24,6 +24,23 @@ then run the TMDB pipeline. Blocked on nothing.
 
 ### Open items
 
+- **⚠ Vercel needs two dashboard changes — the site is not publicly reachable.** Diagnosed
+  2026-08-09. The pipeline itself is fine: pushes to `main` trigger builds and they
+  **succeed** (GitHub deployment `eb0124f` → state `success`). Two separate faults:
+  1. **Deployment Protection is on for Production.** The real production alias
+     `marvel-trackerv2-luskas-carneiro.vercel.app` returns **302 → `vercel.com/sso-api`**,
+     so every visitor is bounced to a Vercel login. Fatal for public sign-up.
+     *Fix: Vercel → Settings → Deployment Protection → Vercel Authentication → set to
+     "Only Preview Deployments" (or disable).*
+  2. **`marvel-trackerv2.vercel.app` is not assigned to this project.** It returns
+     `x-vercel-error: NOT_FOUND` — the hostname is known to Vercel but no deployment is
+     aliased to it (distinct from `DEPLOYMENT_NOT_FOUND`, which is what genuinely
+     unregistered hostnames return — confirmed by testing `marvel-tracker-v2.vercel.app`).
+     *Fix: Vercel → Settings → Domains → add it, or just use the working alias above.*
+
+  Local `npm run build` passes clean (compiles, typechecks, `/` prerendered static), so
+  nothing here is a code fault. Do not go looking for one.
+
 - **Migrations need a way to reach Supabase.** No secret key or access token on this
   machine, and that is deliberate. Either the owner pastes the generated SQL into the
   Supabase SQL editor once, or adds `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` as
