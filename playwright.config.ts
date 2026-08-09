@@ -6,8 +6,10 @@ export default defineConfig({
   forbidOnly: false,
   retries: 0,
   workers: 1,
-  reporter: [["html"]],
+  reporter: [["list"]],
   use: {
+    // Specs navigate to relative paths so the port lives in exactly one place.
+    baseURL: "http://localhost:3000",
     trace: "off",
   },
   webServer: {

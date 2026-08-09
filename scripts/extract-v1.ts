@@ -1,12 +1,15 @@
 import { readFileSync, writeFileSync } from 'fs';
+import { homedir } from 'os';
 import { resolve } from 'path';
 import { runInNewContext } from 'vm';
 
-const htmlPath = resolve('/home/luskas_carneiro/Desktop/marvel-vault/index.html');
-const outputPath = resolve('/home/luskas_carneiro/Desktop/marvel-tracker-v2/data/v1-source.json');
+// Run from the repo root. The v1 app is a sibling checkout on this machine and is not
+// part of this repo, so its location is overridable rather than hardcoded to a username.
+const htmlPath =
+  process.env.V1_SOURCE ?? resolve(homedir(), 'Desktop/marvel-vault/index.html');
+const outputPath = resolve('data/v1-source.json');
 
 const html = readFileSync(htmlPath, 'utf-8');
-const lines = html.split('\n');
 
 // Extract JavaScript constant by searching for "const NAME = " and finding the closing bracket
 function extractConstant(name: string): unknown {

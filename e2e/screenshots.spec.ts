@@ -33,15 +33,14 @@ test.describe("Screenshot harness", () => {
         });
         const page = await context.newPage();
 
-        // Navigate to the route
-        await page.goto(`http://localhost:3000${route.path}`, {
-          waitUntil: "networkidle",
-        });
+        // Relative to baseURL in playwright.config.ts. "networkidle" is deliberately
+        // not used: the dev server holds an HMR websocket open, so idle is not a
+        // state this page reliably reaches.
+        await page.goto(route.path, { waitUntil: "load" });
 
-        // Wait for variable fonts to load before screenshot
-        await page.evaluate(() => {
-          return (document as any).fonts.ready;
-        });
+        // The type is doing real work with variable-font axes, and a shot taken
+        // mid-swap is a lie about what the page looks like.
+        await page.evaluate(() => document.fonts.ready);
 
         // Control assertion: ensure page has rendered text content
         const bodyText = await page.textContent("body");
