@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:rls": "bash scripts/test-rls.sh",
     "shots": "playwright test"
   },
   "dependencies": {

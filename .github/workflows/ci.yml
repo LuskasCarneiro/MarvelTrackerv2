@@ -16,6 +16,23 @@ jobs:
       matrix:
         node-version: [22]
 
+    # Private shelves are enforced by Row Level Security and by nothing else, so the
+    # policies get a real Postgres to be tested against on every push. A service container
+    # is enough: the policies are plain Postgres and do not need the rest of the Supabase
+    # stack. See supabase/tests/harness.sql for what is mirrored and why.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +49,11 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Test RLS policies
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: npm run test:rls
 
       - name: Build
         run: npm run build
