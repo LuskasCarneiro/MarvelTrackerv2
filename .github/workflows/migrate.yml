@@ -1,0 +1,41 @@
+name: Migrate
+
+# Applies Supabase migrations. Deliberately NOT part of ci.yml: that workflow runs on every
+# push and every pull request, and a schema change is not something to apply from a fork's
+# PR or to re-run on a README edit. This runs only when a migration file actually changes,
+# and only on main.
+#
+# The credentials live here rather than on anyone's laptop — that is the whole reason this
+# workflow exists. There is no service-role key in this project at all; these two secrets
+# reach the database only to apply DDL, never at runtime.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+  # Applying a migration by hand should be possible without inventing an empty commit.
+  workflow_dispatch:
+
+# Two concurrent pushes applying DDL to the same database is a way to corrupt migration
+# history. Queue them instead, and never cancel one midway through.
+concurrency:
+  group: supabase-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "$(grep -oP 'project_id = "\K[^"]+' supabase/config.toml)"
+          supabase db push

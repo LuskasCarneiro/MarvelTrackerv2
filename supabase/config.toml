@@ -1,0 +1,5 @@
+# The project ref, which is the subdomain of NEXT_PUBLIC_SUPABASE_URL and therefore already
+# public — it ships in the client bundle of a public website. It is committed so CI can link
+# to the project without a second secret. It is not a credential: reaching the project still
+# needs a key, and reading another user's rows still needs a policy that does not exist.
+project_id = "chjbyawevxaoejnlaqvu"

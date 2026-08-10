@@ -15,6 +15,7 @@ const ROUTES = [
   { path: "/title/daredevil-2016", slug: "title-daredevil-2016" },
   // One of the two titles with a null runtime — must read as honestly empty, not "0 min".
   { path: "/title/marvel-zombies-2025", slug: "title-marvel-zombies-2025" },
+  { path: "/sign-in", slug: "sign-in" },
 ];
 
 // Viewport definitions: width × height
@@ -73,4 +74,35 @@ test.describe("Screenshot harness", () => {
       });
     }
   }
+
+  // The quality floor says visible keyboard focus everywhere, tungsten, never `none`.
+  // Form controls are where that gets lost: a Tailwind `outline-none` on an input sits at
+  // the same specificity as the global `:focus-visible` rule, and which one wins depends
+  // on cascade layers rather than on anything visible in either file. So it gets looked
+  // at, not reasoned about.
+  test("focus ring is visible on the sign-in fields", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.goto("/sign-in", { waitUntil: "load" });
+    await page.evaluate(() => document.fonts.ready);
+
+    // Tabbed to rather than focused programmatically, because :focus-visible is exactly
+    // the difference between the two. Counted in a loop rather than hardcoded: the header
+    // adds a link ahead of the form, and a fixed count silently tests the wrong element.
+    const focused = page.locator("input[name=email]");
+    for (let i = 0; i < 8 && !(await focused.evaluate((el) => el === document.activeElement)); i++) {
+      await page.keyboard.press("Tab");
+    }
+    await expect(focused).toBeFocused();
+
+    const outline = await focused.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { width: s.outlineWidth, style: s.outlineStyle, color: s.outlineColor };
+    });
+    expect(outline.style, "focused input has no outline style").not.toBe("none");
+    expect(parseFloat(outline.width), "focused input outline has no width").toBeGreaterThan(0);
+
+    await page.screenshot({ path: path.join(SHOTS_DIR, "sign-in-focus--desktop.png") });
+    await context.close();
+  });
 });

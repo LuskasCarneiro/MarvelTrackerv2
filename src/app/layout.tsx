@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo, Newsreader } from "next/font/google";
+import AuthStatus from "@/components/AuthStatus";
 import "./globals.css";
 
 // wdth is what makes spine labels a real compressed cut rather than a squashed one.
@@ -36,7 +37,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en-GB"
       className={`${archivo.variable} ${newsreader.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <header className="flex justify-end border-b border-shelf-edge px-6 py-4">
+          <AuthStatus />
+        </header>
+        {children}
+      </body>
     </html>
   );
 }
