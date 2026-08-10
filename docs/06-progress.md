@@ -16,19 +16,29 @@ translations, and then the catalogue and detail pages built on top of both.
 **The catalogue is built.** `/` is the shelf wall (five eras, 152 spines, width encodes
 runtime) and `/title/[slug]` is the back of the case, all 152 prerendered at build.
 
-**Next action:**
+**Phase 1 is complete.** Catalogue, detail pages, real artwork and real per-title palettes
+are all in and deployed.
 
-1. **Artwork pass — the main remaining Phase 1 job.** Posters, backdrops, transparent
-   title logos, palette extraction, procedural spine composites. Deliberately deferred
-   until the matches were audited, so nothing expensive got built on a wrong id.
-   `sharp` 0.35.3 is already present transitively via Next, so palette extraction needs no
-   new dependency — promote it to an explicit devDependency when that work starts.
-   Until then the catalogue derives a deterministic tint per title from its slug.
-2. Re-read `data/tmdb-match-report.md` if any match is ever in doubt. It is sorted
-   worst-confidence-first. 33 records are `fuzzy`, and the great majority are benign —
-   TMDB prefixes many series with "Marvel's", and the source abbreviates several film
-   titles (*Shang-Chi*, *Quantumania*, *Multiverse of Madness*). Those are correct.
-3. Phase 2 (Supabase auth + RLS) is unblocked whenever you want it.
+**Next action — Phase 2, accounts.** Supabase auth, RLS, rate/watch/log.
+
+1. **Before starting, confirm the two Vercel env vars are actually set** in the dashboard:
+   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Nothing else is
+   needed there. This has been an open item since Phase 0 and has never been verified from
+   this machine.
+2. Migrations are unblocked: `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` are already
+   GitHub Actions secrets, so CI applies them and no credential sits locally.
+3. **Private shelves are enforced by Row Level Security, not by application code.** That is
+   the settled decision and the reason there is no service-role key anywhere. Any subagent
+   touching auth or RLS gets sonnet, never haiku, and gets reviewed.
+
+**Still open, not blocking:**
+
+- **The 3D spike was offered and never answered.** Render one Amaray case with real cover
+  art to prove procedural geometry is good enough before Phase 3 is funded. The artwork
+  pass has now produced exactly the assets it needs, so this is the cheap moment.
+- `data/tmdb-match-report.md` if a match is ever in doubt — sorted worst-confidence-first.
+  33 are `fuzzy` and nearly all are benign: TMDB prefixes many series with "Marvel's", and
+  the source abbreviates several film titles (*Shang-Chi*, *Quantumania*).
 
 **Before writing any App Router code, read `node_modules/next/dist/docs/01-app/`.**
 Next 16 has breaking changes and its own `AGENTS.md` says so. Confirmed this session:
@@ -42,7 +52,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 | Phase | State |
 |---|---|
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
-| 1 — Catalogue (TMDB pipeline, 152 titles, DOM design) | **in progress** |
+| 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | not started |
 | 3 — The shelf (three.js, material system) | not started |
 | 4 — Polish (a11y, perf, SEO) | not started |
@@ -221,6 +231,33 @@ Three faults looked fine as code and wrong as pixels:
 3. **Four identical "Agents of S.H.I.E.L.D." spines** side by side. 19 titles repeat and
    that show appears seven times, so the series number is now part of the printed name, as
    on a real boxset spine.
+
+#### The artwork pass — palettes are real now
+
+Every title takes its hue from its own poster, extracted at build time. Both Hulk films
+come out green, Iron Man red, Captain America the sepia of its 1940s one-sheet. The
+hash placeholder survives only as the fallback for three unreleased titles with no art.
+
+**Images are not committed.** They come from `image.tmdb.org`, which needs no API key, via
+`next/image` with a tightly scoped `remotePatterns` entry. Committing ~450 files to get
+what a public CDN already serves is weight without benefit. Committed instead:
+`data/artwork.json` — chosen paths plus the conditioned palette, because colour extraction
+needs the pixels and must not run on the client. *Phase 3 differs* — the shelf needs packed
+KTX2/Basis atlases, which are genuine build artifacts.
+
+Two faults found by checking the output rather than reading the report, both fixed at
+source so a re-run stays correct (0 contrast failures and 0 near-grey extractions, from 4
+of each):
+
+1. **The near-grey filter tested HSL saturation**, which has a blind spot at both ends of
+   the lightness range: `#E3E6EB` is 3% chroma — plainly a grey — but reports **17% HSL
+   saturation**, because HSL divides by proximity to mid-grey. Four titles took their hue
+   from noise. Filtering on **chroma** (max − min channel) has no such blind spot.
+2. **The contrast floor sat exactly on 4.5**, and four titles landed at 4.49–4.50 when
+   recomputed from the rounded `hsl()` string rather than the float. The floor is 4.6 now.
+   **Do not sit on a boundary you care about** — a percent of lightness buys the entire
+   class of dispute. The test asserts the real 4.5, not the margin, so retuning the margin
+   later does not break it.
 
 #### Two faults of my own, recorded because they are the instructive kind
 
