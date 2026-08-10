@@ -7,7 +7,56 @@ any session that changed anything, then commit and push.
 
 ## You are here
 
-**Phase 1 — Catalogue. IN PROGRESS.** Nothing is blocked. Nothing is owed by the owner.
+**Phase 2 — Accounts. IN PROGRESS.** One thing is owed by the owner and it is blocking real
+sign-ups; see immediately below.
+
+### ⚠ Sign-up is broken on the live site, and only the owner can fix it
+
+**Supabase's Site URL is still `http://localhost:3000`, and the production domain is not in
+the redirect allow-list.** Measured by asking the auth server, not by reading the dashboard:
+
+| `redirect_to` | result |
+|---|---|
+| `https://marvel-trackerv2.vercel.app/auth/confirm` | **blocked** → falls back to `http://localhost:3000` |
+| `http://localhost:3000/auth/confirm` | allowed |
+| `https://evil.example.com/steal` | blocked — so the mechanism works, the list is just wrong |
+
+A stranger signing up on the live site gets a real email with a link that sends them to
+`http://localhost:3000`, which on their machine is nothing. **The account is created and can
+never be confirmed**, and every surface — build, deploy, page render — looks healthy.
+
+Fix in the Supabase dashboard, **Authentication → URL Configuration**:
+1. Site URL → `https://marvel-trackerv2.vercel.app`
+2. Redirect URLs → add `https://marvel-trackerv2.vercel.app/**`, keep `http://localhost:3000/**`
+
+Also, before this is shown to anyone: Supabase's built-in email sender is rate limited to a
+few messages an hour and is meant for development. Public sign-up is settled, so custom SMTP
+is needed. Not a code change.
+
+**Because of this, the end-to-end flow — sign up, confirm, sign in, rate — has never been
+run against production by anyone.** Everything below it is verified; that path is not, and
+cannot be from this machine.
+
+### What is done and verified
+
+- **Auth works and the catalogue stayed static.** `/` and all 152 `/title/[slug]` pages are
+  still prerendered — confirmed from the build route table, not assumed. Auth state is read
+  only in Client Components; the one server-side Supabase client exists for the email
+  confirmation route and nothing else.
+- **Vercel env vars confirmed present** — not by asking, but by loading the deployed
+  `/sign-in` in a real browser and finding the Supabase endpoint inlined in the client
+  bundle, with no console errors. This had been an open item since Phase 0.
+- **RLS is proved, not claimed.** `npm run test:rls` runs the real policies against a real
+  Postgres in CI on every push. See `docs/04-auth-and-rls.md`.
+- **Anon is denied at the grant level on production**, not merely filtered: `SELECT`,
+  `INSERT` and `DELETE` as the publishable key all return `42501 insufficient_privilege`.
+- **Migrations apply from CI**, from secrets that live in GitHub and on no laptop.
+
+---
+
+## Phase 1 — complete
+
+Nothing is blocked. Nothing is owed by the owner.
 
 The design system, the screenshot harness, the v1 extraction and CI are all done, verified
 and committed. What remains in Phase 1 is the TMDB metadata join, the UK English
@@ -62,7 +111,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 |---|---|
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
-| 2 — Accounts (Supabase auth, RLS, ratings) | not started |
+| 2 — Accounts (Supabase auth, RLS, ratings) | **in progress** — blocked on the owner for the redirect allow-list |
 | 3 — The shelf (three.js, material system) | not started |
 | 4 — Polish (a11y, perf, SEO) | not started |
 
@@ -130,6 +179,61 @@ read at module scope, which prerenders automatically as a "predictable value".
 ---
 
 ## Log
+
+### 2026-08-10 — Phase 2 begun: accounts
+
+Orchestrated as before — sonnet for the work that touches auth, and the security boundary
+itself written and reviewed rather than delegated.
+
+**Two Next 16 breaking changes that would have silently broken the standard Supabase setup.**
+Every `@supabase/ssr` guide in circulation tells you to create `middleware.ts`. In Next 16
+that file is **deprecated and renamed to `proxy.ts`**, and `cookies()` is async. Found by
+reading `node_modules/next/dist/docs/01-app/` first, as `AGENTS.md` insists. **We have
+neither file**, which is the right answer for a different reason: a proxy exists to refresh
+tokens for server-side session reads, nothing here reads the session server-side, and the
+browser client refreshes its own. Do not add one back by reflex.
+
+**The architecture is shaped by keeping the catalogue static.** One `await cookies()` in a
+layout or page would turn all 152 prerendered pages dynamic and throw away Phase 1. So auth
+state is read only in Client Components, and `src/lib/supabase/server.ts` has exactly one
+caller: the email confirmation route. **Check the build route table after touching this** —
+`○ /` and `● /title/...` mean it still holds.
+
+**The redirect allow-list only knew about localhost** — see the top of this file. Worth
+recording as a *class* of fault rather than an incident: settings that name an environment
+(redirect URLs, CORS origins, CSP, webhook targets) are written on day one against
+`localhost`, live in a dashboard where no diff will ever show them to you, and fail only for
+people who are not you. The way to check is to ask the service rather than read the
+dashboard — three candidate URLs including a deliberately hostile one, ten lines, no extra
+credentials. The hostile one is what distinguishes "the list is wrong" from "the list is
+empty".
+
+**RLS is tested against a real Postgres, and the test was proved able to fail.** It passed
+first time, which is exactly when to be suspicious — so the read policy was replaced with
+`using (true)` and the test re-run. It failed with `another user's shelf is readable — saw 2
+rows` and exit code 3. A test only ever seen passing has not been shown to test anything.
+The generalisable version is in the second brain as
+*A guard that has never failed is not yet a guard*.
+
+What that test covers that a hand-check would miss: **a blocked `UPDATE` under RLS is not an
+error.** It matches zero rows and returns success, so a missing policy looks exactly like a
+working feature. Same for the case that needs `UPDATE` to carry both `USING` and
+`WITH CHECK` — moving one of your own rows onto someone else's shelf.
+
+**Left as an observation, not chased further:** in `next dev` the overlay shows a red
+"1 Issue" badge on every route, including Phase 1 pages it predates. `devIndicators: false`
+does not suppress it — the docs say plainly that errors are still surfaced. Ruled out:
+browser console in dev (clean), browser console in production (clean), the dev server
+terminal (clean), `next build`, `tsc --noEmit`, `eslint`, and all 48 unit tests. Production
+serves no overlay at all. Every cheap channel is exhausted; if it turns out to matter it
+will resurface with more to go on.
+
+**A screenshot check earned its place again**, this time for keyboard focus: a Tailwind
+`outline-none` on an input sits at *the same specificity* as the global `:focus-visible`
+rule, so which one wins depends on cascade layers rather than on anything visible in either
+file. Unlayered rules beat layered ones, so the ring survives — but that is a conclusion
+worth a test rather than an argument, and `e2e/screenshots.spec.ts` now tabs to the field
+and asserts a real outline.
 
 ### 2026-08-09 — Phase 1 begun
 
