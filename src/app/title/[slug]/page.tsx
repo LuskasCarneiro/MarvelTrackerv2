@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getTitle, shelves, titles } from "@/lib/catalogue";
-import { titleTint } from "@/lib/tint";
+import Image from "next/image";
+import { getTitle, shelves, titles, tmdbImage } from "@/lib/catalogue";
 
 export function generateStaticParams() {
   return titles.map((t) => ({ slug: t.slug }));
@@ -26,7 +26,7 @@ export default async function TitlePage({ params }: PageProps<"/title/[slug]">) 
   const title = getTitle(slug);
   if (!title) notFound();
 
-  const tint = titleTint(title.slug, title.medium);
+  const tint = title.tint;
   // Reuses the label already computed for the shelf this title sits on, rather than
   // keeping a second copy of the medium -> label mapping that could drift from it.
   const mediumLabel = shelves.find((s) => s.medium === title.medium)?.label ?? title.medium;
@@ -50,18 +50,39 @@ export default async function TitlePage({ params }: PageProps<"/title/[slug]">) 
           {title.displayTitle}
         </h1>
 
-        {/* No artwork exists yet (a later task) — a tokened placeholder that looks
-            deliberate, not a broken image. Purely decorative. */}
+        {/* The strip of stills a real back cover carries. Decorative: the synopsis below
+            says everything these say, so they are hidden from assistive tech rather than
+            given invented alt text. Backdrops are chosen textless by the pipeline.
+            Three titles are unreleased and have no artwork — they keep the tokened
+            placeholder, which should read as "nothing yet", not as a broken image. */}
         <div aria-hidden="true" className="mt-8 grid grid-cols-3 gap-2">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="aspect-video rounded-sm border border-dashed border-label-dim/40"
-              style={{
-                background: "color-mix(in oklab, var(--tint) 12%, var(--color-shelf-raised))",
-              }}
-            />
-          ))}
+          {[0, 1, 2].map((i) => {
+            const backdrop = title.backdrops[i];
+            return (
+              <div
+                key={i}
+                className={`relative aspect-video overflow-hidden rounded-sm ${
+                  // The dashed edge is the "nothing here yet" state. Drawing it around a
+                  // filled image reads as a border someone forgot to remove.
+                  backdrop ? "" : "border border-dashed border-label-dim/40"
+                }`}
+                style={{
+                  background: "color-mix(in oklab, var(--tint) 12%, var(--color-shelf-raised))",
+                }}
+              >
+                {backdrop && (
+                  <Image
+                    src={tmdbImage(backdrop, "w780")}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 33vw, 300px"
+                    className="object-cover"
+                    priority={i === 0}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-[2fr_1fr]">

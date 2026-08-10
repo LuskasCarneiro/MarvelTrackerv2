@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { shelves, spineWidth, type Title } from "@/lib/catalogue";
-import { titleTint } from "@/lib/tint";
 
 export default function Home() {
   return (
@@ -80,7 +79,7 @@ export default function Home() {
 }
 
 function Spine({ title }: { title: Title }) {
-  const tint = titleTint(title.slug, title.medium);
+  const tint = title.tint;
   return (
     <li className="shrink-0" style={{ width: `${spineWidth(title.runtimeMin)}px` }}>
       {/* Spine width encodes runtime, unlabelled. The visible label below is vertical,

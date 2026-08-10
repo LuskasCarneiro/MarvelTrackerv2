@@ -1,0 +1,1813 @@
+{
+  "howard-the-duck-1986": {
+    "poster": "/eU0dWo8PJgsSAZFbcyHiUpuLSyW.jpg",
+    "backdrops": [
+      "/eWNKQuZI5yEVqz3ATgc0ezYWgJH.jpg",
+      "/7Oss7WBg955kzTMmYrDJkJqGeMW.jpg",
+      "/3KQe8Vzma7ZAYE25mJjgIG4Gj5e.jpg"
+    ],
+    "logo": "/5AM4R0tEecwGnC527CpQtxNGGvo.png",
+    "tint": "hsl(7 19% 33%)",
+    "sourceColour": "#310D08",
+    "contrast": 7
+  },
+  "the-punisher-1989": {
+    "poster": "/tA0O0hYyHX7Hl2Fl8VEtGtfBtjI.jpg",
+    "backdrops": [
+      "/tFmrdnfXM0p6ihMTFpptYOKEfSl.jpg",
+      "/sXuKtS2WTbuIJZrtd6gmKQDAyob.jpg",
+      "/q9C06ehX9Lrd1rYDYMIxeSO1ueK.jpg"
+    ],
+    "logo": "/8HM0svuJUio7Q1a8R83OOk3nOhR.png",
+    "tint": "hsl(214 15% 33%)",
+    "sourceColour": "#2E4C74",
+    "contrast": 6.7
+  },
+  "captain-america-1990": {
+    "poster": "/vdHrLFfHcJX9nlvUfG3LK2a2hq4.jpg",
+    "backdrops": [
+      "/a7nEljKws5sgtCndAkJtdpGz9pe.jpg",
+      "/GfYVmaRWrNzOfyuoCvtFquaPLW.jpg",
+      "/1gETsZKDGjxxhg799jRDNl8R6G7.jpg"
+    ],
+    "logo": "/1zWs81vwPLK8LL9aBeDDJZHr0EU.png",
+    "tint": "hsl(7 20% 33%)",
+    "sourceColour": "#711408",
+    "contrast": 7
+  },
+  "blade-1998": {
+    "poster": "/oWT70TvbsmQaqyphCZpsnQR7R32.jpg",
+    "backdrops": [
+      "/7NKfxJrQn053UJeLftlx4m4NTzo.jpg",
+      "/hZnnUq0mrUQ3e54SJVca4mf2oAQ.jpg",
+      "/uZ2qOaNcnocDHKkREAiBg7ffT3P.jpg"
+    ],
+    "logo": "/tAo7IYPj4jW36z02JtuFP5BUdT7.png",
+    "tint": "hsl(0 25% 37%)",
+    "sourceColour": "#A71918",
+    "contrast": 6.4
+  },
+  "blade-ii-2002": {
+    "poster": "/yDHwo3eWcMiy5LnnEnlGV9iLu9k.jpg",
+    "backdrops": [
+      "/86b0NGY1i0bt3ckhkcHxiCSMxk1.jpg",
+      "/ftVcl83v6RlH0yiK1Ubkw70VwIf.jpg",
+      "/g8cjJHZFeZQ5GRbFiDp5jXgfOZW.jpg"
+    ],
+    "logo": "/vkUddkp0gNmrgPW8eInXKB0apjS.png",
+    "tint": "hsl(12 23% 37%)",
+    "sourceColour": "#2B120C",
+    "contrast": 5.9
+  },
+  "hulk-2003": {
+    "poster": "/UllIft2jLSBaay3zQyMV4GNdfy.jpg",
+    "backdrops": [
+      "/8vQBXqDbb30qNpBcNYwTesSg75.jpg",
+      "/dBZl9pSso9wjENCDoYmis4TF6fV.jpg",
+      "/y6QyBKQyRE2gMNsfdDjAn6i1IyQ.jpg"
+    ],
+    "logo": "/ulcecwSxeLcye1ZBbRWADy59oYe.png",
+    "tint": "hsl(137 23% 36%)",
+    "sourceColour": "#0C3016",
+    "contrast": 4.7
+  },
+  "daredevil-2003": {
+    "poster": "/oCDBwSkntYamuw8VJIxMRCtDBmi.jpg",
+    "backdrops": [
+      "/e7jIX02GiSwsgkU5lMpeKjwq2Zc.jpg",
+      "/aImLo1hj95mVzcL8NMKGuLOsj5d.jpg",
+      "/4telFYUn73bXqLL5JRv6jolySj7.jpg"
+    ],
+    "logo": "/zlnkwez6nFYNMUou7h5DT7ZzJv2.png",
+    "tint": "hsl(0 22% 37%)",
+    "sourceColour": "#300F0F",
+    "contrast": 6.3
+  },
+  "blade-trinity-2004": {
+    "poster": "/6f7iXvPOnf83MaLB1JmPzUor1rr.jpg",
+    "backdrops": [
+      "/63eAFgJtN6ZTyFFzlAOoZLhlYqc.jpg",
+      "/y5pbJ6k3lzIyrRkXMFyxi6Br8bi.jpg",
+      "/5jIFimv2vKVi47iwbMSlmgLqBqE.jpg"
+    ],
+    "logo": "/pJEnnN2aeXKbJYSfAOWv3A0bYdF.png",
+    "tint": "hsl(218 22% 37%)",
+    "sourceColour": "#0D182B",
+    "contrast": 6
+  },
+  "the-punisher-2004": {
+    "poster": "/7rmA1HwYp2GKM85BL0cVwCaosGr.jpg",
+    "backdrops": [
+      "/ziexSS07RmowuyqAdJMh1sGxjHg.jpg",
+      "/r8ylVdJwUxu9AnO2CzKzxfqx5hh.jpg",
+      "/A5ASlZMqJf9h7UQkYuOgi2g27W5.jpg"
+    ],
+    "logo": "/f3IBlgJVeRDUpCC8CKTDggFATZs.png",
+    "tint": "hsl(197 18% 37%)",
+    "sourceColour": "#566A72",
+    "contrast": 5.2
+  },
+  "elektra-2005": {
+    "poster": "/gC6s6NKHneSrOKyQZnUMb443RKU.jpg",
+    "backdrops": [
+      "/2JMOTj6DFjNcg9KToctmfTV55EW.jpg",
+      "/rLMQvYhl6DU6QZVNcJTbs87gVPs.jpg",
+      "/6UgBHjTq2NADWvgso6QtyVy2yDG.jpg"
+    ],
+    "logo": "/vTGlqU5pzQ9ODf6a8F3Fs2vgymr.png",
+    "tint": "hsl(0 26% 37%)",
+    "sourceColour": "#4E0909",
+    "contrast": 6.5
+  },
+  "man-thing-2005": {
+    "poster": "/kfPPnOygXSGaBFpsCUyu7xQdkoO.jpg",
+    "backdrops": [
+      "/qgoqb6IkNYA7NE6bgBhAnP2FEQ5.jpg",
+      "/pE6vUmdiDCOgIw6hAZxnZSkIJQS.jpg",
+      "/ueHY2EXCmdsBfTBccWg7r9AnMUE.jpg"
+    ],
+    "logo": "/zEuqVlci42N18eDtXIqr9uWrfz4.png",
+    "tint": "hsl(77 21% 35%)",
+    "sourceColour": "#2B3414",
+    "contrast": 4.7
+  },
+  "ghost-rider-2007": {
+    "poster": "/4quwR1VwZouD0YF9AaD72kQAjxH.jpg",
+    "backdrops": [
+      "/zbV32WKHFuEYLXLTpr0rmVjQn11.jpg",
+      "/wKYaCd2vnqFgx7DVjFb0FvVfEAs.jpg",
+      "/7zS58YPAw002RNejOF1vNB3XHbW.jpg"
+    ],
+    "logo": "/AsFDlONRL3fPH4w0DsjQ7rbtzh9.png",
+    "tint": "hsl(6 27% 41%)",
+    "sourceColour": "#32110D",
+    "contrast": 5.4
+  },
+  "punisher-war-zone-2008": {
+    "poster": "/gxIaSGGGemqtMeEjUnGJNjj7u1p.jpg",
+    "backdrops": [
+      "/rjDlta1hy3g4ksKVuUIfYcJtYf6.jpg",
+      "/dqPZpQy6PJINOJtld17NgIERusH.jpg",
+      "/sPDIOvqyVzPo1Xu46BAB6aSGvSF.jpg"
+    ],
+    "logo": "/rpbyigZJ8vX1CT3gkUnDLWVZTd0.png",
+    "tint": "hsl(0 26% 41%)",
+    "sourceColour": "#361414",
+    "contrast": 5.6
+  },
+  "ghost-rider-spirit-of-vengeance-2011": {
+    "poster": "/xEoBT6lYfQNpSpTm8gJMTrQytiw.jpg",
+    "backdrops": [
+      "/ebNcAJfWsSbbv7VhboAvpUdOduJ.jpg",
+      "/ksvM485pQIpOA2wnZgN94y5sJ2M.jpg",
+      "/z7qtrSn5iZrwKFE1sYPr597HweG.jpg"
+    ],
+    "logo": "/6rIQU19Zl1VbiyXWPEQUcpqEen6.png",
+    "tint": "hsl(7 29% 41%)",
+    "sourceColour": "#4E130B",
+    "contrast": 5.4
+  },
+  "x-men-first-class-2011": {
+    "poster": "/hNEokmUke0dazoBhttFN0o3L7Xv.jpg",
+    "backdrops": [
+      "/yhp5Pt4GugkCs5mz63qWz5khHXe.jpg",
+      "/jN8qPrFJc05AbytjEik4GVhTMpQ.jpg",
+      "/aiA3MaEdWhystOJyw3pGkdXws9Y.jpg"
+    ],
+    "logo": "/AbyvHmfBLOWjA0vL29hK83KnLFc.png",
+    "tint": "hsl(190 26% 37%)",
+    "sourceColour": "#112B30",
+    "contrast": 4.7
+  },
+  "x-men-days-of-future-past-2014": {
+    "poster": "/bvN8iUpHyBIvniUk4e52SUZMA7Z.jpg",
+    "backdrops": [
+      "/3czpqXzFy5UcNuD1AubecRLWkwD.jpg",
+      "/fctQU5MoXgJ5pNMljFzlEFXwfSu.jpg",
+      "/hUPgIibqZlwbhs4N08cPzzc4f5K.jpg"
+    ],
+    "logo": "/d3vdGM4NBUTnzyjWn5h1qfJNczj.png",
+    "tint": "hsl(43 19% 37%)",
+    "sourceColour": "#F8D06B",
+    "contrast": 4.8
+  },
+  "x-men-origins-wolverine-2009": {
+    "poster": "/yj8LbTju1p7CUJg7US2unSBk33s.jpg",
+    "backdrops": [
+      "/p4GzAzjlL7lXIVGvayg7zvzGTSi.jpg",
+      "/wvqdJLVh0mSblly7UnYFPEk04Wd.jpg",
+      "/fUoXenTsrdUcgG0sLYbOBouvtTs.jpg"
+    ],
+    "logo": "/2qLN4LfDyVSjXIK6QBsizmsyAxo.png",
+    "tint": "hsl(21 25% 41%)",
+    "sourceColour": "#75472E",
+    "contrast": 4.7
+  },
+  "x-men-apocalypse-2016": {
+    "poster": "/ikA8UhYdTGpqbatFa93nIf6noSr.jpg",
+    "backdrops": [
+      "/sTQNRqLbfCXolrb5CizAW1dj528.jpg",
+      "/2ex2beZ4ssMeOduLD0ILzXKCiep.jpg",
+      "/8qmYZ6u65VFYMnlCBEyWGeyhiFX.jpg"
+    ],
+    "logo": "/rvVpfnBzNUL3xiFQxyndjDXPJsO.png",
+    "tint": "hsl(205 14% 41%)",
+    "sourceColour": "#142938",
+    "contrast": 4.7
+  },
+  "dark-phoenix-2019": {
+    "poster": "/gUGhbJVZAOBAf5Zg6OHF6JWrABf.jpg",
+    "backdrops": [
+      "/cjRUhKyt2Jo3V1KNzc5tpPNfccG.jpg",
+      "/phxiKFDvPeQj4AbkvJLmuZEieDU.jpg",
+      "/6H0CfLRcgq0Pcq34wNypC2V3W41.jpg"
+    ],
+    "logo": "/lpqYKvtOT116fDldLlWSth9Ws87.png",
+    "tint": "hsl(0 19% 35%)",
+    "sourceColour": "#713131",
+    "contrast": 6.7
+  },
+  "x-men-2000": {
+    "poster": "/yB6Tui7DU82jRwusjgG00kdV0pM.jpg",
+    "backdrops": [
+      "/3QUVzbcNyfGe3ocWkYAT8emK8Co.jpg",
+      "/A9fpAjZLqsODM96aI6kx147LPM9.jpg",
+      "/a6MwSrIKmMjs5b8os7eEgQk05yx.jpg"
+    ],
+    "logo": "/qkDbPsV76eU9ldQsHhjmEzjeeox.png",
+    "tint": "hsl(202 18% 37%)",
+    "sourceColour": "#718895",
+    "contrast": 5.3
+  },
+  "x2-x-men-united-2003": {
+    "poster": "/bst4alFUXCxISwdRUKSMhhkrX1M.jpg",
+    "backdrops": [
+      "/7TYITrR804tLITNur3b8VLCK6tw.jpg",
+      "/s8ftvFvafWWEhApISamHx32bx6h.jpg",
+      "/loixNIKBURXfPcND4noz7E8FqCS.jpg"
+    ],
+    "logo": "/Ab2M8vN5oaos3K7uE7B5vLmTzbJ.png",
+    "tint": "hsl(25 21% 37%)",
+    "sourceColour": "#D2AD92",
+    "contrast": 5.4
+  },
+  "x-men-the-last-stand-2006": {
+    "poster": "/rjTCsb3Zn2QelefR48I9ueRnOxa.jpg",
+    "backdrops": [
+      "/sBl1n4Oi2wX81EtXIb8NsPqJf3W.jpg",
+      "/7wa4jIpZNb4rF4FVMLcgiNhVBQ9.jpg",
+      "/caS9mIkYfbQRzXKY0b0do3KCZ8k.jpg"
+    ],
+    "logo": "/1FcmNONT3OOKJandZ8bePwfmefv.png",
+    "tint": "hsl(201 29% 39%)",
+    "sourceColour": "#092636",
+    "contrast": 4.8
+  },
+  "the-wolverine-2013": {
+    "poster": "/t2wVAcoRlKvEIVSbiYDb8d0QqqS.jpg",
+    "backdrops": [
+      "/bEAQfLTykGg232kJogBlxRYaRqU.jpg",
+      "/bsVrSbbupHT6Xv5em2WtRMOwSsx.jpg",
+      "/7D2PgX369YYePs4m44IQvROWM42.jpg"
+    ],
+    "logo": "/uBeNeuKx0hmVFi2KM7nUUl6YEq6.png",
+    "tint": "hsl(358 18% 45%)",
+    "sourceColour": "#910D11",
+    "contrast": 4.7
+  },
+  "the-new-mutants-2020": {
+    "poster": "/xiDGcXJTvu1lazFRYip6g1eLt9c.jpg",
+    "backdrops": [
+      "/1MoeNacOltBWojkStjhT3svBTOK.jpg",
+      "/eCIvqa3QVCx6H09bdeOS8Al2Sqy.jpg",
+      "/lrNbt21hRirjyTK0SeLA0L4RAVS.jpg"
+    ],
+    "logo": "/mlAsDTG8Wd5iafHxetK0KghwJia.png",
+    "tint": "hsl(21 20% 35%)",
+    "sourceColour": "#8E502E",
+    "contrast": 5.9
+  },
+  "deadpool-2016": {
+    "poster": "/3E53WEZJqP6aM84D8CckXx4pIHw.jpg",
+    "backdrops": [
+      "/en971MEXui9diirXlogOrPKmsEn.jpg",
+      "/rFj9IKlL75B2pXhZA60jkNWvxeW.jpg",
+      "/k2VX0gFu2BEJhvduQTq2ioYp8z7.jpg"
+    ],
+    "logo": "/piuamNKC09lepRcjrWx9GfEa8hN.png",
+    "tint": "hsl(354 17% 45%)",
+    "sourceColour": "#6F0E18",
+    "contrast": 4.6
+  },
+  "deadpool-2-2018": {
+    "poster": "/gyfPKfFYcVW54MoqhYlwwDDIfJR.jpg",
+    "backdrops": [
+      "/3P52oz9HPQWxcwHOwxtyrVV1LKi.jpg",
+      "/sGtXDnT08Nkb5NQq2oGD3os1zg9.jpg",
+      "/lRPH3X1q0Pp3s27df1BveqwLBA8.jpg"
+    ],
+    "logo": "/ksACm6SZq32nckHOHWsgw1vRjUp.png",
+    "tint": "hsl(353 19% 45%)",
+    "sourceColour": "#6F0613",
+    "contrast": 4.7
+  },
+  "logan-2017": {
+    "poster": "/2dBjfntdxZ1A1XjjyAAwhn922cL.jpg",
+    "backdrops": [
+      "/4DZxWNSAyksN6N3JkvpJ53Yq6zU.jpg",
+      "/qTdCfGyDisY9e8BLycszlyTsPWx.jpg",
+      "/2aQyMFEtppL6dNK384l5qhGSn5G.jpg"
+    ],
+    "logo": "/qDbxobWA4J2xVqwuDl71vg8JZxX.png",
+    "tint": "hsl(32 19% 39%)",
+    "sourceColour": "#F88F18",
+    "contrast": 4.7
+  },
+  "fantastic-four-2005": {
+    "poster": "/4YMcYEFS8sFuW3soP1HVmgR3cSm.jpg",
+    "backdrops": [
+      "/2cDXXLirYsoP6rk9B8yrvNHbbFy.jpg",
+      "/97Sl8wiR9ULc53YMfiAUf9wWbdM.jpg",
+      "/qq9ELjoyllBUMkGisZvcj0fCd43.jpg"
+    ],
+    "logo": "/mumBSCDUnc5kuy75dgKARu4fiOi.png",
+    "tint": "hsl(214 22% 37%)",
+    "sourceColour": "#2C568E",
+    "contrast": 5.8
+  },
+  "rise-of-the-silver-surfer-2007": {
+    "poster": "/9wRfzTcMyyzkQxVDqBHv8RwuZOv.jpg",
+    "backdrops": [
+      "/o2wYH40zW0JIYiYUTu6L4gsNy7E.jpg",
+      "/jeBPt0Zk0hnwvQqr0xaF0jiBXp2.jpg",
+      "/cCff1naGGBqOjsAxinEKt55gStM.jpg"
+    ],
+    "logo": "/dgbnTqH4IzmhYZvnzyVS5BxHUWV.png",
+    "tint": "hsl(205 27% 41%)",
+    "sourceColour": "#2E77AB",
+    "contrast": 4.6
+  },
+  "fant4stic-2015": {
+    "poster": "/4QIPHyUjmNKOdNn9W8MfsPrp7xr.jpg",
+    "backdrops": [
+      "/or5kDR8Ve3TtuPSdEf1X5NdQHyz.jpg",
+      "/lhbeVy5YgXjr7kvj9kaVRUCNfsZ.jpg",
+      "/gzhVcfC5j0sTnS4WJzBrCS0Vkr0.jpg"
+    ],
+    "logo": "/1cyx0g3MCUmXrfW15JgHmTnKq1i.png",
+    "tint": "hsl(16 11% 42%)",
+    "sourceColour": "#4B352D",
+    "contrast": 4.6
+  },
+  "madame-web-2024": {
+    "poster": "/iwZVbgw7p6YMIUsKum3uXGbqOmr.jpg",
+    "backdrops": [
+      "/pwGmXVKUgKN13psUjlhC9zBcq1o.jpg",
+      "/uUiIGztTrfDhPdAFJpr6m4UBMAd.jpg",
+      "/rx6FXL5Pu2FQC3HrowNQrdqojnM.jpg"
+    ],
+    "logo": "/522wnj4xZOtBLweFq0GRXiLlroD.png",
+    "tint": "hsl(357 21% 35%)",
+    "sourceColour": "#330F11",
+    "contrast": 6.7
+  },
+  "spider-man-2002": {
+    "poster": "/nXdAh5vUwERL4WGVMaee8RoDEAS.jpg",
+    "backdrops": [
+      "/zQ8AxTPiCiS5nnwXpwTBPBHSaa5.jpg",
+      "/jHxCeXnSchAuwHnmVatTgqMYdX8.jpg",
+      "/gUATaiYFjlIYWLmVsPcuThGTFnU.jpg"
+    ],
+    "logo": "/kNPXwReF35JpWBqGw8HadykznPT.png",
+    "tint": "hsl(5 24% 37%)",
+    "sourceColour": "#501510",
+    "contrast": 6.2
+  },
+  "spider-man-2-2004": {
+    "poster": "/aGuvNAaaZuWXYQQ6N2v7DeuP6mB.jpg",
+    "backdrops": [
+      "/6al048Lat3eLVQOuKtc9h6Tu94d.jpg",
+      "/8G6HCS82vNxgg5wp7oBDSk32XpF.jpg",
+      "/vqZnytUpDDAZI6JU7WtCqdq84L.jpg"
+    ],
+    "logo": "/mSYIoj4eNWMDdxaTIf7xzDqvYDm.png",
+    "tint": "hsl(2 23% 37%)",
+    "sourceColour": "#B02F2A",
+    "contrast": 6.3
+  },
+  "spider-man-3-2007": {
+    "poster": "/sJMTTGjtjvrMZ7G0oP9D13wNUum.jpg",
+    "backdrops": [
+      "/xslNxb3T3HW8dt70ybbR5lrBJRj.jpg",
+      "/w1oD1MzHjnBJc5snKupIQaSBLIh.jpg",
+      "/a6lJwBf62zCmMQMunhAKimX7Mnp.jpg"
+    ],
+    "logo": "/qMoKekvYqvnnN3WSMBUrnPXQOgq.png",
+    "tint": "hsl(208 25% 41%)",
+    "sourceColour": "#172837",
+    "contrast": 4.8
+  },
+  "the-amazing-spider-man-2012": {
+    "poster": "/jexoNYnPd6vVrmygwF6QZmWPFdu.jpg",
+    "backdrops": [
+      "/HVcza6tJtWFrLriuh3Ano4Vt46.jpg",
+      "/ac0kRKTfiJ4GcoUfb0XIO5vgC8q.jpg",
+      "/sxskOU71CO8LaNX2LOtjYFUtKv7.jpg"
+    ],
+    "logo": "/wpjoFEW3fl7NYJNrBW2b1NicW2V.png",
+    "tint": "hsl(346 27% 41%)",
+    "sourceColour": "#2F0C14",
+    "contrast": 5.6
+  },
+  "the-amazing-spider-man-2-2014": {
+    "poster": "/dGjoPttcbKR5VWg1jQuNFB247KL.jpg",
+    "backdrops": [
+      "/k0hlAzTryCYX1O1LyC6P8tAa8s0.jpg",
+      "/hDvqcbZhq9ux0euxYxCP9N6m1Rh.jpg",
+      "/u7SeO6Y42P7VCTWLhpnL96cyOqd.jpg"
+    ],
+    "logo": "/8ybXuz5BHVq9kJTEJvB50VJuypH.png",
+    "tint": "hsl(210 12% 42%)",
+    "sourceColour": "#4C7094",
+    "contrast": 4.6
+  },
+  "venom-2018": {
+    "poster": "/p4if93blsrhU5NUlHxUlEySTPak.jpg",
+    "backdrops": [
+      "/hNsYUryiwxcdeTMkaBcPF3iEg0p.jpg",
+      "/VuukZLgaCrho2Ar8Scl9HtV3yD.jpg",
+      "/7tPnyLkk5noSixlblbWn52bmbTO.jpg"
+    ],
+    "logo": "/5JNhTDkT7yXhoLlwCaS3hAnavHi.png",
+    "tint": "hsl(209 13% 41%)",
+    "sourceColour": "#2F506F",
+    "contrast": 4.8
+  },
+  "venom-let-there-be-carnage-2021": {
+    "poster": "/pzKsRuKLFmYrW5Q0q8E8G78Tcgo.jpg",
+    "backdrops": [
+      "/eENEf62tMXbhyVvdcXlnQz2wcuT.jpg",
+      "/vIgyYkXkg6NC2whRbYjBD7eb3Er.jpg",
+      "/cxlIj6EMsOyHdpBvGPdjAEdRT51.jpg"
+    ],
+    "logo": "/e7irKWxFUKOF1b5EixgJsB4UXmu.png",
+    "tint": "hsl(207 22% 35%)",
+    "sourceColour": "#164871",
+    "contrast": 6
+  },
+  "morbius-2022": {
+    "poster": "/Av8Z2jZhEm1FLkFzMThzz9hndJF.jpg",
+    "backdrops": [
+      "/jzWT0zd8U77fqWg5WgUfYaMzSFz.jpg",
+      "/gG9fTyDL03fiKnOpf2tr01sncnt.jpg",
+      "/kdUArJCSTW8bpJipOqkvCZsVEqi.jpg"
+    ],
+    "logo": "/9yXfRmPJdeaSAVgyq3USqkgwLg7.png",
+    "tint": "hsl(182 20% 35%)",
+    "sourceColour": "#0F3031",
+    "contrast": 5
+  },
+  "kraven-the-hunter-2024": {
+    "poster": "/1GvBhRxY6MELDfxFrete6BNhBB5.jpg",
+    "backdrops": [
+      "/bGGjyPqtNc8hhGkPo8W8D8t90bW.jpg",
+      "/v9Du2HC3hlknAvGlWhquRbeifwW.jpg",
+      "/1ulX4rDlS97lbDi929PUrEi507V.jpg"
+    ],
+    "logo": "/wEuiG5gakvzTthDVz0X5gfEz7T1.png",
+    "tint": "hsl(17 17% 35%)",
+    "sourceColour": "#4C362D",
+    "contrast": 6.1
+  },
+  "venom-the-last-dance-2024": {
+    "poster": "/vGXptEdgZIhPg3cGlc7e8sNPC2e.jpg",
+    "backdrops": [
+      "/3V4kLQg0kSqPLctI5ziYWabAZYF.jpg",
+      "/3sh2UA2Q2l7fihgoj1LhFFPTlIM.jpg",
+      "/vZG7PrX9HmdgL5qfZRjhJsFYEIA.jpg"
+    ],
+    "logo": "/s4wOlLMQRvjK2sWqkTogDryYEWA.png",
+    "tint": "hsl(13 21% 35%)",
+    "sourceColour": "#2F130B",
+    "contrast": 6.2
+  },
+  "into-the-spider-verse-2018": {
+    "poster": "/k08eAedr7nUQTLf7btIaO3eXk1l.jpg",
+    "backdrops": [
+      "/8mnXR9rey5uQ08rZAvzojKWbDQS.jpg",
+      "/qGQf2OHIkoh89K8XeKQzhxczf96.jpg",
+      "/1ntePsIqeklfmrQJqZPncCydsqY.jpg"
+    ],
+    "logo": "/xrM5rEtoW0Hd0QXmy5b4WBGZuHd.png",
+    "tint": "hsl(199 15% 40%)",
+    "sourceColour": "#B1D7E9",
+    "contrast": 4.7
+  },
+  "across-the-spider-verse-2023": {
+    "poster": "/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg",
+    "backdrops": [
+      "/kVd3a9YeLGkoeR50jGEXM6EqseS.jpg",
+      "/9xfDWXAUbFXQK585JvByT5pEAhe.jpg",
+      "/jbthbh0KzaUWFPYvkfmXAamjI8j.jpg"
+    ],
+    "logo": "/cmE0j3mQQe6xrzLryxGF9rF2KC8.png",
+    "tint": "hsl(246 22% 35%)",
+    "sourceColour": "#0F0B32",
+    "contrast": 7.4
+  },
+  "captain-america-the-first-avenger-2011": {
+    "poster": "/AqnvU0lPV3LW1XcjmjkQk3w1PxL.jpg",
+    "backdrops": [
+      "/yFuKvT4Vm3sKHdFY4eG6I4ldAnn.jpg",
+      "/4NWWpT0jiMUak8r6jfpvG4eBgFU.jpg",
+      "/dgTqE82MIt5sBMyyDDqF1w27oEh.jpg"
+    ],
+    "logo": "/1GPeoEcMOUvkgwRXY76s9zE57I9.png",
+    "tint": "hsl(29 23% 40%)",
+    "sourceColour": "#AD8E71",
+    "contrast": 4.6
+  },
+  "captain-marvel-2019": {
+    "poster": "/AtsgWhDnHTq68L0lLsUrCnM7TjG.jpg",
+    "backdrops": [
+      "/qAzYK4YPSWDc7aa4R43LcwRIAyb.jpg",
+      "/w2PMyoyLU22YvrGK3smVM9fW1jj.jpg",
+      "/nBS1vONGYrsL2C68C2oDQ3eKJR1.jpg"
+    ],
+    "logo": "/93xWYZfgqcFE1svEgSlBBXS5Zlm.png",
+    "tint": "hsl(219 25% 35%)",
+    "sourceColour": "#052B71",
+    "contrast": 6.5
+  },
+  "iron-man-2008": {
+    "poster": "/dMc96Rn0XutMaIYJNwkJ5yO9oTh.jpg",
+    "backdrops": [
+      "/cKvDv2LpwVEqbdXWoQl4XgGN6le.jpg",
+      "/cyecB7godJ6kNHGONFjUyVN9OX5.jpg",
+      "/55RIH0MvyCRKLjx1RjEICF9SvAj.jpg"
+    ],
+    "logo": "/f1EpI3C6wd1iv7dCxNi3vU5DAX7.png",
+    "tint": "hsl(1 30% 41%)",
+    "sourceColour": "#6F0C0A",
+    "contrast": 5.7
+  },
+  "iron-man-2-2010": {
+    "poster": "/1NHEyFPxKnsLdMuDVPy6AI7GRmE.jpg",
+    "backdrops": [
+      "/7lmBufEG7P7Y1HClYK3gCxYrkgS.jpg",
+      "/hCVQPB77eXBGh9abVdrWtKpKgkN.jpg",
+      "/jesRqfL9v6HNnowe795xjmuKUXl.jpg"
+    ],
+    "logo": "/e7jxjQ7zFnCaTSMuZGlMXmmrmA1.png",
+    "tint": "hsl(10 27% 41%)",
+    "sourceColour": "#33140E",
+    "contrast": 5.2
+  },
+  "the-incredible-hulk-2008": {
+    "poster": "/vcFeElC8eXI668WSIxcDNkJSBxv.jpg",
+    "backdrops": [
+      "/jPu8yiadqgzwFPGKJmGo637ASVP.jpg",
+      "/xfBnQ4mgf1jYZsscJGJjr6ce0Ar.jpg",
+      "/25glwwmPK6IZlZQQrAG61fzCcNX.jpg"
+    ],
+    "logo": "/kwyyhOH6UT7Dq4yYVGUKk1irNT4.png",
+    "tint": "hsl(213 24% 41%)",
+    "sourceColour": "#334E6E",
+    "contrast": 5
+  },
+  "thor-2011": {
+    "poster": "/2fuUzNnA1GBcOfmJ9vJ7ZWmu37J.jpg",
+    "backdrops": [
+      "/cDJ61O1STtbWNBwefuqVrRe3d7l.jpg",
+      "/jWAJlgICJbn2kyohrokteRoD3cZ.jpg",
+      "/dLUC0N4veThQioKZInvaxp6ChyK.jpg"
+    ],
+    "logo": "/mhWN03HN4j9nSkomzDKZyl6xVuq.png",
+    "tint": "hsl(42 26% 37%)",
+    "sourceColour": "#DAC38F",
+    "contrast": 4.6
+  },
+  "the-avengers-2012": {
+    "poster": "/qMxAmzGQO722q0UlssCOPhrXmvX.jpg",
+    "backdrops": [
+      "/9BBTo63ANSmhC4e6r62OJFuK2GL.jpg",
+      "/pGFQCp12a8andfPlpnmXz44IIvY.jpg",
+      "/nNmJRkg8wWnRmzQDe2FwKbPIsJV.jpg"
+    ],
+    "logo": "/2VLCNzMOGayRGdiSGyaOD0MzA3Y.png",
+    "tint": "hsl(203 26% 40%)",
+    "sourceColour": "#142936",
+    "contrast": 4.7
+  },
+  "thor-the-dark-world-2013": {
+    "poster": "/wp6OxE4poJ4G7c0U2ZIXasTSMR7.jpg",
+    "backdrops": [
+      "/5QEOy0QEpad9QsXeMxuGHPXMale.jpg",
+      "/90seuFwm25GWNbF1ydkaPa4DrdO.jpg",
+      "/uhYoytlNaq46dG81wLmHqaSuzWu.jpg"
+    ],
+    "logo": "/z9QOY91ablajk9tuBN6XO7I6GES.png",
+    "tint": "hsl(182 10% 39%)",
+    "sourceColour": "#6C9091",
+    "contrast": 4.6
+  },
+  "iron-man-3-2013": {
+    "poster": "/kwdWTa5wjFGJbFY2mpofgg91xHp.jpg",
+    "backdrops": [
+      "/iVped1djsF0tvGkvnHbzsE3ZPTF.jpg",
+      "/tKa1gmGKAUVYnflYcadipeL3d9h.jpg",
+      "/4TSqtluelcWByj8YZdqwzQVjI0O.jpg"
+    ],
+    "logo": "/3Vo0tJwLjkSYhEKLmdEhm4CuRqk.png",
+    "tint": "hsl(186 12% 39%)",
+    "sourceColour": "#2D4F53",
+    "contrast": 4.6
+  },
+  "captain-america-the-winter-soldier-2014": {
+    "poster": "/l79VoTIPEXwo9zCTPTnpqdASvus.jpg",
+    "backdrops": [
+      "/1RWLMyC9KcFfcaoViMiJGSSZzzr.jpg",
+      "/aZBZtLCM90QHDCuZFR6oc4NXCWu.jpg",
+      "/aCfioriaJ4JICZLoEarMMmkvYB1.jpg"
+    ],
+    "logo": "/7taEKhcDUfQyUV5F0vPAnzs0bYm.png",
+    "tint": "hsl(195 10% 40%)",
+    "sourceColour": "#91AAB2",
+    "contrast": 4.7
+  },
+  "guardians-of-the-galaxy-2014": {
+    "poster": "/r7vmZjiyZw9rpJMQJdXpjgiCOk9.jpg",
+    "backdrops": [
+      "/uLtVbjvS1O7gXL8lUOwsFOH4man.jpg",
+      "/vmBSlRZYKfNdaDZ7wGkrSNbmdMI.jpg",
+      "/ko4N6wWp0UYlMmsVyfIfLyRAZtP.jpg"
+    ],
+    "logo": "/tikZxXefORICSFaRxEJ01YEfOu1.png",
+    "tint": "hsl(210 13% 42%)",
+    "sourceColour": "#2D4D6E",
+    "contrast": 4.6
+  },
+  "guardians-of-the-galaxy-vol-2-2017": {
+    "poster": "/bFjcrDJSMmDgnRVKVvEQDVepXZB.jpg",
+    "backdrops": [
+      "/bW93ycPSSi3Hxx1NvlMX5qm2mQu.jpg",
+      "/aJn9XeesqsrSLKcHfHP4u5985hn.jpg",
+      "/xpFIaHL7Rm5kKLcEPDEMpjh4Xq6.jpg"
+    ],
+    "logo": "/767C9dyjI9FMq6emsDE0rY6K8Nc.png",
+    "tint": "hsl(206 20% 41%)",
+    "sourceColour": "#03528E",
+    "contrast": 4.7
+  },
+  "avengers-age-of-ultron-2015": {
+    "poster": "/5JzVWJvjOe9Y9YOrg8iOsLJDNne.jpg",
+    "backdrops": [
+      "/kIBK5SKwgqIIuRKhhWrJn3XkbPq.jpg",
+      "/xnqust9Li4oxfhXD5kcPi3UC8i4.jpg",
+      "/6YwkGolwdOMNpbTOmLjoehlVWs5.jpg"
+    ],
+    "logo": "/20LDr1XcZV7e9vIDZadm8iRsDcx.png",
+    "tint": "hsl(214 12% 42%)",
+    "sourceColour": "#27374C",
+    "contrast": 4.7
+  },
+  "ant-man-2015": {
+    "poster": "/rQRnQfUl3kfp78nCWq8Ks04vnq1.jpg",
+    "backdrops": [
+      "/1K3JmSNUN8OpjYsCjc0Hy0SYxAb.jpg",
+      "/a7sAqMKv5tkAdMzFfIhPqIBmQ9g.jpg",
+      "/lnRBzJMLt5gF6ayHQyuZoEreYuZ.jpg"
+    ],
+    "logo": "/oUDRlRmP1BkIjKR97UJ7hAP5t2r.png",
+    "tint": "hsl(205 12% 41%)",
+    "sourceColour": "#6F95B1",
+    "contrast": 4.7
+  },
+  "captain-america-civil-war-2016": {
+    "poster": "/nE0Po7FDiTIr7KaplUbewlTx1Ws.jpg",
+    "backdrops": [
+      "/wdwcOBMkt3zmPQuEMxB3FUtMio2.jpg",
+      "/7FWlcZq3r6525LWOcvO9kNWurN1.jpg",
+      "/dLWoJnYXhFeNouon4NmBLAr92rf.jpg"
+    ],
+    "logo": "/fdMbaPFh6QoPteehlvYq5NHlbkK.png",
+    "tint": "hsl(0 14% 44%)",
+    "sourceColour": "#320F0F",
+    "contrast": 4.7
+  },
+  "black-widow-2021": {
+    "poster": "/qAZ0pzat24kLdO3o8ejmbLxyOac.jpg",
+    "backdrops": [
+      "/keIxh0wPr2Ymj0Btjh4gW7JJ89e.jpg",
+      "/6azpBJGcLx9SKif8h9VMnflBfa.jpg",
+      "/dq18nCTTLpy9PmtzZI6Y2yAgdw5.jpg"
+    ],
+    "logo": "/zvA336zpabTaFKfgdQc3rmWx3KD.png",
+    "tint": "hsl(357 24% 35%)",
+    "sourceColour": "#320507",
+    "contrast": 6.8
+  },
+  "spider-man-homecoming-2017": {
+    "poster": "/sd1eByiFLL0arwkip6lV6l25cSj.jpg",
+    "backdrops": [
+      "/fn4n6uOYcB6Uh89nbNPoU2w80RV.jpg",
+      "/tPpYGm2mVecue7Bk3gNVoSPA5qn.jpg",
+      "/lAsr1ytUq0ATWdCbcjf59pupPFy.jpg"
+    ],
+    "logo": "/dBuI6v9X484QeG3fb4oH8RJ7021.png",
+    "tint": "hsl(202 17% 40%)",
+    "sourceColour": "#8CC9ED",
+    "contrast": 4.7
+  },
+  "black-panther-2018": {
+    "poster": "/uxzzxijgPIY7slzFvMotPv8wjKA.jpg",
+    "backdrops": [
+      "/b6ZJZHUdMEFECvGiDpJjlfUWela.jpg",
+      "/19Ed4XgjahPm4U8JT7SnntERIlt.jpg",
+      "/6ELJEzQJ3Y45HczvreC3dg0GV5R.jpg"
+    ],
+    "logo": "/hhSZl284wdgX7nY3lJXGS1e0sAL.png",
+    "tint": "hsl(213 15% 42%)",
+    "sourceColour": "#142F50",
+    "contrast": 4.7
+  },
+  "doctor-strange-2016": {
+    "poster": "/uGBVj3bEbCoZbDjjl9wTxcygko1.jpg",
+    "backdrops": [
+      "/kkoiH8ZWxJ9WSAjOadGtuHUQxbm.jpg",
+      "/aL53oMdZKZRJRH8txH07DLuleF9.jpg",
+      "/tTQ8fLMQXA9Z3l3tRItZuCl8X7l.jpg"
+    ],
+    "logo": "/oGTJ88hszp8GuTpppGmYceJB7RP.png",
+    "tint": "hsl(219 11% 42%)",
+    "sourceColour": "#516893",
+    "contrast": 4.8
+  },
+  "thor-ragnarok-2017": {
+    "poster": "/nw05ZXrKM0mxasdkGf41DVowVvb.jpg",
+    "backdrops": [
+      "/vLmHH8jAy8Jq8uBsLucd3592WGh.jpg",
+      "/xfH3mYQ9x3pQmExyTfokxVUbfVr.jpg",
+      "/wBzMnQ01R9w58W6ucltdYfOyP4j.jpg"
+    ],
+    "logo": "/qmlvTIqxZMb4ED9WB91UuwRSGw.png",
+    "tint": "hsl(39 19% 38%)",
+    "sourceColour": "#F4AF2C",
+    "contrast": 4.7
+  },
+  "avengers-infinity-war-2018": {
+    "poster": "/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg",
+    "backdrops": [
+      "/mDfJG3LC3Dqb67AZ52x3Z0jU0uB.jpg",
+      "/k3xGG77CAiB0Wr2Y1H3ApihKTkk.jpg",
+      "/bOGkgRGdhrBYJSLpXaxhXVstddV.jpg"
+    ],
+    "logo": "/iiFFPJduveJnb6D2TYKL4AFJIFn.png",
+    "tint": "hsl(342 15% 44%)",
+    "sourceColour": "#300C17",
+    "contrast": 4.7
+  },
+  "ant-man-and-the-wasp-2018": {
+    "poster": "/cFQEO687n1K6umXbInzocxcnAQz.jpg",
+    "backdrops": [
+      "/iYdgEUE2W2aJkgqfSjf1x3gFfuV.jpg",
+      "/6P3c80EOm7BodndGBUAJHHsHKrp.jpg",
+      "/1YnGeKt8R4uJ44NmhMFrpDzjtnD.jpg"
+    ],
+    "logo": "/uHaVcGYwgchi4sYIADiGyEMtVH0.png",
+    "tint": "hsl(1 19% 45%)",
+    "sourceColour": "#CD110D",
+    "contrast": 4.6
+  },
+  "avengers-endgame-2019": {
+    "poster": "/ulzhLuWrPK07P1YkdWQLZnQh1JL.jpg",
+    "backdrops": [
+      "/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
+      "/dVSMKPEaiwujXE7kQkvixPLieHR.jpg",
+      "/91iy9F1JOG1dvM6M6JNYgvScZpK.jpg"
+    ],
+    "logo": "/4pJWlICBeiHsou1BjYx48aAQqEG.png",
+    "tint": "hsl(302 21% 35%)",
+    "sourceColour": "#310D30",
+    "contrast": 6.5
+  },
+  "spider-man-far-from-home-2019": {
+    "poster": "/lcq8dVxeeOqHvvgcte707K0KVx5.jpg",
+    "backdrops": [
+      "/vamhMTvh9m9zFHDoR0v1nRtf6T4.jpg",
+      "/34jW8LvjRplM8Pv06cBFDpLlenR.jpg",
+      "/ng6SSB3JhbcpKTwbPDsRwUYK8Cq.jpg"
+    ],
+    "logo": "/lAEaCmWwqkZSp8lAw6F7CfPkA9N.png",
+    "tint": "hsl(360 24% 35%)",
+    "sourceColour": "#B11314",
+    "contrast": 6.9
+  },
+  "shang-chi-2021": {
+    "poster": "/9f2Q0U3IOsLgrI2HkvldwSABZy5.jpg",
+    "backdrops": [
+      "/r7K6Xt0RX4Mw0cAbZVw5cyb1Tux.jpg",
+      "/zxWAv1A34kdYslBi4ekMDtgIGUt.jpg",
+      "/fJbWgOb9pSQXihM9m10bRvl2dJ8.jpg"
+    ],
+    "logo": "/fzeo6tseRbmjlhjrZbtuwr8Ygyn.png",
+    "tint": "hsl(201 21% 35%)",
+    "sourceColour": "#12364A",
+    "contrast": 5.7
+  },
+  "eternals-2021": {
+    "poster": "/bcCBq9N1EMo3daNIjWJ8kYvrQm6.jpg",
+    "backdrops": [
+      "/c6H7Z4u73ir3cIoCteuhJh7UCAR.jpg",
+      "/4NybrtAXRtJd2h83fOTPGftz3LI.jpg",
+      "/k2twTjSddgLc1oFFHVibfxp2kQV.jpg"
+    ],
+    "logo": "/wxGRKkxzdEntLkK5ulrw8co4T6.png",
+    "tint": "hsl(25 21% 35%)",
+    "sourceColour": "#502E16",
+    "contrast": 5.8
+  },
+  "spider-man-no-way-home-2021": {
+    "poster": "/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
+    "backdrops": [
+      "/14QbnygCuTO0vl7CAFmPf1fgZfV.jpg",
+      "/iQFcwSGbZXMkeyKrxbPnwnRo5fl.jpg",
+      "/AeK2MPOpYrOOgZNfFnfwp0L8tNn.jpg"
+    ],
+    "logo": "/9xjIoK8eGVvMdiqwUQbEBUeh9Ej.png",
+    "tint": "hsl(23 19% 35%)",
+    "sourceColour": "#D3AA91",
+    "contrast": 5.9
+  },
+  "multiverse-of-madness-2022": {
+    "poster": "/ddJcSKbcp4rKZTmuyWaMhuwcfMz.jpg",
+    "backdrops": [
+      "/lv3TXqhpaIxkclIHbhN2MRMOemQ.jpg",
+      "/gUNRlH66yNDH3NQblYMIwgZXJ2u.jpg",
+      "/AdyJH8kDm8xT8IKTlgpEC15ny4u.jpg"
+    ],
+    "logo": "/omz9LWkZgkAEpHeOOdTzSevwG6I.png",
+    "tint": "hsl(358 20% 35%)",
+    "sourceColour": "#331112",
+    "contrast": 6.8
+  },
+  "thor-love-and-thunder-2022": {
+    "poster": "/pIkRyD18kl4FhoCNQuWxWu5cBLM.jpg",
+    "backdrops": [
+      "/jsoz1HlxczSuTx0mDl2h0lxy36l.jpg",
+      "/ynUgLlrTASSz87Op39DKj6SHeOR.jpg",
+      "/wwIaPJqQSaOoXhfL1PHSNwV5KK2.jpg"
+    ],
+    "logo": "/y0UqCw8KfQrhKiZ5Ys84qyzCpWN.png",
+    "tint": "hsl(236 22% 35%)",
+    "sourceColour": "#0E124B",
+    "contrast": 7.4
+  },
+  "black-panther-wakanda-forever-2022": {
+    "poster": "/sv1xJUazXeYqALzczSZ3O6nkH75.jpg",
+    "backdrops": [
+      "/83H0C66AcvkwpG2738VCTHMY9uv.jpg",
+      "/xDMIl84Qo5Tsu62c9DGWhmPI67A.jpg",
+      "/opH1xkjH3I7U8UXFPKC6NYTCJXB.jpg"
+    ],
+    "logo": "/79cW38WVrj8RjT8U5FczODCYTDs.png",
+    "tint": "hsl(195 17% 35%)",
+    "sourceColour": "#304A53",
+    "contrast": 5.5
+  },
+  "quantumania-2023": {
+    "poster": "/5JcuLWpKf85q5oy1NbzyFAGkhqx.jpg",
+    "backdrops": [
+      "/m8JTwHFwX7I7JY5fPe4SjqejWag.jpg",
+      "/7WxVKp35lxxGUin8eLvTkDcr5Ke.jpg",
+      "/zhSunwjOsNJ401vpPwBDHlhvLHj.jpg"
+    ],
+    "logo": "/iUhdNfX8VqZJpgUx5bgAEoHxQRQ.png",
+    "tint": "hsl(214 22% 35%)",
+    "sourceColour": "#122C4F",
+    "contrast": 6.2
+  },
+  "guardians-of-the-galaxy-vol-3-2023": {
+    "poster": "/bVpTTg0NvaS905U2oXVr0awgCbM.jpg",
+    "backdrops": [
+      "/5YZbUmjbMa3ClvSW1Wj3D6XGolb.jpg",
+      "/9QlpS2v3lgT6S310QglSky5Ws0P.jpg",
+      "/hoVj2lYW3i7oMd1o7bPQRZd1lk1.jpg"
+    ],
+    "logo": "/A532V9h9obWT6dLsAZizJlawIaY.png",
+    "tint": "hsl(245 18% 35%)",
+    "sourceColour": "#2E2B51",
+    "contrast": 7.2
+  },
+  "the-marvels-2023": {
+    "poster": "/xxh6CFgwzYW29dSOsRjRBTpfqWT.jpg",
+    "backdrops": [
+      "/feSiISwgEpVzR1v3zv2n2AU4ANJ.jpg",
+      "/criPrxkTggCra1jch49jsiSeXo1.jpg",
+      "/w4pRLYYbhHn3sh9kqRgPZM6GjyS.jpg"
+    ],
+    "logo": "/fLiEU12qHCs2xP73OgLFVVObS1k.png",
+    "tint": "hsl(231 20% 35%)",
+    "sourceColour": "#0E132F",
+    "contrast": 7
+  },
+  "deadpool-and-wolverine-2024": {
+    "poster": "/jbwYaoYWZwxtPP76AZnfYKQjCEB.jpg",
+    "backdrops": [
+      "/by8z9Fe8y7p4jo2YlW2SZDnptyT.jpg",
+      "/cOoVcVQ3i1m5b2xtqKBtoTSbxC1.jpg",
+      "/yDHYTfA3R0jFYba16jBB1ef8oIt.jpg"
+    ],
+    "logo": "/2o48U3kMXGIqRAkKZQ3n5OTWSBy.png",
+    "tint": "hsl(10 22% 35%)",
+    "sourceColour": "#321009",
+    "contrast": 6.4
+  },
+  "captain-america-brave-new-world-2025": {
+    "poster": "/pzIddUEMWhWzfvLI3TwxUG2wGoi.jpg",
+    "backdrops": [
+      "/ywe9S1cOyIhR5yWzK7511NuQ2YX.jpg",
+      "/8eifdha9GQeZAkexgtD45546XKx.jpg",
+      "/qfAfE5auxsuxhxPpnETRAyTP5ff.jpg"
+    ],
+    "logo": "/ubZE4IVOdOnZIp6mapDGooDYeJh.png",
+    "tint": "hsl(5 22% 35%)",
+    "sourceColour": "#CF3A2D",
+    "contrast": 6.6
+  },
+  "thunderbolts-2025": {
+    "poster": "/8z03qu64snrO7FtUoCGEXWJMF0H.jpg",
+    "backdrops": [
+      "/rthMuZfFv4fqEU4JVbgSW9wQ8rs.jpg",
+      "/jYCyTdPfgT01IOJWDnnetr9RDX6.jpg",
+      "/wSdWEc1G3OUWg8HAzNLqOZ9Gd43.jpg"
+    ],
+    "logo": "/kIQPQXeON2RsCCyVR5JDEIn6ps3.png",
+    "tint": "hsl(50 26% 35%)",
+    "sourceColour": "#FCD30D",
+    "contrast": 4.7
+  },
+  "the-fantastic-four-first-steps-2025": {
+    "poster": "/nf5qaSEvyYSNeFH0YhSs5EsBLX9.jpg",
+    "backdrops": [
+      "/s94NjfKkcSczZ1FembwmQZwsuwY.jpg",
+      "/hBvaanw3RfMEs1m1blY7xwRXzul.jpg",
+      "/6eLtIyVHCzqoQdsLfOPPNVTxsn7.jpg"
+    ],
+    "logo": "/hpvf0d8XQ2Ty31CAKV9u8FNrZmD.png",
+    "tint": "hsl(204 18% 35%)",
+    "sourceColour": "#4C748F",
+    "contrast": 5.9
+  },
+  "spider-man-brand-new-day-2026": {
+    "poster": "/co2xrECpXtlFmqAlDRD1A6EWu2H.jpg",
+    "backdrops": [
+      "/qeQJx07rK2xm8SD2sJxFKhE7gs0.jpg",
+      "/b0LviwKbDto7Qq0D4DzGoVHpF4C.jpg",
+      "/bPW6HcI0E1eklEle61LVQuD1Cwc.jpg"
+    ],
+    "logo": "/vbZcDHC5IFylYuRnp3eyOs5rTV1.png",
+    "tint": "hsl(29 19% 35%)",
+    "sourceColour": "#CEAF92",
+    "contrast": 5.7
+  },
+  "avengers-doomsday-2026": {
+    "poster": "/bh2OuKvq19jBHsloUVCfPSZZw81.jpg",
+    "backdrops": [
+      "/s4v0UX1anfXm0UvloLsTTJ4v222.jpg",
+      "/6KDDoTq8Vq3HuQHULzuvPiCJbMI.jpg",
+      "/uN7lDlkEvVh1hSDhz6ywXxVHnkp.jpg"
+    ],
+    "logo": "/enJPk9TdYB4zCO1mIwiRYAb5yqY.png",
+    "tint": "hsl(70 17% 35%)",
+    "sourceColour": "#707945",
+    "contrast": 4.9
+  },
+  "the-amazing-spider-man-1977": {
+    "poster": "/kUTCJhSnH3Dt0KVzcQp8DnbmsjN.jpg",
+    "backdrops": [
+      "/49VI6PxMo3swVqq0VLELEQ2fpks.jpg",
+      "/aijrxDWOW5UO8bTRnf6hSyKhnrA.jpg",
+      "/dSz2jcyYKDCsETqgwt41P5pKtMo.jpg"
+    ],
+    "logo": "/l2rcUZ9Tipjs0iFSjfKK5aRAje9.png",
+    "tint": "hsl(20 17% 33%)",
+    "sourceColour": "#EEC9B7",
+    "contrast": 6.5
+  },
+  "the-incredible-hulk-1978": {
+    "poster": "/8q7uFuNuMWTWfcpnCpBuZa3KZXx.jpg",
+    "backdrops": [
+      "/vl2lLJcbbnTcvWH6ZfHlXuLxIaP.jpg",
+      "/lppGhv8mb10ZuKzEjYx8wi7NAgf.jpg",
+      "/5XPnixMlRrPqMUrSpFsVEJ2WWMD.jpg"
+    ],
+    "logo": "/qjPYmb0JRRFkaHkNEdCdmW1AqEx.png",
+    "tint": "hsl(131 21% 33%)",
+    "sourceColour": "#0BB029",
+    "contrast": 5.5
+  },
+  "x-men-the-animated-series-1992": {
+    "poster": "/2OFwsFhAobczgJWnVdwd9oZAF2N.jpg",
+    "backdrops": [
+      "/8GlKBQJTFZp9mpLXJrmNCtdTyxx.jpg",
+      "/5CPuNvSueKbCmltTzLAe8AiYS3u.jpg",
+      "/4QHLizLiK6B7mCr55ty8c5In3mW.jpg"
+    ],
+    "logo": "/sj8UwAX0wjx1Xu6G1NTWLlMG9py.png",
+    "tint": "hsl(40 22% 33%)",
+    "sourceColour": "#FAA808",
+    "contrast": 5.7
+  },
+  "spider-man-the-animated-series-1994": {
+    "poster": "/1BX1HZZqDoLDx9Ry4oET6dA9293.jpg",
+    "backdrops": [
+      "/tszlsbfyTOPSZe2z6K4mwHtcnmI.jpg",
+      "/lN09YohDmsqyljNzykQxV0quvK.jpg",
+      "/wr2XpWwtaFz0bfELWfSd8ynM2mB.jpg"
+    ],
+    "logo": "/fnN2AJ567v6zil4kocaQ9H6gVRc.png",
+    "tint": "hsl(211 15% 33%)",
+    "sourceColour": "#182737",
+    "contrast": 6.5
+  },
+  "blade-the-series-2006": {
+    "poster": "/e3pnvrKkwgX3GKI0vzgQ0igFt0l.jpg",
+    "backdrops": [
+      "/eF7DaPaNJyIs1cQQJ0ECIc7I11z.jpg",
+      "/aZkUbLPcPoLKRxu4T7i2RnL3y3n.jpg"
+    ],
+    "logo": "/lXwxQaSQ1bSeBKTGGkPwmp0SP47.png",
+    "tint": "hsl(357 30% 41%)",
+    "sourceColour": "#380407",
+    "contrast": 5.7
+  },
+  "the-gifted-2017": {
+    "poster": "/nYkGYVzn4Df3V5fZS9xYyKZn551.jpg",
+    "backdrops": [
+      "/18inwHlpKnK9mt02wFBJoIVKXI.jpg",
+      "/dStj8l0Qe86RQFzVn0FLVCKG10p.jpg",
+      "/hBIENufjU1thFXa1iJSfiSWTPHc.jpg"
+    ],
+    "logo": "/jp6i4ifV7qOKT2XRqs5frnvZfPx.png",
+    "tint": "hsl(8 16% 43%)",
+    "sourceColour": "#31100B",
+    "contrast": 4.7
+  },
+  "the-gifted-2018": {
+    "poster": "/bUL8MBcB4OeVA2YkA3q1AMbpJL1.jpg",
+    "backdrops": [
+      "/18inwHlpKnK9mt02wFBJoIVKXI.jpg",
+      "/dStj8l0Qe86RQFzVn0FLVCKG10p.jpg",
+      "/hBIENufjU1thFXa1iJSfiSWTPHc.jpg"
+    ],
+    "logo": "/jp6i4ifV7qOKT2XRqs5frnvZfPx.png",
+    "tint": "hsl(218 18% 43%)",
+    "sourceColour": "#05142E",
+    "contrast": 4.8
+  },
+  "legion-2017": {
+    "poster": "/au5hsZ20QzOVXSOWgx7umAhHC6A.jpg",
+    "backdrops": [
+      "/87eP7ITTrOWvkA4EqCuoRdyjzLy.jpg",
+      "/3QaX18QEOeKWAKa4EPrpa8KGo5T.jpg",
+      "/2t9ROV4QPkJF7iBAW8z0ReqDUoB.jpg"
+    ],
+    "logo": "/3qspuLGCGbPVHYdbnrgbI4SLsTL.png",
+    "tint": "hsl(192 14% 39%)",
+    "sourceColour": "#122D34",
+    "contrast": 4.7
+  },
+  "legion-2018": {
+    "poster": "/wMPFWmM7VLu2AwBzpF3JiWTnTkt.jpg",
+    "backdrops": [
+      "/87eP7ITTrOWvkA4EqCuoRdyjzLy.jpg",
+      "/3QaX18QEOeKWAKa4EPrpa8KGo5T.jpg",
+      "/2t9ROV4QPkJF7iBAW8z0ReqDUoB.jpg"
+    ],
+    "logo": "/3qspuLGCGbPVHYdbnrgbI4SLsTL.png",
+    "tint": "hsl(210 16% 42%)",
+    "sourceColour": "#0E2E4E",
+    "contrast": 4.6
+  },
+  "legion-2019": {
+    "poster": "/4THIqrWWYdsxy6zkfzzYvWnXR6Z.jpg",
+    "backdrops": [
+      "/87eP7ITTrOWvkA4EqCuoRdyjzLy.jpg",
+      "/3QaX18QEOeKWAKa4EPrpa8KGo5T.jpg",
+      "/2t9ROV4QPkJF7iBAW8z0ReqDUoB.jpg"
+    ],
+    "logo": "/3qspuLGCGbPVHYdbnrgbI4SLsTL.png",
+    "tint": "hsl(108 22% 35%)",
+    "sourceColour": "#CFF5C5",
+    "contrast": 4.9
+  },
+  "daredevil-2015": {
+    "poster": "/zFmJQzl6bFrdpHhDkxXmboyykqD.jpg",
+    "backdrops": [
+      "/pPALpad1Fh14g7ejyQjqKzlhrBw.jpg",
+      "/2PrYnQR8YPei5vCVRwJXnwMqMyR.jpg",
+      "/6KclfESXQia4BbJNv4xUnBqaWfe.jpg"
+    ],
+    "logo": "/jbYIbMDDMP6gTA4VjBfoMDJ3L85.png",
+    "tint": "hsl(225 12% 44%)",
+    "sourceColour": "#29324D",
+    "contrast": 4.6
+  },
+  "jessica-jones-2015": {
+    "poster": "/9wwfowgVJDouHQdUsIcNhgbIUlG.jpg",
+    "backdrops": [
+      "/fjEOQhzZk2Or7VYUBeMx5ZIwU95.jpg",
+      "/nTTQv6XEsBd7dY8LcvD0UKoGwkf.jpg",
+      "/g9ju2o4LioYYOyihBvf9lVX8XL.jpg"
+    ],
+    "logo": "/qHHMEwlyUzppxOrCM6qQikcaBWc.png",
+    "tint": "hsl(259 11% 44%)",
+    "sourceColour": "#352A4C",
+    "contrast": 4.7
+  },
+  "daredevil-2016": {
+    "poster": "/opHoslNCxkgoCaGhfO66fvCSH83.jpg",
+    "backdrops": [
+      "/pPALpad1Fh14g7ejyQjqKzlhrBw.jpg",
+      "/2PrYnQR8YPei5vCVRwJXnwMqMyR.jpg",
+      "/6KclfESXQia4BbJNv4xUnBqaWfe.jpg"
+    ],
+    "logo": "/jbYIbMDDMP6gTA4VjBfoMDJ3L85.png",
+    "tint": "hsl(354 11% 43%)",
+    "sourceColour": "#492C2F",
+    "contrast": 4.7
+  },
+  "luke-cage-2016": {
+    "poster": "/hBbPrnlkpxod0Zq14wsPlaLOemG.jpg",
+    "backdrops": [
+      "/bJOmop22SGTHPo1tiuVAFf4U7B9.jpg",
+      "/9VNvlBE0IVFBuybIAA6BlOVMtCv.jpg",
+      "/j7AHhA0bH5FlVPVMFcKNOLC4PMv.jpg"
+    ],
+    "logo": "/rbblexb8lrTSdKQKo0QPtU5ar9X.png",
+    "tint": "hsl(37 19% 38%)",
+    "sourceColour": "#E8940C",
+    "contrast": 4.8
+  },
+  "iron-fist-2017": {
+    "poster": "/usGfoL4RfX15f1sQcX3Sgw4YRf4.jpg",
+    "backdrops": [
+      "/cuckn6IFp9OKu9H8AgD0iEANxhc.jpg",
+      "/xHCfWGlxwbtMeeOnTvxUCZRGnkk.jpg",
+      "/zVbHfZWy4gWbWMXNteZqdBRLsrs.jpg"
+    ],
+    "logo": "/g2fbSj5PFpcL3olbKtfDHGTTlwP.png",
+    "tint": "hsl(32 13% 40%)",
+    "sourceColour": "#372715",
+    "contrast": 4.7
+  },
+  "the-defenders-2017": {
+    "poster": "/eOW7GzbWl6sgQEProXqpYPSRHo.jpg",
+    "backdrops": [
+      "/ycAWXhAhyaE7g3JBAaierK4LgNg.jpg",
+      "/n4XLn0wLCxWSFaQgG6queZlFPKi.jpg",
+      "/72jj9y2Ejeub0mycZvkrPfT59sW.jpg"
+    ],
+    "logo": "/pT0SSWcejij0yTRSPr3wAjvXXFJ.png",
+    "tint": "hsl(1 16% 44%)",
+    "sourceColour": "#F4CCCB",
+    "contrast": 4.7
+  },
+  "the-punisher-2017": {
+    "poster": "/dOkJ6TJKQjsz2XwXyp2VYpkeE5g.jpg",
+    "backdrops": [
+      "/jBGjbSDRxOEudW9rmQbWDzJUKq9.jpg",
+      "/9czVEnJemvP6gcJlMEjUeuISL1c.jpg",
+      "/j5aOOtsJinQtyRaqiB12TTRHdeX.jpg"
+    ],
+    "logo": "/9mc72Fo2nXSb4gP5ngrrVDHcuJH.png",
+    "tint": "hsl(0 14% 44%)",
+    "sourceColour": null,
+    "contrast": 4.7
+  },
+  "jessica-jones-2018": {
+    "poster": "/tKirVNmDmwYjqehjPpyjr1n3U2F.jpg",
+    "backdrops": [
+      "/fjEOQhzZk2Or7VYUBeMx5ZIwU95.jpg",
+      "/nTTQv6XEsBd7dY8LcvD0UKoGwkf.jpg",
+      "/g9ju2o4LioYYOyihBvf9lVX8XL.jpg"
+    ],
+    "logo": "/qHHMEwlyUzppxOrCM6qQikcaBWc.png",
+    "tint": "hsl(32 19% 39%)",
+    "sourceColour": "#311B02",
+    "contrast": 4.7
+  },
+  "luke-cage-2018": {
+    "poster": "/xe9VGtjJ1vsSKtAnoXEnVdUqyxb.jpg",
+    "backdrops": [
+      "/bJOmop22SGTHPo1tiuVAFf4U7B9.jpg",
+      "/9VNvlBE0IVFBuybIAA6BlOVMtCv.jpg",
+      "/j7AHhA0bH5FlVPVMFcKNOLC4PMv.jpg"
+    ],
+    "logo": "/rbblexb8lrTSdKQKo0QPtU5ar9X.png",
+    "tint": "hsl(352 16% 44%)",
+    "sourceColour": "#D53047",
+    "contrast": 4.8
+  },
+  "iron-fist-2018": {
+    "poster": "/vXYvfCWvz5W0rErCpNIq09urhzW.jpg",
+    "backdrops": [
+      "/cuckn6IFp9OKu9H8AgD0iEANxhc.jpg",
+      "/xHCfWGlxwbtMeeOnTvxUCZRGnkk.jpg",
+      "/zVbHfZWy4gWbWMXNteZqdBRLsrs.jpg"
+    ],
+    "logo": "/g2fbSj5PFpcL3olbKtfDHGTTlwP.png",
+    "tint": "hsl(34 13% 40%)",
+    "sourceColour": "#6D5330",
+    "contrast": 4.6
+  },
+  "daredevil-2018": {
+    "poster": "/zH6sgePlr1XX0jSZypbfQmr70Lf.jpg",
+    "backdrops": [
+      "/pPALpad1Fh14g7ejyQjqKzlhrBw.jpg",
+      "/2PrYnQR8YPei5vCVRwJXnwMqMyR.jpg",
+      "/6KclfESXQia4BbJNv4xUnBqaWfe.jpg"
+    ],
+    "logo": "/jbYIbMDDMP6gTA4VjBfoMDJ3L85.png",
+    "tint": "hsl(4 14% 43%)",
+    "sourceColour": "#341513",
+    "contrast": 4.8
+  },
+  "the-punisher-2019": {
+    "poster": "/agNYq5XZnGfmYetUMyyM2RdPY70.jpg",
+    "backdrops": [
+      "/jBGjbSDRxOEudW9rmQbWDzJUKq9.jpg",
+      "/9czVEnJemvP6gcJlMEjUeuISL1c.jpg",
+      "/j5aOOtsJinQtyRaqiB12TTRHdeX.jpg"
+    ],
+    "logo": "/9mc72Fo2nXSb4gP5ngrrVDHcuJH.png",
+    "tint": "hsl(5 16% 35%)",
+    "sourceColour": "#6D4D4A",
+    "contrast": 6.4
+  },
+  "jessica-jones-2019": {
+    "poster": "/dOPx3bj3x6eXYXQJUUIHXvWRSSB.jpg",
+    "backdrops": [
+      "/fjEOQhzZk2Or7VYUBeMx5ZIwU95.jpg",
+      "/nTTQv6XEsBd7dY8LcvD0UKoGwkf.jpg",
+      "/g9ju2o4LioYYOyihBvf9lVX8XL.jpg"
+    ],
+    "logo": "/qHHMEwlyUzppxOrCM6qQikcaBWc.png",
+    "tint": "hsl(0 20% 35%)",
+    "sourceColour": "#4E1919",
+    "contrast": 6.8
+  },
+  "agent-carter-2015": {
+    "poster": "/gqyjmfFOrKY8iouNTXWj9KW7cC5.jpg",
+    "backdrops": [
+      "/MaQ7hbNsiJ30p14UgRdEnXDGMH.jpg",
+      "/ryksnIn006p7lsd83L9Za20TePv.jpg",
+      "/dQsUmDJWy7tYEz2aZZdXAcTpcYk.jpg"
+    ],
+    "logo": "/AuqqrmHFrZRCPPrORx0j7n8JgZv.png",
+    "tint": "hsl(226 17% 45%)",
+    "sourceColour": "#08112F",
+    "contrast": 4.7
+  },
+  "agent-carter-2016": {
+    "poster": "/h3yPRRiWZk6HrFD2oo3xqpLt6bc.jpg",
+    "backdrops": [
+      "/MaQ7hbNsiJ30p14UgRdEnXDGMH.jpg",
+      "/ryksnIn006p7lsd83L9Za20TePv.jpg",
+      "/dQsUmDJWy7tYEz2aZZdXAcTpcYk.jpg"
+    ],
+    "logo": "/AuqqrmHFrZRCPPrORx0j7n8JgZv.png",
+    "tint": "hsl(25 11% 41%)",
+    "sourceColour": "#916C52",
+    "contrast": 4.6
+  },
+  "agents-of-shield-2013": {
+    "poster": "/1CaKyPcZvzzMSwbNFJObxNsxTkK.jpg",
+    "backdrops": [
+      "/iWopHyAvuIDjGX10Yc3nn6UEebW.jpg",
+      "/qtr5i6hOm6oVzTYl3jOQAYP3oc7.jpg",
+      "/80BRASQnT9KT7BkFeEI0EdeRIF3.jpg"
+    ],
+    "logo": "/yZo8fthvHSuWMWIpacuhu82WAXc.png",
+    "tint": "hsl(18 12% 41%)",
+    "sourceColour": "#4F352A",
+    "contrast": 4.8
+  },
+  "agents-of-shield-2014": {
+    "poster": "/p8Qy60OIf0OaJ29KPw6ld51MSP7.jpg",
+    "backdrops": [
+      "/iWopHyAvuIDjGX10Yc3nn6UEebW.jpg",
+      "/qtr5i6hOm6oVzTYl3jOQAYP3oc7.jpg",
+      "/80BRASQnT9KT7BkFeEI0EdeRIF3.jpg"
+    ],
+    "logo": "/yZo8fthvHSuWMWIpacuhu82WAXc.png",
+    "tint": "hsl(5 16% 44%)",
+    "sourceColour": "#320D0A",
+    "contrast": 4.6
+  },
+  "agents-of-shield-2015": {
+    "poster": "/52JwwEroS0InYt2YeKyMJ5CrV3y.jpg",
+    "backdrops": [
+      "/iWopHyAvuIDjGX10Yc3nn6UEebW.jpg",
+      "/qtr5i6hOm6oVzTYl3jOQAYP3oc7.jpg",
+      "/80BRASQnT9KT7BkFeEI0EdeRIF3.jpg"
+    ],
+    "logo": "/yZo8fthvHSuWMWIpacuhu82WAXc.png",
+    "tint": "hsl(22 10% 41%)",
+    "sourceColour": "#8B7467",
+    "contrast": 4.7
+  },
+  "agents-of-shield-2016": {
+    "poster": "/mgyMzTTIFVdKoejD0gKIyaCgWOP.jpg",
+    "backdrops": [
+      "/iWopHyAvuIDjGX10Yc3nn6UEebW.jpg",
+      "/qtr5i6hOm6oVzTYl3jOQAYP3oc7.jpg",
+      "/80BRASQnT9KT7BkFeEI0EdeRIF3.jpg"
+    ],
+    "logo": "/yZo8fthvHSuWMWIpacuhu82WAXc.png",
+    "tint": "hsl(11 14% 43%)",
+    "sourceColour": "#31150F",
+    "contrast": 4.6
+  },
+  "agents-of-shield-2017": {
+    "poster": "/zndNDiqH0SvIlFHURYCWY060qE8.jpg",
+    "backdrops": [
+      "/iWopHyAvuIDjGX10Yc3nn6UEebW.jpg",
+      "/qtr5i6hOm6oVzTYl3jOQAYP3oc7.jpg",
+      "/80BRASQnT9KT7BkFeEI0EdeRIF3.jpg"
+    ],
+    "logo": "/yZo8fthvHSuWMWIpacuhu82WAXc.png",
+    "tint": "hsl(229 11% 44%)",
+    "sourceColour": "#2B314B",
+    "contrast": 4.6
+  },
+  "agents-of-shield-2019": {
+    "poster": "/QU0NjcvDonZLKhjRuxRv6AVo5l.jpg",
+    "backdrops": [
+      "/iWopHyAvuIDjGX10Yc3nn6UEebW.jpg",
+      "/qtr5i6hOm6oVzTYl3jOQAYP3oc7.jpg",
+      "/80BRASQnT9KT7BkFeEI0EdeRIF3.jpg"
+    ],
+    "logo": "/yZo8fthvHSuWMWIpacuhu82WAXc.png",
+    "tint": "hsl(12 20% 35%)",
+    "sourceColour": "#32160F",
+    "contrast": 6.3
+  },
+  "agents-of-shield-2020": {
+    "poster": "/qM95u55G8xVyfgoSZ2qTlY3MDl6.jpg",
+    "backdrops": [
+      "/iWopHyAvuIDjGX10Yc3nn6UEebW.jpg",
+      "/qtr5i6hOm6oVzTYl3jOQAYP3oc7.jpg",
+      "/80BRASQnT9KT7BkFeEI0EdeRIF3.jpg"
+    ],
+    "logo": "/yZo8fthvHSuWMWIpacuhu82WAXc.png",
+    "tint": "hsl(223 23% 35%)",
+    "sourceColour": "#071332",
+    "contrast": 6.8
+  },
+  "inhumans-2017": {
+    "poster": "/iytgxOXW2ZQTLdoWTWD2WU9Bdu8.jpg",
+    "backdrops": [
+      "/5W9YCPMDF5TCudct2guf6b8iRFz.jpg",
+      "/9GNdPoCSzWYeo2eYKFVLvzcG6Wg.jpg",
+      "/uf1BERsf5Ntkt0vIQx6Nr5owfaL.jpg"
+    ],
+    "logo": "/pDjjjEtg2k7qj6TtycV7zR5aiNZ.png",
+    "tint": "hsl(216 11% 42%)",
+    "sourceColour": "#2A374A",
+    "contrast": 4.7
+  },
+  "runaways-2017": {
+    "poster": "/hMsaGkDyCM3Y3EWcdYK5Uu8qEok.jpg",
+    "backdrops": [
+      "/pHURd96EW167jUd2Jf8XpgTiLJV.jpg",
+      "/fGu7HvibnJf3n3xRWlUqc26xBDN.jpg",
+      "/2G1Kp0LgSNeJIzIYa4d8y24E8WL.jpg"
+    ],
+    "logo": "/cIbh2Si6FCP5gqLv5Giw2q5PuWY.png",
+    "tint": "hsl(2 11% 43%)",
+    "sourceColour": "#513231",
+    "contrast": 4.7
+  },
+  "cloak-and-dagger-2018": {
+    "poster": "/nluzawv8wEo0AeECpnLo3wO2YLZ.jpg",
+    "backdrops": [
+      "/4amkATUf2mh5QL9OQ3WmHQqx9wk.jpg",
+      "/iEXdA9n9R7Cne2ZY8PQfAjiGyFP.jpg",
+      "/hya5xbGfbeTd4G2JdbL1o4OENj6.jpg"
+    ],
+    "logo": "/AtApOFsPzJqsKpruPUK4jSfJGKL.png",
+    "tint": "hsl(356 16% 45%)",
+    "sourceColour": "#31090C",
+    "contrast": 4.6
+  },
+  "runaways-2018": {
+    "poster": "/r2e50wFzTsMgsSVLAyIB8uX1EGu.jpg",
+    "backdrops": [
+      "/pHURd96EW167jUd2Jf8XpgTiLJV.jpg",
+      "/fGu7HvibnJf3n3xRWlUqc26xBDN.jpg",
+      "/2G1Kp0LgSNeJIzIYa4d8y24E8WL.jpg"
+    ],
+    "logo": "/cIbh2Si6FCP5gqLv5Giw2q5PuWY.png",
+    "tint": "hsl(27 11% 41%)",
+    "sourceColour": "#8B6B51",
+    "contrast": 4.6
+  },
+  "cloak-and-dagger-2019": {
+    "poster": "/pYnRJuBPEqZO1o4fcxBTgmKNHfy.jpg",
+    "backdrops": [
+      "/4amkATUf2mh5QL9OQ3WmHQqx9wk.jpg",
+      "/iEXdA9n9R7Cne2ZY8PQfAjiGyFP.jpg",
+      "/hya5xbGfbeTd4G2JdbL1o4OENj6.jpg"
+    ],
+    "logo": "/AtApOFsPzJqsKpruPUK4jSfJGKL.png",
+    "tint": "hsl(120 24% 35%)",
+    "sourceColour": "#119712",
+    "contrast": 4.9
+  },
+  "runaways-2019": {
+    "poster": "/m83skvEvoFQoo1szIMpFQ6kbCe6.jpg",
+    "backdrops": [
+      "/pHURd96EW167jUd2Jf8XpgTiLJV.jpg",
+      "/fGu7HvibnJf3n3xRWlUqc26xBDN.jpg",
+      "/2G1Kp0LgSNeJIzIYa4d8y24E8WL.jpg"
+    ],
+    "logo": "/cIbh2Si6FCP5gqLv5Giw2q5PuWY.png",
+    "tint": "hsl(206 17% 35%)",
+    "sourceColour": "#6E91AB",
+    "contrast": 5.9
+  },
+  "helstrom-2020": {
+    "poster": "/5QmcKsepYpO9XYsWNLwsiULoaAu.jpg",
+    "backdrops": [
+      "/qCReQONjNVaW4QFN2V5vCOzPvex.jpg",
+      "/mr7eShOdZojGt9sLdC2dr1el0Vr.jpg",
+      "/22q9jvuQ6wGBOpr4JPMmTq7WcKd.jpg"
+    ],
+    "logo": "/nTXdDqGlDMnGK4rqN6pgELY8DPe.png",
+    "tint": "hsl(0 20% 35%)",
+    "sourceColour": null,
+    "contrast": 6.8
+  },
+  "modok-2021": {
+    "poster": "/2kXRzRjQZs9kAIm3K9MkQgsZR9C.jpg",
+    "backdrops": [
+      "/zFOn9MgW1oSGyc8HKUAI3bV8NPc.jpg",
+      "/pRkltomS7oZdOttBcRqJRhTJu0J.jpg",
+      "/vjYN0WyuRRFs7gg1GjSgtR3S091.jpg"
+    ],
+    "logo": "/mCVa2RUyunpmBKcS00w1xdVCs6K.png",
+    "tint": "hsl(295 21% 35%)",
+    "sourceColour": "#A931B4",
+    "contrast": 6.5
+  },
+  "hit-monkey-2021": {
+    "poster": "/4gxSNlDMDFFi9SJvNBGb8TcoxHq.jpg",
+    "backdrops": [
+      "/8cyWBLWZDJIypCwyW4IszhKIEJE.jpg",
+      "/yT5ZZ3kOtCzJJVLKKp2YCNrOKrh.jpg",
+      "/sqEyRJvBVF1YphHPWCfCRNWdIMe.jpg"
+    ],
+    "logo": "/kCKLLVzF6Si3pdia3i7LcAlkC5q.png",
+    "tint": "hsl(242 21% 35%)",
+    "sourceColour": "#0C0B2E",
+    "contrast": 7.4
+  },
+  "hit-monkey-2024": {
+    "poster": "/zXkK4Ikcskyd6GdID6IofKKOWkW.jpg",
+    "backdrops": [
+      "/8cyWBLWZDJIypCwyW4IszhKIEJE.jpg",
+      "/yT5ZZ3kOtCzJJVLKKp2YCNrOKrh.jpg",
+      "/sqEyRJvBVF1YphHPWCfCRNWdIMe.jpg"
+    ],
+    "logo": "/kCKLLVzF6Si3pdia3i7LcAlkC5q.png",
+    "tint": "hsl(171 19% 35%)",
+    "sourceColour": "#14342F",
+    "contrast": 5
+  },
+  "loki-2021": {
+    "poster": "/8uVqe9ThcuYVNdh4O0kuijIWMLL.jpg",
+    "backdrops": [
+      "/q3jHCb4dMfYF6ojikKuHd6LscxC.jpg",
+      "/N1hWzVPpZ8lIQvQskgdQogxdsc.jpg",
+      "/bZGAX8oMDm3Mo5i0ZPKh9G2OcaO.jpg"
+    ],
+    "logo": "/6yb7XUr6l7ctCwf8OJ9NN5brQ53.png",
+    "tint": "hsl(24 21% 35%)",
+    "sourceColour": "#4F2B13",
+    "contrast": 5.8
+  },
+  "wandavision-2021": {
+    "poster": "/ijWWwINc8h71NQ8j1LTJMFSj5wr.jpg",
+    "backdrops": [
+      "/lOr9NKxh4vMweufMOUDJjJhCRHW.jpg",
+      "/cq62fLH3vwOmiaLKMqkDI86tPtH.jpg",
+      "/1i1N0AVRb54H6ZFPDTwbo9MLxSF.jpg"
+    ],
+    "logo": "/bqIhmrQcPTqDqIkNhdiK5Epvk2D.png",
+    "tint": "hsl(350 21% 35%)",
+    "sourceColour": "#310D13",
+    "contrast": 6.7
+  },
+  "the-falcon-and-the-winter-soldier-2021": {
+    "poster": "/6kbAMLteGO8yyewYau6bJ683sw7.jpg",
+    "backdrops": [
+      "/aTjbqMONy77fHJrIYu14g1F0d5h.jpg",
+      "/b0WmHGc8LHTdGCVzxRb3IBMur57.jpg",
+      "/3w7qPOdcwEPtKvOH9Zt38biUOlT.jpg"
+    ],
+    "logo": "/dCfq8mTf4JRuOzP0BWLq463Iyls.png",
+    "tint": "hsl(346 20% 35%)",
+    "sourceColour": "#310F17",
+    "contrast": 6.7
+  },
+  "hawkeye-2021": {
+    "poster": "/ct5pNE5dDHryHLDnxyZPYcqO1sz.jpg",
+    "backdrops": [
+      "/9QNv2Al3GfCND8BwuLmu2GwVht7.jpg",
+      "/1R68vl3d5s86JsS2NPjl8UoMqIS.jpg",
+      "/e3tA49HkybsO90hpL1AZTHR5ZU.jpg"
+    ],
+    "logo": "/jMqazdEIrCMspwipesJ2xINbkVE.png",
+    "tint": "hsl(283 23% 35%)",
+    "sourceColour": "#53116D",
+    "contrast": 6.8
+  },
+  "moon-knight-2022": {
+    "poster": "/x6FsYvt33846IQnDSFxla9j0RX8.jpg",
+    "backdrops": [
+      "/1uegR4uAxRxiMyX4nQnpzbXhrTw.jpg",
+      "/iux1vKPT7Vw1AzetZb4Jz6wfYsm.jpg",
+      "/64a8imymtJ4WOzIeyUHLtZnJ3wv.jpg"
+    ],
+    "logo": "/sDXCCyfxqMJTXtZq8kK007B4qj3.png",
+    "tint": "hsl(0 20% 35%)",
+    "sourceColour": null,
+    "contrast": 6.8
+  },
+  "echo-2024": {
+    "poster": "/vFyJH630cF68LohVYjQW49074Sy.jpg",
+    "backdrops": [
+      "/u3ySnWqSjM3jedYgJZTR7RWRDDm.jpg",
+      "/2THOv93586ySlWp5TmQmySYm7mV.jpg",
+      "/fR8bsFkjwnu5F7rz2pCLSIOexhu.jpg"
+    ],
+    "logo": "/8IynYEzgGOLIuwxZ8OSulQ7X0nB.png",
+    "tint": "hsl(230 23% 35%)",
+    "sourceColour": "#081037",
+    "contrast": 7.1
+  },
+  "she-hulk-attorney-at-law-2022": {
+    "poster": "/5xz2orV8f0usyrfGNshcoXHmiaV.jpg",
+    "backdrops": [
+      "/eljErfkQUcFUgQkI4I1soZcH8MW.jpg",
+      "/9GvhICFMiRQA82vS6ydkXxeEkrd.jpg",
+      "/bwEtMHwa2N4LMIiRS6TfFrnjhQb.jpg"
+    ],
+    "logo": "/xBWS4NwUUCg1e1E1NoHnjlvFFjq.png",
+    "tint": "hsl(115 21% 35%)",
+    "sourceColour": "#0E2F0B",
+    "contrast": 5
+  },
+  "ms-marvel-2022": {
+    "poster": "/3HWWh92kZbD7odwJX7nKmXNZsYo.jpg",
+    "backdrops": [
+      "/mfcLUWASJghU8MTNK38eYktfE83.jpg",
+      "/d7Id9xnYNGAXl84Nt4WiYfcF4zj.jpg",
+      "/rlCRM7U5g2hcU1O8ylGcqsMYHIP.jpg"
+    ],
+    "logo": "/p3hmGxwZa7ChORx9rlXBVDW2aQh.png",
+    "tint": "hsl(304 21% 35%)",
+    "sourceColour": "#300E2E",
+    "contrast": 6.5
+  },
+  "ironheart-2025": {
+    "poster": "/dOh6MJpdlQhYpLBhzhNQeYGKTZ5.jpg",
+    "backdrops": [
+      "/vno2LrEQr3lTOk3U1G1ihZsy64b.jpg",
+      "/xS0NFCUfypxBrVzWmG2guhaXnnt.jpg",
+      "/cNpeyLoetPsT12w6NUm4N5eXTZ9.jpg"
+    ],
+    "logo": "/6DHtWG4tmGoAmEExgXjmcn1qzY6.png",
+    "tint": "hsl(1 24% 35%)",
+    "sourceColour": "#B41511",
+    "contrast": 6.8
+  },
+  "werewolf-by-night-2022": {
+    "poster": null,
+    "backdrops": [],
+    "logo": null,
+    "tint": "hsl(0 20% 35%)",
+    "sourceColour": null,
+    "contrast": 6.8
+  },
+  "the-guardians-of-the-galaxy-holiday-special-2022": {
+    "poster": null,
+    "backdrops": [],
+    "logo": null,
+    "tint": "hsl(0 20% 35%)",
+    "sourceColour": null,
+    "contrast": 6.8
+  },
+  "secret-invasion-2023": {
+    "poster": "/3rINdUPSy9AklJg74jWHOyUXuZd.jpg",
+    "backdrops": [
+      "/6mOK9j99OFlxGc3ird2jWUeUha9.jpg",
+      "/57clBMPX25NNO6nmDw3TV3zQaQE.jpg",
+      "/hh9vGH8HMVF9b6xQRL4aJpHtCNQ.jpg"
+    ],
+    "logo": "/qVjHrEd3g2mYkOx5GuAlbE1pImV.png",
+    "tint": "hsl(0 20% 35%)",
+    "sourceColour": null,
+    "contrast": 6.8
+  },
+  "loki-2023": {
+    "poster": "/oJdVHUYrjdS2IqiNztVIP4GPB1p.jpg",
+    "backdrops": [
+      "/q3jHCb4dMfYF6ojikKuHd6LscxC.jpg",
+      "/N1hWzVPpZ8lIQvQskgdQogxdsc.jpg",
+      "/bZGAX8oMDm3Mo5i0ZPKh9G2OcaO.jpg"
+    ],
+    "logo": "/6yb7XUr6l7ctCwf8OJ9NN5brQ53.png",
+    "tint": "hsl(24 18% 35%)",
+    "sourceColour": "#4E3728",
+    "contrast": 5.9
+  },
+  "agatha-all-along-2024": {
+    "poster": "/mGsxKwXUjojitRv2E9qMTbxbBRd.jpg",
+    "backdrops": [
+      "/tYLXJW1sZQU09VWY1BhSVPKGIwc.jpg",
+      "/ymTx7ebsmBjqh47fiZnBUjIDx5K.jpg",
+      "/l74BeTzUbQY2S0Lgbz6QOIsxNlO.jpg"
+    ],
+    "logo": "/3RiiNqzCGGuwUtyTh1syOXmDbQp.png",
+    "tint": "hsl(239 22% 35%)",
+    "sourceColour": "#0A0B33",
+    "contrast": 7.5
+  },
+  "daredevil-born-again-2025": {
+    "poster": "/hzp7CrB6TUl035gXxoYUKkEaJ5i.jpg",
+    "backdrops": [
+      "/m291MEBjhuRqb0nh9ojnm9gzScq.jpg",
+      "/qrTAc0ZtQ859Qu5O8cixJzNJpQs.jpg",
+      "/v2cTiLNlviotwugnDKqY21xGmSv.jpg"
+    ],
+    "logo": "/23zbPU6u5TUdyrYXWs8Jxhqhiy9.png",
+    "tint": "hsl(0 21% 35%)",
+    "sourceColour": "#330D0D",
+    "contrast": 6.7
+  },
+  "wonder-man-2026": {
+    "poster": "/6yy9nQlFt2l6UVWzrfhszFCaZ5C.jpg",
+    "backdrops": [
+      "/ldz9THIHaV4orMsUrPT1nlQF51T.jpg",
+      "/mVkooVZJft3qd1uaevhjsDzX1xQ.jpg",
+      "/los8S8iCRn5Q7irl0LNAp6C6Gmz.jpg"
+    ],
+    "logo": "/pVjRPS9N0RG8EP12wnWBcNOOMIr.png",
+    "tint": "hsl(23 17% 35%)",
+    "sourceColour": "#6D5546",
+    "contrast": 5.9
+  },
+  "daredevil-born-again-2026": {
+    "poster": "/timvsedxh5ce795tsv6EDTZmmXW.jpg",
+    "backdrops": [
+      "/m291MEBjhuRqb0nh9ojnm9gzScq.jpg",
+      "/qrTAc0ZtQ859Qu5O8cixJzNJpQs.jpg",
+      "/v2cTiLNlviotwugnDKqY21xGmSv.jpg"
+    ],
+    "logo": "/23zbPU6u5TUdyrYXWs8Jxhqhiy9.png",
+    "tint": "hsl(355 18% 35%)",
+    "sourceColour": "#4E282B",
+    "contrast": 6.7
+  },
+  "the-punisher-one-last-kill-2026": {
+    "poster": null,
+    "backdrops": [],
+    "logo": null,
+    "tint": "hsl(0 20% 35%)",
+    "sourceColour": null,
+    "contrast": 6.8
+  },
+  "eyes-of-wakanda-2025": {
+    "poster": "/yuOfb1MgnaGPa4guzV0n1IFYVGN.jpg",
+    "backdrops": [
+      "/cWO5NDkKqpOuwxu4vFc4PtL8aNF.jpg",
+      "/3vD7swDFYkctqAHbK7NeQaVnEBI.jpg",
+      "/wXrayx0G3tjVmSw8i5I5Obbd94U.jpg"
+    ],
+    "logo": "/pg0SViNoawgM6Vga353TuIKPLfe.png",
+    "tint": "hsl(356 17% 35%)",
+    "sourceColour": "#512F31",
+    "contrast": 6.6
+  },
+  "i-am-groot-2022": {
+    "poster": "/oZmqHnWJVQLOKOibDa34W4iGBZU.jpg",
+    "backdrops": [
+      "/bAnHzJ6AMhOhnV3C0kTxkpCqpgM.jpg",
+      "/AcqVeohiVgGEFTKwjvL57YHsnGU.jpg",
+      "/gVqB11pK1EUbBiyj7TG4uAwordh.jpg"
+    ],
+    "logo": "/6mj4N9C6vfVFUrTGA6y4cFeNMkU.png",
+    "tint": "hsl(356 23% 35%)",
+    "sourceColour": "#34080B",
+    "contrast": 6.8
+  },
+  "i-am-groot-2023": {
+    "poster": "/7b4qBnExIjuANVDKWyVN8gVVOXS.jpg",
+    "backdrops": [
+      "/bAnHzJ6AMhOhnV3C0kTxkpCqpgM.jpg",
+      "/AcqVeohiVgGEFTKwjvL57YHsnGU.jpg",
+      "/gVqB11pK1EUbBiyj7TG4uAwordh.jpg"
+    ],
+    "logo": "/6mj4N9C6vfVFUrTGA6y4cFeNMkU.png",
+    "tint": "hsl(235 21% 35%)",
+    "sourceColour": "#0E1131",
+    "contrast": 7.2
+  },
+  "what-if-2021": {
+    "poster": "/lztz5XBMG1x6Y5ubz7CxfPFsAcW.jpg",
+    "backdrops": [
+      "/jnzoh5qoxRLFRIQAxnl6D3RStPC.jpg",
+      "/4N6zEMfZ57zNEQcM8gWeERFupMv.jpg",
+      "/3J2XJsf5AFlgzMl1eLG4H8rN5Sg.jpg"
+    ],
+    "logo": "/zWX2sHd0KnRTvIi7nJ5k7ng5EMW.png",
+    "tint": "hsl(232 21% 35%)",
+    "sourceColour": "#0F1433",
+    "contrast": 7
+  },
+  "marvel-zombies-2025": {
+    "poster": "/mwKj9ERGFXsWot0nXgQ5yMQf9I7.jpg",
+    "backdrops": [
+      "/lxQMxqao3vs2ehxESrkQU6acU86.jpg",
+      "/kmenKs1yJZT1d3pRVu6T6m3kWCQ.jpg",
+      "/f5g3BvCaXtty9gpBEdKLOlYRjFl.jpg"
+    ],
+    "logo": "/xRzlIAMaITwrMUaqgnQTi5dfl16.png",
+    "tint": "hsl(13 21% 35%)",
+    "sourceColour": "#32160E",
+    "contrast": 6.2
+  },
+  "what-if-2023": {
+    "poster": "/3yhoq5LVMgKy9rEriH6ytq9BoJV.jpg",
+    "backdrops": [
+      "/jnzoh5qoxRLFRIQAxnl6D3RStPC.jpg",
+      "/4N6zEMfZ57zNEQcM8gWeERFupMv.jpg",
+      "/3J2XJsf5AFlgzMl1eLG4H8rN5Sg.jpg"
+    ],
+    "logo": "/zWX2sHd0KnRTvIi7nJ5k7ng5EMW.png",
+    "tint": "hsl(2 20% 35%)",
+    "sourceColour": "#91302C",
+    "contrast": 6.6
+  },
+  "what-if-2024": {
+    "poster": "/bbGeKXKoualYRYqvFYiv8fPZK0d.jpg",
+    "backdrops": [
+      "/jnzoh5qoxRLFRIQAxnl6D3RStPC.jpg",
+      "/4N6zEMfZ57zNEQcM8gWeERFupMv.jpg",
+      "/3J2XJsf5AFlgzMl1eLG4H8rN5Sg.jpg"
+    ],
+    "logo": "/zWX2sHd0KnRTvIi7nJ5k7ng5EMW.png",
+    "tint": "hsl(213 21% 35%)",
+    "sourceColour": "#132C4B",
+    "contrast": 6.2
+  },
+  "x-men-97-2024": {
+    "poster": "/9Ycz7yYRf9V4jk3YXwcZhFtbNcF.jpg",
+    "backdrops": [
+      "/jIyEmnBrZtl6SEWyBoMO2hZnzMa.jpg",
+      "/iDnTAeR2WNA62XQG0ivtteDSjd5.jpg",
+      "/vY7Fap4aYz7e4Dk5MwhKdR0GmKR.jpg"
+    ],
+    "logo": "/i4O2d2EYfBCVFVIQaES16gchiMj.png",
+    "tint": "hsl(61 25% 33%)",
+    "sourceColour": "#F3F724",
+    "contrast": 4.8
+  },
+  "x-men-97-2026": {
+    "poster": "/cz1TaTb428NrtYFqZ9AvtTIXz0K.jpg",
+    "backdrops": [
+      "/jIyEmnBrZtl6SEWyBoMO2hZnzMa.jpg",
+      "/iDnTAeR2WNA62XQG0ivtteDSjd5.jpg",
+      "/vY7Fap4aYz7e4Dk5MwhKdR0GmKR.jpg"
+    ],
+    "logo": "/i4O2d2EYfBCVFVIQaES16gchiMj.png",
+    "tint": "hsl(243 21% 35%)",
+    "sourceColour": "#16134B",
+    "contrast": 7.4
+  },
+  "your-friendly-neighborhood-spider-man-2025": {
+    "poster": "/bifTEU63VFt2ugUte9LqNBb1Dno.jpg",
+    "backdrops": [
+      "/kkT2B2gmynoh9kZMo1gromLNeqy.jpg",
+      "/dhnOkC9UatbhUMnlWe4yXcsWtFB.jpg",
+      "/2EczHFLIzOSDz4NRIf1ucXLL2mB.jpg"
+    ],
+    "logo": "/3NywvNxGZv3hg9tL8oF9TMXrIIZ.png",
+    "tint": "hsl(118 20% 35%)",
+    "sourceColour": "#D1F0D0",
+    "contrast": 5.1
+  }
+}
