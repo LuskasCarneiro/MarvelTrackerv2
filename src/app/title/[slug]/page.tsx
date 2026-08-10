@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { getTitle, shelves, titles, tmdbImage } from "@/lib/catalogue";
+import RatingControl from "./RatingControl";
 
 export function generateStaticParams() {
   return titles.map((t) => ({ slug: t.slug }));
@@ -109,6 +110,8 @@ export default async function TitlePage({ params }: PageProps<"/title/[slug]">) 
             </dl>
           </div>
         </div>
+
+        <RatingControl slug={title.slug} />
 
         {/* The barcode strip: decorative bars plus real text, like the back of a case. */}
         <footer className="mt-10 flex items-center justify-between gap-6 border-t border-shelf-edge pt-6">

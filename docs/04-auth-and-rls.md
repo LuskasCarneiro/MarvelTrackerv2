@@ -109,6 +109,31 @@ change here**: `○ /` and `● /title/...` mean it still holds; `ƒ` means it d
 `/sign-in` is dynamic, which is fine and expected — it reads `searchParams` to show the
 error the confirmation route redirects back with.
 
+### Static is not the only thing to check — measure what crosses into the browser
+
+The shelf needed to become interactive to mark watched titles, and the first version did
+that by putting `"use client"` on `src/app/page.tsx`. **The route table still said `○`** —
+a Client Component page is prerendered perfectly well — so by the test above, nothing was
+wrong. It was still a regression:
+
+| | JS in the page | transferred |
+|---|---|---|
+| before | 710 KB | 510 KB |
+| `"use client"` on the page | 847 KB | 550 KB |
+| narrowed props (now) | — | **511 KB** |
+
+Importing `shelves` into a Client Component pulls the entire catalogue join — all four data
+JSON files, including every synopsis — into the client bundle. Compression hid most of it,
+which is why the honest number is the transferred one and not the raw one.
+
+The fix is not architectural, it is about **what crosses the boundary**: `page.tsx` stays a
+Server Component, and `ShelfWall` receives only the four fields a spine draws with — slug,
+name, tint, width. Note that passing the full `Title` as a prop would have been just as bad;
+props are serialised into the RSC payload, so *prop or import, it still ships*.
+
+So there are two checks after touching this page, not one: the route table, **and** the
+transferred bytes.
+
 ---
 
 ## Next.js 16 traps

@@ -228,6 +228,30 @@ terminal (clean), `next build`, `tsc --noEmit`, `eslint`, and all 48 unit tests.
 serves no overlay at all. Every cheap channel is exhausted; if it turns out to matter it
 will resurface with more to go on.
 
+**Ratings landed, and reviewing the subagent's output caught two things worth recording.**
+
+1. **"Still static" is not the same as "still cheap".** Making the shelf interactive by
+   putting `"use client"` on `src/app/page.tsx` kept the route table saying `○` — a Client
+   Component page prerenders fine — while quietly pulling the whole catalogue join into the
+   browser: 710 KB → 847 KB of JS, 510 KB → 550 KB transferred. `page.tsx` is a Server
+   Component again and `ShelfWall` gets only the four fields a spine draws with. Back to
+   511 KB with the feature kept. **Prop or import, it still ships** — passing whole `Title`
+   objects as props would have cost the same, because props are serialised into the RSC
+   payload. Two checks after touching that page now, not one.
+2. **The rating control was correct and looked unfinished**, which is only visible in a
+   render. Ten real radio inputs sat next to the stars as a row of bright white dots,
+   louder than the stars they duplicated. The radios are now `sr-only` — still real inputs,
+   so arrow keys, selection-follows-focus and announcement stay the browser's job — with
+   the focus ring moved onto the star group via `has-[:focus-visible]`, because `sr-only`
+   clips an element to a pixel and the global ring would land somewhere invisible.
+   Confirmed by tabbing to it and reading back `outline: 2px solid rgb(232,169,78)`.
+
+   Making the radios real also introduced a bug worth knowing about: **in a radio group
+   selection follows focus**, so one held arrow key passes through every step in between —
+   nine writes to get from half a star to five. Rating writes are debounced 400 ms, and the
+   pending write is *flushed* on unmount rather than cancelled, because losing a rating
+   silently is worse than saving it slowly.
+
 **A screenshot check earned its place again**, this time for keyboard focus: a Tailwind
 `outline-none` on an input sits at *the same specificity* as the global `:focus-visible`
 rule, so which one wins depends on cascade layers rather than on anything visible in either
