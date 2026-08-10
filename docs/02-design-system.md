@@ -85,8 +85,39 @@ for two reasons that are not negotiable:
    until it clears 4.5:1. Enforced in the pipeline and re-checked independently in
    `scripts/artwork.test.ts` — never assumed.
 
-Lightness therefore does double duty: it keeps text legible *and* encodes the era, VHS card
-dullest through to steelbook brightest because metal catches the lamp.
+Lightness is therefore contrast-bearing first and era-bearing second — and where those two
+jobs conflict, **contrast wins and the era signal is the thing that gives**.
+
+#### Known limitation: the steelbook era does not read as bright
+
+The table intends VHS card dullest through to steelbook brightest. Measured against the
+committed data, that is **not what happens**:
+
+| era | table L | actual mean | max |
+|---|---|---|---|
+| vhs | 33 | 33.0 | 33 |
+| amaray | 37 | 36.8 | 37 |
+| bluray | 41 | 40.3 | 41 |
+| **steel** | **50** | **41.9** | **45** |
+| none | 35 | 35.0 | 35 |
+
+**No steelbook title reaches its table lightness.** `--color-label-bright` is a very light
+ink, so a light spine cannot clear 4.6:1 beneath it, and the contrast loop pulls all 50 of
+them down. The bluray→steel gap collapses from 9 points to 1.6, and the era is left to be
+carried almost entirely by *saturation* (steel is the least saturated at 14) rather than by
+lightness.
+
+It still reads as metal on the shelf, so this is a weakened signal rather than a broken
+page — but the doc previously claimed the bright-steelbook behaviour as fact, and it was
+not true. Recorded rather than quietly left.
+
+**The fix, when Phase 4 polish comes round:** choose the *ink* per spine by contrast
+instead of always printing label-bright. A real steelbook is dark or metallic ink on bright
+metal, so dark ink on a light spine is both more faithful and removes the ceiling entirely.
+That change needs the pipeline re-run with a raised steel value, and
+`scripts/artwork.test.ts` re-pointed to assert contrast against whichever ink a spine
+actually uses. Not started — it is a coherent change, not a one-line tweak, and it was not
+worth beginning at the end of the session that found it.
 
 The mechanics, including why near-grey pixels are excluded from extraction, are in
 `docs/03-data-pipeline.md`.

@@ -33,6 +33,15 @@ are all in and deployed.
 
 **Still open, not blocking:**
 
+- **The steelbook era does not read as bright, and the design doc used to claim it did.**
+  Light ink cannot sit on a light spine at 4.6:1, so the contrast loop pulls all 50
+  steelbook titles from a table lightness of 50 down to a mean of 41.9 — barely above
+  bluray's 40.3. The era survives via saturation rather than lightness. Measured, recorded
+  in `docs/02-design-system.md`, and the doc's false claim corrected. **The fix is Phase 4
+  work:** pick the ink per spine by contrast instead of always printing label-bright, which
+  is also more faithful to a real steelbook (dark ink on bright metal). Needs a pipeline
+  re-run and `artwork.test.ts` re-pointed at whichever ink a spine uses.
+
 - **The 3D spike was offered and never answered.** Render one Amaray case with real cover
   art to prove procedural geometry is good enough before Phase 3 is funded. The artwork
   pass has now produced exactly the assets it needs, so this is the cheap moment.
