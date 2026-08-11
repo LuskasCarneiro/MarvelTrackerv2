@@ -45,3 +45,29 @@ export function titleTint(slug: string, medium: Medium): string {
   const { s, l } = MEDIUM_TONE[medium];
   return `hsl(${hue} ${s}% ${l}%)`;
 }
+
+/**
+ * The tint as three numbers in 0–1, which is what `THREE.Color.setHSL()` takes.
+ *
+ * This exists because of a **silent** failure. Every tint in `data/artwork.json` is written
+ * in CSS Color 4 space-separated form, `hsl(25 21% 37%)`, which is correct CSS and what the
+ * browser wants. three.js's `Color.setStyle()` only understands the older comma form, and on
+ * anything else it does not throw — it returns **white**. So a renderer handed our real data
+ * produces a white object and no error anywhere.
+ *
+ * Parsing to numbers and calling `setHSL` sidesteps the string parser altogether. Kept here,
+ * deliberately free of any three.js import, because this module is reached from
+ * `catalogue.ts` and therefore from the shelf: importing three here would pull the renderer
+ * into a page that has no canvas on it.
+ *
+ * Throws rather than guessing. A wrong colour that renders is worse than a build that stops.
+ */
+export function tintToHsl(tint: string): { h: number; s: number; l: number } {
+  const match = /^hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)$/.exec(tint);
+  if (!match) throw new Error(`tintToHsl: not a tint this project produces: ${tint}`);
+  return {
+    h: Number(match[1]) / 360,
+    s: Number(match[2]) / 100,
+    l: Number(match[3]) / 100,
+  };
+}
