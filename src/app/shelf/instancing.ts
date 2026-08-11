@@ -14,6 +14,9 @@ export type ShelfTitleData = {
 
 export type ShelfRowData = {
   medium: Medium;
+  /** The era's name, from catalogue.ts — user-facing copy, so it travels rather than being
+   * re-typed here. Used by the era jump buttons. */
+  label: string;
   titles: ShelfTitleData[];
 };
 
@@ -146,9 +149,18 @@ export function cropCellUv(
 export type ShelfLayout = {
   media: {
     medium: Medium;
+    label: string;
     bodyMatrices: THREE.Matrix4[];
     coverMatrices: THREE.Matrix4[];
     coverUvs: CellUv[];
+    /**
+     * Instance index -> slug, in the same order as the matrices above, so a raycast hit's
+     * `instanceId` resolves to a title without a second lookup structure. The whole of
+     * instance picking is this array plus `e.instanceId`.
+     */
+    slugs: string[];
+    /** Centre height of this row's cases — what the camera aims at when jumping to an era. */
+    rowY: number;
   }[];
   /**
    * 3 of 152 titles have no atlas cell at all (no poster on TMDB yet — see the brief).
@@ -257,7 +269,15 @@ export function buildShelfLayout(
       matrix(rowCenterX, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, slabWidth, BOARD_LIP_HEIGHT, 0.03)
     );
 
-    media.push({ medium: row.medium, bodyMatrices, coverMatrices, coverUvs });
+    media.push({
+      medium: row.medium,
+      label: row.label,
+      bodyMatrices,
+      coverMatrices,
+      coverUvs,
+      slugs: row.titles.map((t) => t.slug),
+      rowY: boardTop + dims.h / 2,
+    });
   });
 
   return { media, blankCovers, boardSlabMatrices, boardLipMatrices, bounds };

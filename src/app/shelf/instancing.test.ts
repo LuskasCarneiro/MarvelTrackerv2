@@ -35,7 +35,7 @@ describe("cropCellUv", () => {
 
 describe("depthScale", () => {
   const rows: ShelfRowData[] = [
-    { medium: "amaray", titles: [{ slug: "a", runtimeMin: 24, tint: "" }, { slug: "b", runtimeMin: 5025, tint: "" }] },
+    { medium: "amaray", label: "DVD Amaray", titles: [{ slug: "a", runtimeMin: 24, tint: "" }, { slug: "b", runtimeMin: 5025, tint: "" }] },
   ];
   const range = runtimeLogRange(rows);
 
@@ -55,7 +55,7 @@ describe("depthScale", () => {
   });
 
   it("does not divide by zero when every runtime is identical", () => {
-    const flat = runtimeLogRange([{ medium: "amaray", titles: [{ slug: "a", runtimeMin: 100, tint: "" }] }]);
+    const flat = runtimeLogRange([{ medium: "amaray", label: "DVD Amaray", titles: [{ slug: "a", runtimeMin: 100, tint: "" }] }]);
     expect(depthScale(100, flat)).toBe(1.0);
   });
 });

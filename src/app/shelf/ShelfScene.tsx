@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
@@ -140,7 +141,7 @@ function BlankCover({
   );
 }
 
-function ShelfContent({ layout }: { layout: Layout }) {
+function ShelfContent({ layout, onPick }: { layout: Layout; onPick: (slug: string) => void }) {
   const texture = useTexture(ATLAS_PATH, (t) => {
     const map = Array.isArray(t) ? t[0] : t;
     // Without this the atlas renders washed out -- three decodes to linear otherwise.
@@ -149,7 +150,7 @@ function ShelfContent({ layout }: { layout: Layout }) {
   });
 
   const mediumMeshes = useMemo(
-    () => layout.media.map((row) => ({ medium: row.medium, ...buildMediumMeshes(row, texture) })),
+    () => layout.media.map((row) => ({ medium: row.medium, slugs: row.slugs, ...buildMediumMeshes(row, texture) })),
     [layout, texture]
   );
 
@@ -157,8 +158,27 @@ function ShelfContent({ layout }: { layout: Layout }) {
 
   return (
     <>
-      {mediumMeshes.map(({ medium, body, cover }) => (
-        <group key={medium}>
+      {/* Instance picking. R3F raycasts an InstancedMesh for us and puts the hit index on
+          the event as `instanceId`; body and cover are built from the same title order, so
+          either hit resolves through the row's slug array. stopPropagation keeps a click
+          that passes through a gap from also hitting the row behind it. Pointer events on
+          an InstancedMesh cost a raycast per move, which is why the cursor change lives on
+          the group rather than on 152 separate objects. */}
+      {mediumMeshes.map(({ medium, slugs, body, cover }) => (
+        <group
+          key={medium}
+          onClick={(e: ThreeEvent<MouseEvent>) => {
+            if (e.instanceId === undefined) return;
+            e.stopPropagation();
+            onPick(slugs[e.instanceId]);
+          }}
+          onPointerOver={() => {
+            document.body.style.cursor = "pointer";
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = "";
+          }}
+        >
           <primitive object={body} />
           <primitive object={cover} />
         </group>
@@ -191,12 +211,88 @@ function PerfLogger() {
   return null;
 }
 
+/**
+ * Travel. A 66-title row is ~90 units long and orbiting is no way to cross it, so both the
+ * era buttons and the arrow keys set one focus point and this eases the camera to it.
+ *
+ * It moves the camera and the orbit target by the *same* delta, which preserves the framing
+ * angle and the zoom the viewer chose — jumping the target alone swings the camera round
+ * the wall and loses the aisle view the default framing exists to give.
+ */
+function CameraRig({ focus }: { focus: { x: number; y: number } }) {
+  const camera = useThree((s) => s.camera);
+  // makeDefault on OrbitControls publishes it here; typed loosely because R3F's default
+  // controls slot is a union across every controls implementation.
+  const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
+  const delta = useRef(new THREE.Vector3());
+
+  useFrame((_, dt) => {
+    if (!controls) return;
+    delta.current.set(focus.x - controls.target.x, focus.y - controls.target.y, 0);
+    if (delta.current.lengthSq() < 1e-6) return;
+    delta.current.multiplyScalar(Math.min(1, dt * 3.5));
+    controls.target.add(delta.current);
+    camera.position.add(delta.current);
+    controls.update();
+  });
+
+  return null;
+}
+
+// Where the camera looked before any of this existed; also the "reset" and the starting
+// focus, so the first frame is unchanged from the previous increment.
+const HOME_FOCUS = { x: 5.2, y: -0.9 };
+const STEP_X = 2.4; // ~2 cases per arrow press at amaray width
+
 export default function ShelfScene({ rows }: { rows: ShelfRowData[] }) {
   const layout = useMemo(() => buildShelfLayout(rows, atlasCells, CELL_SIZE, ATLAS_SIZE), [rows]);
   const groundWidth = Math.max(layout.bounds.maxX + 6, 20);
+  const router = useRouter();
+  const [focus, setFocus] = useState(HOME_FOCUS);
+
+  const pick = useCallback((slug: string) => router.push(`/title/${slug}`), [router]);
+
+  useEffect(() => {
+    const rowYs = layout.media.map((m) => m.rowY);
+    function onKey(e: KeyboardEvent) {
+      const dx = e.key === "ArrowRight" ? STEP_X : e.key === "ArrowLeft" ? -STEP_X : 0;
+      const dRow = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+      if (!dx && !dRow && e.key !== "Home") return;
+      e.preventDefault();
+      setFocus((f) => {
+        if (e.key === "Home") return HOME_FOCUS;
+        if (dx) return { ...f, x: Math.min(layout.bounds.maxX, Math.max(0, f.x + dx)) };
+        // Nearest row, then one step in the pressed direction — so Up/Down walk the eras
+        // from wherever the viewer has orbited to, not from an index this has to remember.
+        const nearest = rowYs.reduce((best, y, i) => (Math.abs(y - f.y) < Math.abs(rowYs[best] - f.y) ? i : best), 0);
+        return { ...f, y: rowYs[Math.min(rowYs.length - 1, Math.max(0, nearest + dRow))] };
+      });
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [layout]);
 
   return (
     <div className="h-[85vh] w-full">
+      <div className="flex flex-wrap gap-2 px-6 pb-3">
+        {layout.media.map((row) => (
+          <button
+            key={row.medium}
+            type="button"
+            onClick={() => setFocus({ x: 3, y: row.rowY })}
+            className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-mid hover:text-label-bright"
+          >
+            {row.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setFocus(HOME_FOCUS)}
+          className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-dim hover:text-label-bright"
+        >
+          Reset view
+        </button>
+      </div>
       <Canvas
         // ponytail: no shadow maps. A shadow-casting light doubles every case draw call
         // (a depth pass over each InstancedMesh, same cost as the colour pass) for 152
@@ -230,7 +326,7 @@ export default function ShelfScene({ rows }: { rows: ShelfRowData[] }) {
         <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.45} color="#b9c2cc" />
 
         <Suspense fallback={null}>
-          <ShelfContent layout={layout} />
+          <ShelfContent layout={layout} onPick={pick} />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
               mounts (and starts its timer) once the atlas texture -- and therefore the
@@ -244,7 +340,8 @@ export default function ShelfScene({ rows }: { rows: ShelfRowData[] }) {
           <meshPhongMaterial color="#1c1713" shininess={8} />
         </mesh>
 
-        <OrbitControls target={[5.2, -0.9, 0]} minDistance={1.5} maxDistance={40} />
+        <OrbitControls makeDefault target={[HOME_FOCUS.x, HOME_FOCUS.y, 0]} minDistance={1.5} maxDistance={40} />
+        <CameraRig focus={focus} />
       </Canvas>
     </div>
   );

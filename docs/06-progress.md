@@ -123,7 +123,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
-| 3 — The shelf (three.js, material system) | **first increment** — 152 cases render; no navigation, no interaction |
+| 3 — The shelf (three.js, material system) | **in progress** — 152 cases render, travel and click-through work; no pull-and-turn, no spine text |
 | 4 — Polish (a11y, perf, SEO) | not started |
 
 ### Phase 3's direction is settled — read `docs/05-3d-shelf.md` before touching `src/app/shelf/`
@@ -148,13 +148,19 @@ Two findings from that session worth not re-deriving:
 
 ### What Phase 3 still owes
 
-`/shelf` renders the whole catalogue at 15 draw calls and is linked from the masthead. What
-it does **not** do, roughly in order of how much each is missed:
+`/shelf` renders the whole catalogue at 15 draw calls, is linked from the masthead, and as
+of 2026-08-11 you can travel it and click into a title. What it does **not** do, roughly in
+order of how much each is missed:
 
-1. **Navigation.** OrbitControls only. A 66-title row is ~90 units long and there is no way
-   to travel it, and no way to move between eras. This is the gap you notice first.
-2. **Clicking a case does nothing.** It should go to that title's page. Cheapest large win
-   here, and it needs instance picking (raycast → `instanceId` → slug).
+1. ~~**Navigation.**~~ **Done 2026-08-11.** Era buttons and the arrow keys set one focus
+   point; a rig eases the camera to it. Up/Down walk the eras, Left/Right travel a row,
+   Home resets. The rig moves the camera and the orbit target by the *same* delta, which
+   keeps the viewer's angle and zoom — moving the target alone swings the camera round the
+   wall and throws away the aisle framing the whole scene is built on.
+2. ~~**Clicking a case does nothing.**~~ **Done 2026-08-11.** Instance picking is one array:
+   `layout.media[].slugs`, indexed by the hit's `instanceId`. Verified in a browser, not by
+   reading it — a click at the centre of the canvas lands on `/title/spider-man-2002` and
+   the page it opens says "Spider-Man". Still 15 draw calls afterwards.
 3. **Pull-and-turn** — the signature interaction in `PLAN.md`: draw a case out, turn it,
    read the back. Not started.
 4. **Thickness is encoded but not legible.** A VHS clamshell is 32 mm and a Blu-ray 12 mm;
@@ -232,6 +238,37 @@ it does **not** do, roughly in order of how much each is missed:
 ---
 
 ## Log
+
+### 2026-08-11 — the shelf can be travelled and clicked
+
+The two gaps at the top of "What Phase 3 still owes", and nothing else. Both are small
+enough that the whole change is four files and no new dependency.
+
+- **Picking.** `layout.media[]` now carries `slugs`, in the same order as the matrices, so
+  a raycast hit resolves through `slugs[e.instanceId]` and nothing else has to exist. The
+  handler sits on the row `<group>`, not on 152 objects: body and cover share an index
+  order, so either hit answers, and a pointer event over an InstancedMesh costs a raycast
+  per move.
+- **Travel.** Era buttons and arrow keys set one focus point; `CameraRig` eases the camera
+  to it. It moves the camera position and the orbit target by the same delta so the
+  viewer's chosen angle and zoom survive the jump.
+- **Copy.** The era buttons print `shelf.label` from `catalogue.ts` rather than a second
+  copy of the era names in the scene file, which is why `ShelfRowData` gained a `label`.
+
+**Verified in a browser, at the production build, not by reading the diff.** A click at the
+centre of the canvas navigates to `/title/spider-man-2002` and the page it lands on says
+"Spider-Man"; the era jump and the arrow keys both visibly move the camera; `[shelf] draw
+calls: 15` afterwards, unchanged. Screenshots taken at each step.
+
+**A false failure worth not repeating: the first browser run showed Chromium's "This page
+couldn't load" on `/shelf`, which looks exactly like a WebGL crash in the new code.** It was
+not. `.env` is gitignored, so an isolated worktree does not have it, the Supabase client
+throws on an empty URL at module load, and the renderer dies before the canvas mounts —
+in a route that has nothing to do with auth. What separated harness fault from page fault
+was the control: loading the plain DOM catalogue in the same browser, which worked. The
+same run against the main checkout's existing build rendered fine, which located the fault
+precisely. **A worktree is not the app until its untracked environment is in it.**
+Turbopack also refuses a symlinked `node_modules` — `npm ci` in the worktree, not a link.
 
 ### 2026-08-10 — Phase 2 begun: accounts
 

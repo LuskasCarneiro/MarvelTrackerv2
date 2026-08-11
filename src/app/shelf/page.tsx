@@ -9,6 +9,7 @@ import type { ShelfRowData } from "./instancing";
 // none of them (see docs/06-progress.md, "Prop or import, it still ships").
 const rows: ShelfRowData[] = shelves.map((shelf) => ({
   medium: shelf.medium,
+  label: shelf.label,
   titles: shelf.titles.map((title) => ({
     slug: title.slug,
     runtimeMin: title.runtimeMin,
@@ -29,7 +30,8 @@ export default function ShelfPage() {
         </h1>
         <p className="mt-1 text-sm text-label-mid">
           All 152 titles, five eras, one instanced draw call per medium for the case body and
-          another for the cover. Drag to orbit, scroll to zoom.
+          another for the cover. Drag to orbit, scroll to zoom, arrow keys to travel the
+          shelves. Click a case to open it.
         </p>
       </div>
       <ShelfSceneClient rows={rows} />
