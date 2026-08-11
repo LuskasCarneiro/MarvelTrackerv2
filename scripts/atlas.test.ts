@@ -11,7 +11,7 @@ import artwork from '../data/artwork.json';
  * What this file does NOT check, because it has no network: that the cell a slug points at
  * actually contains that slug's artwork. That was verified once, against all 149 covers, by
  * extracting each cell and comparing it pixel-by-pixel with a freshly fetched poster —
- * worst mean absolute difference 8.5 (WebP loss) against a cross-title floor around 50.
+ * worst mean absolute difference 8.7 (WebP loss) against a cross-title floor around 50.
  * Re-run that by hand if the packing order in scripts/build-atlas.ts ever changes.
  *
  * A note on that verification, because it nearly produced a false alarm: the atlases carry

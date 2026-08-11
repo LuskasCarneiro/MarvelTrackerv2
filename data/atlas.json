@@ -1,14 +1,11 @@
 {
-  "atlasSize": 2048,
+  "atlasSize": 4096,
   "cell": {
     "w": 256,
     "h": 360
   },
   "atlases": [
-    "covers-0.webp",
-    "covers-1.webp",
-    "covers-2.webp",
-    "covers-3.webp"
+    "covers-0.webp"
   ],
   "cells": {
     "across-the-spider-verse-2023": {
@@ -53,708 +50,708 @@
     },
     "agents-of-shield-2017": {
       "atlas": 0,
-      "x": 0,
-      "y": 360
+      "x": 2048,
+      "y": 0
     },
     "agents-of-shield-2019": {
       "atlas": 0,
-      "x": 256,
-      "y": 360
+      "x": 2304,
+      "y": 0
     },
     "agents-of-shield-2020": {
       "atlas": 0,
-      "x": 512,
-      "y": 360
+      "x": 2560,
+      "y": 0
     },
     "ant-man-2015": {
       "atlas": 0,
-      "x": 768,
-      "y": 360
+      "x": 2816,
+      "y": 0
     },
     "ant-man-and-the-wasp-2018": {
       "atlas": 0,
-      "x": 1024,
-      "y": 360
+      "x": 3072,
+      "y": 0
     },
     "avengers-age-of-ultron-2015": {
       "atlas": 0,
-      "x": 1280,
-      "y": 360
+      "x": 3328,
+      "y": 0
     },
     "avengers-doomsday-2026": {
       "atlas": 0,
-      "x": 1536,
-      "y": 360
+      "x": 3584,
+      "y": 0
     },
     "avengers-endgame-2019": {
       "atlas": 0,
-      "x": 1792,
-      "y": 360
+      "x": 3840,
+      "y": 0
     },
     "avengers-infinity-war-2018": {
       "atlas": 0,
       "x": 0,
-      "y": 720
+      "y": 360
     },
     "black-panther-2018": {
       "atlas": 0,
       "x": 256,
-      "y": 720
+      "y": 360
     },
     "black-panther-wakanda-forever-2022": {
       "atlas": 0,
       "x": 512,
-      "y": 720
+      "y": 360
     },
     "black-widow-2021": {
       "atlas": 0,
       "x": 768,
-      "y": 720
+      "y": 360
     },
     "blade-1998": {
       "atlas": 0,
       "x": 1024,
-      "y": 720
+      "y": 360
     },
     "blade-ii-2002": {
       "atlas": 0,
       "x": 1280,
-      "y": 720
+      "y": 360
     },
     "blade-the-series-2006": {
       "atlas": 0,
       "x": 1536,
-      "y": 720
+      "y": 360
     },
     "blade-trinity-2004": {
       "atlas": 0,
       "x": 1792,
-      "y": 720
+      "y": 360
     },
     "captain-america-1990": {
       "atlas": 0,
-      "x": 0,
-      "y": 1080
+      "x": 2048,
+      "y": 360
     },
     "captain-america-brave-new-world-2025": {
       "atlas": 0,
-      "x": 256,
-      "y": 1080
+      "x": 2304,
+      "y": 360
     },
     "captain-america-civil-war-2016": {
       "atlas": 0,
-      "x": 512,
-      "y": 1080
+      "x": 2560,
+      "y": 360
     },
     "captain-america-the-first-avenger-2011": {
       "atlas": 0,
-      "x": 768,
-      "y": 1080
+      "x": 2816,
+      "y": 360
     },
     "captain-america-the-winter-soldier-2014": {
       "atlas": 0,
-      "x": 1024,
-      "y": 1080
+      "x": 3072,
+      "y": 360
     },
     "captain-marvel-2019": {
       "atlas": 0,
-      "x": 1280,
-      "y": 1080
+      "x": 3328,
+      "y": 360
     },
     "cloak-and-dagger-2018": {
       "atlas": 0,
-      "x": 1536,
-      "y": 1080
+      "x": 3584,
+      "y": 360
     },
     "cloak-and-dagger-2019": {
       "atlas": 0,
-      "x": 1792,
-      "y": 1080
+      "x": 3840,
+      "y": 360
     },
     "daredevil-2003": {
       "atlas": 0,
       "x": 0,
-      "y": 1440
+      "y": 720
     },
     "daredevil-2015": {
       "atlas": 0,
       "x": 256,
-      "y": 1440
+      "y": 720
     },
     "daredevil-2016": {
       "atlas": 0,
       "x": 512,
-      "y": 1440
+      "y": 720
     },
     "daredevil-2018": {
       "atlas": 0,
       "x": 768,
-      "y": 1440
+      "y": 720
     },
     "daredevil-born-again-2025": {
       "atlas": 0,
       "x": 1024,
-      "y": 1440
+      "y": 720
     },
     "daredevil-born-again-2026": {
       "atlas": 0,
       "x": 1280,
-      "y": 1440
+      "y": 720
     },
     "dark-phoenix-2019": {
       "atlas": 0,
       "x": 1536,
-      "y": 1440
+      "y": 720
     },
     "deadpool-2-2018": {
       "atlas": 0,
       "x": 1792,
-      "y": 1440
+      "y": 720
     },
     "deadpool-2016": {
-      "atlas": 1,
-      "x": 0,
-      "y": 0
+      "atlas": 0,
+      "x": 2048,
+      "y": 720
     },
     "deadpool-and-wolverine-2024": {
-      "atlas": 1,
-      "x": 256,
-      "y": 0
+      "atlas": 0,
+      "x": 2304,
+      "y": 720
     },
     "doctor-strange-2016": {
-      "atlas": 1,
-      "x": 512,
-      "y": 0
+      "atlas": 0,
+      "x": 2560,
+      "y": 720
     },
     "echo-2024": {
-      "atlas": 1,
-      "x": 768,
-      "y": 0
+      "atlas": 0,
+      "x": 2816,
+      "y": 720
     },
     "elektra-2005": {
-      "atlas": 1,
-      "x": 1024,
-      "y": 0
+      "atlas": 0,
+      "x": 3072,
+      "y": 720
     },
     "eternals-2021": {
-      "atlas": 1,
-      "x": 1280,
-      "y": 0
+      "atlas": 0,
+      "x": 3328,
+      "y": 720
     },
     "eyes-of-wakanda-2025": {
-      "atlas": 1,
-      "x": 1536,
-      "y": 0
+      "atlas": 0,
+      "x": 3584,
+      "y": 720
     },
     "fant4stic-2015": {
-      "atlas": 1,
-      "x": 1792,
-      "y": 0
+      "atlas": 0,
+      "x": 3840,
+      "y": 720
     },
     "fantastic-four-2005": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 0,
-      "y": 360
+      "y": 1080
     },
     "ghost-rider-2007": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 256,
-      "y": 360
+      "y": 1080
     },
     "ghost-rider-spirit-of-vengeance-2011": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 512,
-      "y": 360
+      "y": 1080
     },
     "guardians-of-the-galaxy-2014": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 768,
-      "y": 360
+      "y": 1080
     },
     "guardians-of-the-galaxy-vol-2-2017": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1024,
-      "y": 360
+      "y": 1080
     },
     "guardians-of-the-galaxy-vol-3-2023": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1280,
-      "y": 360
+      "y": 1080
     },
     "hawkeye-2021": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1536,
-      "y": 360
+      "y": 1080
     },
     "helstrom-2020": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1792,
-      "y": 360
+      "y": 1080
     },
     "hit-monkey-2021": {
-      "atlas": 1,
-      "x": 0,
-      "y": 720
+      "atlas": 0,
+      "x": 2048,
+      "y": 1080
     },
     "hit-monkey-2024": {
-      "atlas": 1,
-      "x": 256,
-      "y": 720
+      "atlas": 0,
+      "x": 2304,
+      "y": 1080
     },
     "howard-the-duck-1986": {
-      "atlas": 1,
-      "x": 512,
-      "y": 720
+      "atlas": 0,
+      "x": 2560,
+      "y": 1080
     },
     "hulk-2003": {
-      "atlas": 1,
-      "x": 768,
-      "y": 720
+      "atlas": 0,
+      "x": 2816,
+      "y": 1080
     },
     "i-am-groot-2022": {
-      "atlas": 1,
-      "x": 1024,
-      "y": 720
+      "atlas": 0,
+      "x": 3072,
+      "y": 1080
     },
     "i-am-groot-2023": {
-      "atlas": 1,
-      "x": 1280,
-      "y": 720
+      "atlas": 0,
+      "x": 3328,
+      "y": 1080
     },
     "inhumans-2017": {
-      "atlas": 1,
-      "x": 1536,
-      "y": 720
+      "atlas": 0,
+      "x": 3584,
+      "y": 1080
     },
     "into-the-spider-verse-2018": {
-      "atlas": 1,
-      "x": 1792,
-      "y": 720
+      "atlas": 0,
+      "x": 3840,
+      "y": 1080
     },
     "iron-fist-2017": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 0,
-      "y": 1080
+      "y": 1440
     },
     "iron-fist-2018": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 256,
-      "y": 1080
+      "y": 1440
     },
     "iron-man-2-2010": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 512,
-      "y": 1080
+      "y": 1440
     },
     "iron-man-2008": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 768,
-      "y": 1080
+      "y": 1440
     },
     "iron-man-3-2013": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1024,
-      "y": 1080
+      "y": 1440
     },
     "ironheart-2025": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1280,
-      "y": 1080
+      "y": 1440
     },
     "jessica-jones-2015": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1536,
-      "y": 1080
+      "y": 1440
     },
     "jessica-jones-2018": {
-      "atlas": 1,
+      "atlas": 0,
       "x": 1792,
-      "y": 1080
+      "y": 1440
     },
     "jessica-jones-2019": {
-      "atlas": 1,
-      "x": 0,
+      "atlas": 0,
+      "x": 2048,
       "y": 1440
     },
     "kraven-the-hunter-2024": {
-      "atlas": 1,
-      "x": 256,
+      "atlas": 0,
+      "x": 2304,
       "y": 1440
     },
     "legion-2017": {
-      "atlas": 1,
-      "x": 512,
+      "atlas": 0,
+      "x": 2560,
       "y": 1440
     },
     "legion-2018": {
-      "atlas": 1,
-      "x": 768,
+      "atlas": 0,
+      "x": 2816,
       "y": 1440
     },
     "legion-2019": {
-      "atlas": 1,
-      "x": 1024,
+      "atlas": 0,
+      "x": 3072,
       "y": 1440
     },
     "logan-2017": {
-      "atlas": 1,
-      "x": 1280,
+      "atlas": 0,
+      "x": 3328,
       "y": 1440
     },
     "loki-2021": {
-      "atlas": 1,
-      "x": 1536,
+      "atlas": 0,
+      "x": 3584,
       "y": 1440
     },
     "loki-2023": {
-      "atlas": 1,
-      "x": 1792,
+      "atlas": 0,
+      "x": 3840,
       "y": 1440
     },
     "luke-cage-2016": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 0,
-      "y": 0
+      "y": 1800
     },
     "luke-cage-2018": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 256,
-      "y": 0
+      "y": 1800
     },
     "madame-web-2024": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 512,
-      "y": 0
+      "y": 1800
     },
     "man-thing-2005": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 768,
-      "y": 0
+      "y": 1800
     },
     "marvel-zombies-2025": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1024,
-      "y": 0
+      "y": 1800
     },
     "modok-2021": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1280,
-      "y": 0
+      "y": 1800
     },
     "moon-knight-2022": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1536,
-      "y": 0
+      "y": 1800
     },
     "morbius-2022": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1792,
-      "y": 0
+      "y": 1800
     },
     "ms-marvel-2022": {
-      "atlas": 2,
-      "x": 0,
-      "y": 360
+      "atlas": 0,
+      "x": 2048,
+      "y": 1800
     },
     "multiverse-of-madness-2022": {
-      "atlas": 2,
-      "x": 256,
-      "y": 360
+      "atlas": 0,
+      "x": 2304,
+      "y": 1800
     },
     "punisher-war-zone-2008": {
-      "atlas": 2,
-      "x": 512,
-      "y": 360
+      "atlas": 0,
+      "x": 2560,
+      "y": 1800
     },
     "quantumania-2023": {
-      "atlas": 2,
-      "x": 768,
-      "y": 360
+      "atlas": 0,
+      "x": 2816,
+      "y": 1800
     },
     "rise-of-the-silver-surfer-2007": {
-      "atlas": 2,
-      "x": 1024,
-      "y": 360
+      "atlas": 0,
+      "x": 3072,
+      "y": 1800
     },
     "runaways-2017": {
-      "atlas": 2,
-      "x": 1280,
-      "y": 360
+      "atlas": 0,
+      "x": 3328,
+      "y": 1800
     },
     "runaways-2018": {
-      "atlas": 2,
-      "x": 1536,
-      "y": 360
+      "atlas": 0,
+      "x": 3584,
+      "y": 1800
     },
     "runaways-2019": {
-      "atlas": 2,
-      "x": 1792,
-      "y": 360
+      "atlas": 0,
+      "x": 3840,
+      "y": 1800
     },
     "secret-invasion-2023": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 0,
-      "y": 720
+      "y": 2160
     },
     "shang-chi-2021": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 256,
-      "y": 720
+      "y": 2160
     },
     "she-hulk-attorney-at-law-2022": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 512,
-      "y": 720
+      "y": 2160
     },
     "spider-man-2-2004": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 768,
-      "y": 720
+      "y": 2160
     },
     "spider-man-2002": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1024,
-      "y": 720
+      "y": 2160
     },
     "spider-man-3-2007": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1280,
-      "y": 720
+      "y": 2160
     },
     "spider-man-brand-new-day-2026": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1536,
-      "y": 720
+      "y": 2160
     },
     "spider-man-far-from-home-2019": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1792,
-      "y": 720
+      "y": 2160
     },
     "spider-man-homecoming-2017": {
-      "atlas": 2,
-      "x": 0,
-      "y": 1080
+      "atlas": 0,
+      "x": 2048,
+      "y": 2160
     },
     "spider-man-no-way-home-2021": {
-      "atlas": 2,
-      "x": 256,
-      "y": 1080
+      "atlas": 0,
+      "x": 2304,
+      "y": 2160
     },
     "spider-man-the-animated-series-1994": {
-      "atlas": 2,
-      "x": 512,
-      "y": 1080
+      "atlas": 0,
+      "x": 2560,
+      "y": 2160
     },
     "the-amazing-spider-man-1977": {
-      "atlas": 2,
-      "x": 768,
-      "y": 1080
+      "atlas": 0,
+      "x": 2816,
+      "y": 2160
     },
     "the-amazing-spider-man-2-2014": {
-      "atlas": 2,
-      "x": 1024,
-      "y": 1080
+      "atlas": 0,
+      "x": 3072,
+      "y": 2160
     },
     "the-amazing-spider-man-2012": {
-      "atlas": 2,
-      "x": 1280,
-      "y": 1080
+      "atlas": 0,
+      "x": 3328,
+      "y": 2160
     },
     "the-avengers-2012": {
-      "atlas": 2,
-      "x": 1536,
-      "y": 1080
+      "atlas": 0,
+      "x": 3584,
+      "y": 2160
     },
     "the-defenders-2017": {
-      "atlas": 2,
-      "x": 1792,
-      "y": 1080
+      "atlas": 0,
+      "x": 3840,
+      "y": 2160
     },
     "the-falcon-and-the-winter-soldier-2021": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 0,
-      "y": 1440
+      "y": 2520
     },
     "the-fantastic-four-first-steps-2025": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 256,
-      "y": 1440
+      "y": 2520
     },
     "the-gifted-2017": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 512,
-      "y": 1440
+      "y": 2520
     },
     "the-gifted-2018": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 768,
-      "y": 1440
+      "y": 2520
     },
     "the-incredible-hulk-1978": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1024,
-      "y": 1440
+      "y": 2520
     },
     "the-incredible-hulk-2008": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1280,
-      "y": 1440
+      "y": 2520
     },
     "the-marvels-2023": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1536,
-      "y": 1440
+      "y": 2520
     },
     "the-new-mutants-2020": {
-      "atlas": 2,
+      "atlas": 0,
       "x": 1792,
-      "y": 1440
+      "y": 2520
     },
     "the-punisher-1989": {
-      "atlas": 3,
-      "x": 0,
-      "y": 0
+      "atlas": 0,
+      "x": 2048,
+      "y": 2520
     },
     "the-punisher-2004": {
-      "atlas": 3,
-      "x": 256,
-      "y": 0
+      "atlas": 0,
+      "x": 2304,
+      "y": 2520
     },
     "the-punisher-2017": {
-      "atlas": 3,
-      "x": 512,
-      "y": 0
+      "atlas": 0,
+      "x": 2560,
+      "y": 2520
     },
     "the-punisher-2019": {
-      "atlas": 3,
-      "x": 768,
-      "y": 0
+      "atlas": 0,
+      "x": 2816,
+      "y": 2520
     },
     "the-wolverine-2013": {
-      "atlas": 3,
-      "x": 1024,
-      "y": 0
+      "atlas": 0,
+      "x": 3072,
+      "y": 2520
     },
     "thor-2011": {
-      "atlas": 3,
-      "x": 1280,
-      "y": 0
+      "atlas": 0,
+      "x": 3328,
+      "y": 2520
     },
     "thor-love-and-thunder-2022": {
-      "atlas": 3,
-      "x": 1536,
-      "y": 0
+      "atlas": 0,
+      "x": 3584,
+      "y": 2520
     },
     "thor-ragnarok-2017": {
-      "atlas": 3,
-      "x": 1792,
-      "y": 0
+      "atlas": 0,
+      "x": 3840,
+      "y": 2520
     },
     "thor-the-dark-world-2013": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 0,
-      "y": 360
+      "y": 2880
     },
     "thunderbolts-2025": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 256,
-      "y": 360
+      "y": 2880
     },
     "venom-2018": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 512,
-      "y": 360
+      "y": 2880
     },
     "venom-let-there-be-carnage-2021": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 768,
-      "y": 360
+      "y": 2880
     },
     "venom-the-last-dance-2024": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 1024,
-      "y": 360
+      "y": 2880
     },
     "wandavision-2021": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 1280,
-      "y": 360
+      "y": 2880
     },
     "what-if-2021": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 1536,
-      "y": 360
+      "y": 2880
     },
     "what-if-2023": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 1792,
-      "y": 360
+      "y": 2880
     },
     "what-if-2024": {
-      "atlas": 3,
-      "x": 0,
-      "y": 720
+      "atlas": 0,
+      "x": 2048,
+      "y": 2880
     },
     "wonder-man-2026": {
-      "atlas": 3,
-      "x": 256,
-      "y": 720
+      "atlas": 0,
+      "x": 2304,
+      "y": 2880
     },
     "x-men-2000": {
-      "atlas": 3,
-      "x": 512,
-      "y": 720
+      "atlas": 0,
+      "x": 2560,
+      "y": 2880
     },
     "x-men-97-2024": {
-      "atlas": 3,
-      "x": 768,
-      "y": 720
+      "atlas": 0,
+      "x": 2816,
+      "y": 2880
     },
     "x-men-97-2026": {
-      "atlas": 3,
-      "x": 1024,
-      "y": 720
+      "atlas": 0,
+      "x": 3072,
+      "y": 2880
     },
     "x-men-apocalypse-2016": {
-      "atlas": 3,
-      "x": 1280,
-      "y": 720
+      "atlas": 0,
+      "x": 3328,
+      "y": 2880
     },
     "x-men-days-of-future-past-2014": {
-      "atlas": 3,
-      "x": 1536,
-      "y": 720
+      "atlas": 0,
+      "x": 3584,
+      "y": 2880
     },
     "x-men-first-class-2011": {
-      "atlas": 3,
-      "x": 1792,
-      "y": 720
+      "atlas": 0,
+      "x": 3840,
+      "y": 2880
     },
     "x-men-origins-wolverine-2009": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 0,
-      "y": 1080
+      "y": 3240
     },
     "x-men-the-animated-series-1992": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 256,
-      "y": 1080
+      "y": 3240
     },
     "x-men-the-last-stand-2006": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 512,
-      "y": 1080
+      "y": 3240
     },
     "x2-x-men-united-2003": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 768,
-      "y": 1080
+      "y": 3240
     },
     "your-friendly-neighborhood-spider-man-2025": {
-      "atlas": 3,
+      "atlas": 0,
       "x": 1024,
-      "y": 1080
+      "y": 3240
     }
   }
 }

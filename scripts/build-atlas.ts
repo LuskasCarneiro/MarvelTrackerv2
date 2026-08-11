@@ -1,8 +1,8 @@
 // Texture atlas packer. Reads data/artwork.json (152 records, each with a poster field
 // that is either a TMDB CDN path or null), fetches the 149 non-null posters,
-// resizes them to cover a 256x360 cell, packs them into 2048x2048 atlases (8 cols × 5 rows,
+// resizes them to cover a 256x360 cell, packs them into 4096x4096 atlases (16 cols x 11 rows,
 // 40 cells per atlas), and writes the atlases as WebP + a manifest. Writes:
-//   - public/atlas/covers-0.webp, covers-1.webp, etc.  2048×2048 WebP, quality 82
+//   - public/atlas/covers-0.webp, covers-1.webp, etc.  4096x4096 WebP, quality 82
 //   - data/atlas.json  { atlasSize, cell, atlases, cells }
 //
 // Posters are never downloaded and cached — only the TMDB CDN paths are used. Real images
@@ -73,12 +73,15 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, i: number
 // ---------------------------------------------------------------------------
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const ATLAS_SIZE = 2048;
+const ATLAS_SIZE = 4096;
 const CELL_W = 256;
 const CELL_H = 360;
-const COLS = 8; // 2048 / 256
-const ROWS = 5; // 2048 / 360 (1800 used, 248 wasted)
-const CELLS_PER_ATLAS = COLS * ROWS; // 40
+const COLS = 16; // 4096 / 256
+const ROWS = 11; // 4096 / 360 (3960 used, 136 wasted)
+// 176 slots for 149 covers, so the whole catalogue lands in ONE sheet. That is the
+// point of 4096 rather than 2048: an InstancedMesh binds a single texture, so a second
+// atlas would force the shelf to split its instances by atlas and draw them separately.
+const CELLS_PER_ATLAS = COLS * ROWS; // 176
 
 // ---------------------------------------------------------------------------
 // fetch images with retry
@@ -121,7 +124,7 @@ async function fetchAndResizePoster(posterPath: string): Promise<Buffer | null> 
 // ---------------------------------------------------------------------------
 
 /**
- * Compose poster buffers into a single 2048×2048 atlas.
+ * Compose poster buffers into a single 4096x4096 atlas.
  * Each buffer is a PNG cell; we arrange them in a grid and encode the result as WebP.
  */
 async function composeAtlas(cellBuffers: (Buffer | null)[]): Promise<Buffer> {
