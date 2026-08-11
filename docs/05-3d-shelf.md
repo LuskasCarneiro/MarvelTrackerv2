@@ -17,8 +17,16 @@ four shelves tall, release order end to end, at **13 draw calls** and 46k triang
 `InstancedMesh` per medium for the bodies and one for the covers, so the 66 streaming-era
 titles cost what the 7 VHS ones cost. Covers come from a single 4096² atlas.
 
-Not built: pull-and-turn, the two orderings, the wear gradient and back panel, the
-historical objects, spine text, era materials. Scroll still zooms rather than travels.
+**§4's two orderings are built too, as far as step 4 of the order of work goes: the reshuffle
+only, objects unchanged.** `src/lib/chronology.ts` turns `chrono` into a sortable year —
+written against the 51 distinct non-year strings actually in the catalogue — and returns null
+for the 14 that belong outside time, which then hang above the run with no board beneath
+them. Story order opens on Eternals at 5000 BC and puts Captain America and Agent Carter in
+the 1940s. The era buttons hide in story order: a medium is scattered along the whole run
+there, so "where Blu-ray begins" is not a place and a button claiming it is would mislead.
+
+Not built: pull-and-turn, the historical objects (step 6 — the film can, the clay tablet),
+the wear gradient and back panel, spine text, era materials.
 
 ### Measured once it existed: the eras are not evenly spaced, and landmarks are cheap
 

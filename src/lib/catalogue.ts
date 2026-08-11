@@ -3,6 +3,7 @@ import notesJson from '../../data/notes-en.json';
 import sourceJson from '../../data/v1-source.json';
 import artworkJson from '../../data/artwork.json';
 import { titleTint } from './tint';
+import { storyYear } from './chronology';
 
 export type Medium = 'vhs' | 'amaray' | 'bluray' | 'steel' | 'none';
 export type Kind = 'film' | 'series';
@@ -23,6 +24,11 @@ export type Title = {
   releaseYear: number;
   season: number | null;
   chrono: string;
+  /**
+   * `chrono` as a sortable year, for the shelf's story ordering — null for the 14 titles
+   * that have no place on a timeline, which is deliberate. See lib/chronology.ts.
+   */
+  storyYear: number | null;
   runtimeMin: number | null;
   medium: Medium;
   tmdbId: number;
@@ -114,13 +120,15 @@ export const titles: Title[] = titlesJson.map((r) => {
   const kind = r.kind as Kind;
   const medium = r.medium as Medium;
   const art = artwork[r.slug];
+  const chrono = chronoEn[r.chrono] ?? r.chrono;
   return {
     ...r,
     kind,
     displayTitle: r.season === null ? r.title : `${r.title} · Series ${r.season}`,
     medium,
     universeName: universeNames[kind][r.universe] ?? r.universe,
-    chrono: chronoEn[r.chrono] ?? r.chrono,
+    chrono,
+    storyYear: storyYear(chrono),
     note: notes[sourceKeyFor(r)] ?? '',
     tint: art?.tint ?? titleTint(r.slug, medium),
     poster: art?.poster ?? null,

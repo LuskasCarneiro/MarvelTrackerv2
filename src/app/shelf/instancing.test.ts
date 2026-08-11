@@ -43,8 +43,8 @@ describe("cropCellUv", () => {
 
 describe("depthScale", () => {
   const titles: ShelfTitleData[] = [
-    { slug: "a", runtimeMin: 24, tint: "", medium: "amaray" },
-    { slug: "b", runtimeMin: 5025, tint: "", medium: "amaray" },
+    { slug: "a", runtimeMin: 24, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 },
+    { slug: "b", runtimeMin: 5025, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 },
   ];
   const range = runtimeLogRange(titles);
 
@@ -64,7 +64,7 @@ describe("depthScale", () => {
   });
 
   it("does not divide by zero when every runtime is identical", () => {
-    const flat = runtimeLogRange([{ slug: "a", runtimeMin: 100, tint: "", medium: "amaray" }]);
+    const flat = runtimeLogRange([{ slug: "a", runtimeMin: 100, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 }]);
     expect(depthScale(100, flat)).toBe(1.0);
   });
 });
@@ -76,6 +76,8 @@ describe("buildShelfLayout — one continuous run, column-major", () => {
     runtimeMin: 100,
     tint: "hsl(20 20% 40%)",
     medium: i < 4 ? ("vhs" as const) : ("amaray" as const),
+    releaseYear: 1990 + i,
+    storyYear: 1990 + i,
   }));
   const cellSize = { w: 256, h: 360 };
   const cells = Object.fromEntries(run.map((t, i) => [t.slug, { x: i * 256, y: 0 }]));
@@ -120,11 +122,47 @@ describe("buildShelfLayout — one continuous run, column-major", () => {
   it("keeps a narrow case centred in its column instead of shifting the run", () => {
     // t3 (vhs, 110mm) shares column 0 with three other vhs; t4 starts the amaray column.
     const mixed: ShelfTitleData[] = [
-      { slug: "wide", runtimeMin: 100, tint: "", medium: "amaray" },
-      { slug: "narrow", runtimeMin: 100, tint: "", medium: "vhs" },
+      { slug: "wide", runtimeMin: 100, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 },
+      { slug: "narrow", runtimeMin: 100, tint: "", medium: "vhs", releaseYear: 1990, storyYear: 1990 },
     ];
     const mixedLayout = buildShelfLayout(mixed, {}, cellSize, 4096);
     const xs = mixedLayout.media.flatMap((m) => m.bodyMatrices.map((b) => b.elements[12]));
     expect(new Set(xs.map((x) => x.toFixed(6))).size).toBe(1);
+  });
+
+  describe("the titles that belong outside time", () => {
+    const floating: ShelfTitleData[] = [
+      { slug: "loki", runtimeMin: 300, tint: "", medium: "none", releaseYear: 2021, storyYear: null },
+      { slug: "what-if", runtimeMin: 300, tint: "", medium: "none", releaseYear: 2021, storyYear: null },
+    ];
+    const withFloating = buildShelfLayout(run, cells, cellSize, 4096, floating);
+    const floatingPositions = withFloating.media
+      .flatMap((m) => m.slugs.map((slug, i) => ({ slug, m: m.bodyMatrices[i] })))
+      .filter((p) => floating.some((f) => f.slug === p.slug));
+
+    it("hangs them above the run, with no board underneath", () => {
+      expect(floatingPositions).toHaveLength(2);
+      for (const p of floatingPositions) expect(p.m.elements[13]).toBeGreaterThan(layout.bounds.maxY);
+      // Still four boards: the run's furniture, unchanged. Nothing was built to hold these up.
+      expect(withFloating.boardSlabMatrices).toHaveLength(LEVELS);
+    });
+
+    it("is clickable like anything else on the run", () => {
+      const slugs = withFloating.media.flatMap((m) => m.slugs);
+      expect(slugs).toContain("loki");
+      expect(slugs.length).toBe(run.length + floating.length);
+    });
+
+    it("scatters them by a hash of the slug, so the same title hangs in the same place", () => {
+      const again = buildShelfLayout(run, cells, cellSize, 4096, floating);
+      const first = floatingPositions.map((p) => p.m.elements[12]);
+      const repeat = again.media
+        .flatMap((m) => m.slugs.map((slug, i) => ({ slug, x: m.bodyMatrices[i].elements[12] })))
+        .filter((p) => floating.some((f) => f.slug === p.slug))
+        .map((p) => p.x);
+      expect(repeat).toEqual(first);
+      // ...and not in a neat row.
+      expect(floatingPositions[0].m.elements[13]).not.toBe(floatingPositions[1].m.elements[13]);
+    });
   });
 });

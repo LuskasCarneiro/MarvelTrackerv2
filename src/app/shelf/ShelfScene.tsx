@@ -273,7 +273,23 @@ const HOME_X = 9;
 const STEP_X = 2.8; // ~2 columns per arrow press
 
 export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[]; eras: EraLabel[] }) {
-  const layout = useMemo(() => buildShelfLayout(titles, atlasCells, CELL_SIZE, ATLAS_SIZE), [titles]);
+  const [order, setOrder] = useState<"release" | "story">("release");
+
+  // The two orderings (docs/05-3d-shelf.md §4). The objects are deliberately unchanged for
+  // now — this is the reshuffle only, which is where nearly all the meaning lives: release
+  // order opens on 1970s television Spider-Man, story order on 5000 BC.
+  const { run, floating } = useMemo(() => {
+    if (order === "release") return { run: titles, floating: [] as ShelfTitleData[] };
+    const placed = titles
+      .filter((t) => t.storyYear !== null)
+      .sort((a, b) => a.storyYear! - b.storyYear! || a.releaseYear - b.releaseYear);
+    return { run: placed, floating: titles.filter((t) => t.storyYear === null) };
+  }, [titles, order]);
+
+  const layout = useMemo(
+    () => buildShelfLayout(run, atlasCells, CELL_SIZE, ATLAS_SIZE, floating),
+    [run, floating]
+  );
   const groundWidth = Math.max(layout.bounds.maxX + 12, 20);
   const router = useRouter();
 
@@ -304,6 +320,29 @@ export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[];
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [layout, homeFocus]);
+
+  // Scroll travels along the run — the same gesture as the DOM catalogue and the same
+  // meaning, forward through time (docs/05-3d-shelf.md §6). Drag stays for looking around,
+  // never for travelling, so OrbitControls keeps its zoom off.
+  //
+  // A native listener rather than onWheel, because React registers wheel handlers passively
+  // and preventDefault is a no-op inside one — without it the page scrolls behind the canvas
+  // while the run travels, which is two things moving for one gesture.
+  const surface = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = surface.current;
+    if (!el) return;
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      // deltaMode 1 is lines, not pixels (Firefox); treating them alike travels ~15x too far.
+      const lines = e.deltaMode === 1 ? e.deltaY : e.deltaY / 16;
+      // 0.18 per line: one flick of a trackpad moves a few columns. The first value tried was
+      // 0.55, which crossed half the catalogue in a single gesture — measured, not guessed.
+      setFocus((f) => ({ ...f, x: Math.min(layout.bounds.maxX, Math.max(0, f.x + lines * 0.18)) }));
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
   }, [layout]);
 
   // The era's own name, from catalogue.ts, against the x where that era begins. Eras are
@@ -314,18 +353,46 @@ export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[];
   }));
 
   return (
-    <div className="h-[85vh] w-full">
-      <div className="flex flex-wrap gap-2 px-6 pb-3">
-        {landmarks.map((landmark) => (
+    <div ref={surface} className="h-[85vh] w-full">
+      <div className="flex flex-wrap items-baseline gap-2 px-6 pb-2">
+        {(["release", "story"] as const).map((option) => (
           <button
-            key={landmark.medium}
+            key={option}
             type="button"
-            onClick={() => setFocus({ x: landmark.startX + 2, y: wallCentreY })}
-            className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-mid hover:text-label-bright"
+            onClick={() => setOrder(option)}
+            aria-pressed={order === option}
+            className={`rounded border px-3 py-1 font-display text-xs uppercase tracking-[0.12em] ${
+              order === option
+                ? "border-label-mid text-label-bright"
+                : "border-shelf-edge text-label-dim hover:text-label-mid"
+            }`}
           >
-            {landmark.label}
+            {option === "release" ? "Release order" : "Story order"}
           </button>
         ))}
+        {/* The two modes do not have the same truth status and must not wear each other's
+            language (docs/05-3d-shelf.md §4). */}
+        <p className="text-xs text-label-dim">
+          {order === "release"
+            ? "Each release's medium is worked out from its year by a fixed rule, not verified title by title."
+            : "A conceit: nothing was recorded in 1943. Fourteen titles have no place on a timeline and hang off the run."}
+        </p>
+      </div>
+      {/* Era landmarks only make sense in release order. In story order the media are
+          scattered along the whole run — a 1943 story on a 2011 Blu-ray — so "where Blu-ray
+          begins" is not a place any more, and a button claiming otherwise would mislead. */}
+      <div className="flex flex-wrap gap-2 px-6 pb-3">
+        {order === "release" &&
+          landmarks.map((landmark) => (
+            <button
+              key={landmark.medium}
+              type="button"
+              onClick={() => setFocus({ x: landmark.startX + 2, y: wallCentreY })}
+              className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-mid hover:text-label-bright"
+            >
+              {landmark.label}
+            </button>
+          ))}
         <button
           type="button"
           onClick={() => setFocus(homeFocus)}
@@ -382,7 +449,7 @@ export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[];
           <meshPhongMaterial color="#1c1713" shininess={8} />
         </mesh>
 
-        <OrbitControls makeDefault target={[homeFocus.x, homeFocus.y, 0]} minDistance={1.5} maxDistance={40} />
+        <OrbitControls makeDefault enableZoom={false} target={[homeFocus.x, homeFocus.y, 0]} minDistance={1.5} maxDistance={40} />
         <CameraRig focus={focus} />
       </Canvas>
     </div>

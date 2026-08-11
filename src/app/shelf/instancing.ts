@@ -11,6 +11,10 @@ export type ShelfTitleData = {
   runtimeMin: number | null;
   tint: string;
   medium: Medium;
+  releaseYear: number;
+  /** When the story happens, for the story ordering. Null for the 14 titles that belong
+   * outside time — see lib/chronology.ts and docs/05-3d-shelf.md §5. */
+  storyYear: number | null;
 };
 
 /** An era's name, from catalogue.ts — user-facing copy, so it travels rather than being
@@ -187,6 +191,17 @@ export type ShelfLayout = {
 
 const IDENTITY_QUAT = new THREE.Quaternion();
 
+/** A stable 0..1 from a slug, for scatter that is the same on every render and every
+ * machine. Same reason and same shape as titleTint()'s hash in lib/tint.ts. */
+function hashUnit(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 10000) / 10000;
+}
+
 function matrix(x: number, y: number, z: number, sx: number, sy: number, sz: number): THREE.Matrix4 {
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), IDENTITY_QUAT, new THREE.Vector3(sx, sy, sz));
 }
@@ -216,9 +231,16 @@ export function buildShelfLayout(
   titles: ShelfTitleData[],
   atlasCells: Record<string, CellPx>,
   cellSize: { w: number; h: number },
-  atlasSize: number
+  atlasSize: number,
+  /**
+   * Titles with no place on the run at all. In story order these are the 14 about unstable
+   * reality — multiverses, the TVA, a character who may be imagining everything — and they
+   * hang above the run, unanchored, rather than being assigned a year they do not have.
+   * Empty in release order, where every title has a release date.
+   */
+  floating: ShelfTitleData[] = []
 ): ShelfLayout {
-  const logRange = runtimeLogRange(titles);
+  const logRange = runtimeLogRange([...titles, ...floating]);
   const blankCovers: ShelfLayout["blankCovers"] = [];
   const boardSlabMatrices: THREE.Matrix4[] = [];
   const boardLipMatrices: THREE.Matrix4[] = [];
@@ -288,9 +310,41 @@ export function buildShelfLayout(
     columnLeft += columnWidth + GAP_X;
   });
 
+  // The unanchored ones. Spread along the run so they read as belonging to the whole of it
+  // rather than to one section, above the top board with nothing underneath them. The offsets
+  // are hashed from the slug rather than random: the same title hangs in the same place on
+  // every render and on every machine, and a neat row would look like a sixth shelf.
+  const runEnd = bounds.maxX;
+  floating.forEach((title, i) => {
+    const dims = DIMENSIONS[title.medium];
+    const spread = floating.length > 1 ? i / (floating.length - 1) : 0.5;
+    const jitter = hashUnit(title.slug);
+    const x = 2 + spread * Math.max(runEnd - 4, 1) + (jitter - 0.5) * 1.6;
+    const y = bounds.maxY + 0.9 + jitter * 1.8;
+    const z = (hashUnit(`${title.slug}-z`) - 0.5) * 1.4;
+    const ds = depthScale(title.runtimeMin, logRange);
+    const bucket = bucketFor(title.medium);
+
+    bucket.bodyMatrices.push(matrix(x, y, z, 1, 1, ds));
+    const cellPx = atlasCells[title.slug];
+    bucket.coverUvs.push(cropCellUv(cellPx ?? { x: 0, y: 0 }, cellSize, atlasSize, dims.w / dims.h));
+    bucket.coverMatrices.push(matrix(x, y, z + (dims.d * ds) / 2 + COVER_INSET, 1, 1, 1));
+    bucket.slugs.push(title.slug);
+
+    if (!cellPx) {
+      blankCovers.push({
+        slug: title.slug,
+        tint: title.tint,
+        position: { x, y, z: z + (dims.d * ds) / 2 + BLANK_COVER_INSET },
+        size: { w: dims.w - CORNER_RADIUS * 0.6, h: dims.h - CORNER_RADIUS * 0.6 },
+      });
+    }
+  });
+
   // One board per level, spanning the whole run: the furniture is continuous even though the
-  // objects standing on it change in steps (docs/05-3d-shelf.md §3).
-  const runWidth = bounds.maxX + BOARD_MARGIN * 2;
+  // objects standing on it change in steps (docs/05-3d-shelf.md §3). Boards are sized from
+  // the run itself, so the floating titles above deliberately have nothing under them.
+  const runWidth = runEnd + BOARD_MARGIN * 2;
   const boardCenterX = runWidth / 2 - BOARD_MARGIN;
   for (let level = 0; level < LEVELS; level++) {
     const boardTop = -level * LEVEL_PITCH;

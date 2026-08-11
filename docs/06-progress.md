@@ -245,6 +245,36 @@ much each is missed:
 
 ## Log
 
+### 2026-08-12 — scroll travels, and the shelf has two orderings
+
+Steps 3 and 4 of `docs/05-3d-shelf.md` §7, in the order it sets out.
+
+- **Scroll travels the run** instead of zooming, which is the same gesture and the same
+  meaning as the DOM catalogue. It needs a native `wheel` listener, not React's `onWheel`:
+  React registers wheel handlers passively, so `preventDefault` inside one does nothing and
+  the page scrolls behind the canvas while the run travels. The step is 0.18 units per line —
+  the first value tried, 0.55, crossed half the catalogue in one flick of a trackpad.
+- **Two orderings.** `src/lib/chronology.ts` resolves `chrono` to a sortable year against the
+  51 distinct non-year strings actually present — ranges take their start, `Christmas 2013`
+  and `c. 2004` give up their year, decades give their first year, and the five relative ones
+  ("shortly before the Snap") are a named table of five with the reference title in a comment.
+  **BC is matched before the plain-year rule**, or `5000 BC – 2024` resolves to 2024 and files
+  Eternals with the present day — losing the title that opens the whole story order.
+- **The 14 that cannot be placed are not placed.** They lift off the run and hang above it,
+  scattered by a hash of the slug so the same title hangs in the same place on every machine,
+  with the boards deliberately sized to the run so there is nothing underneath them. The test
+  names all nine distinct titles rather than counting them: a parser change that floated a
+  *different* fourteen would keep the count and quietly break the idea.
+- **The era buttons hide in story order.** A medium is scattered along the whole story run, so
+  "where Blu-ray begins" is not a place there. Deleting the buttons was cheaper than making
+  them lie.
+- The two modes state their own truth status in the UI, in the two registers §4 asks for:
+  release order is a fixed rule, story order is openly a conceit.
+
+Verified in a browser at the production build: story order opens on Eternals, Captain America
+and Agent Carter move to the 1940s, the floating titles read as unanchored, one wheel gesture
+travels about five columns, and the page itself never scrolls. 83 tests green.
+
 ### 2026-08-12 — one continuous run, and a lamp that travels with you
 
 `docs/05-3d-shelf.md` §7 puts the continuous run first and says to look at it before funding

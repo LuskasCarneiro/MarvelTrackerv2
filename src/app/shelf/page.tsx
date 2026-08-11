@@ -18,6 +18,8 @@ const run: ShelfTitleData[] = [...titles]
     runtimeMin: title.runtimeMin,
     tint: title.tint,
     medium: title.medium,
+    releaseYear: title.releaseYear,
+    storyYear: title.storyYear,
   }));
 
 // The era names, for the landmark buttons. catalogue.ts owns this copy.
@@ -34,9 +36,9 @@ export default function ShelfPage() {
           The shelf — Phase 3
         </h1>
         <p className="mt-1 text-sm text-label-mid">
-          All 152 titles in one run, oldest to newest, four shelves tall — the medium changes
-          as the years pass. Drag to orbit, scroll to zoom, arrow keys to travel. Click a case
-          to open it.
+          All 152 titles in one run, four shelves tall, by release or by when the story
+          happens. Scroll or use the arrow keys to travel it, drag to look around, and click a
+          case to open it.
         </p>
       </div>
       <ShelfSceneClient titles={run} eras={eras} />
