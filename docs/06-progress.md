@@ -172,6 +172,11 @@ order of how much each is missed:
 7. **No LOD, no adaptive quality, no DPR clamp beyond `[1, 1.5]`.** Deliberate — not needed
    until measured on real hardware.
 8. **`/shelf` transfers 3.7 MB**, almost all atlas. Where KTX2 would earn its place.
+   **And there is no loading state while it arrives**: the Suspense fallback is `null`, so a
+   cold load on production shows an empty room with a ground plane for several seconds and
+   nothing to say the shelf is coming. Measured 2026-08-11 against the live site — the first
+   browser check screenshotted at 8s and caught exactly that blank frame, then the same run
+   at 25s rendered all 152. A first-time visitor on a slow connection sees the 8s version.
 9. **No reduced-motion or no-WebGL path**, and it has never been opened on a phone.
 
 ### Corrections to earlier handovers — read these before trusting an old note
@@ -259,6 +264,11 @@ enough that the whole change is four files and no new dependency.
 centre of the canvas navigates to `/title/spider-man-2002` and the page it lands on says
 "Spider-Man"; the era jump and the arrow keys both visibly move the camera; `[shelf] draw
 calls: 15` afterwards, unchanged. Screenshots taken at each step.
+
+**Merged to `main` and re-checked on the live site**, since a green deploy is not a working
+app: `/shelf` on marvel-trackerv2.vercel.app renders all 152 at 15 draw calls, the era jump
+moves the camera, and a click at the centre opens Spider-Man (2002). The only difference
+production showed was time-to-first-render — see item 8 above.
 
 **A false failure worth not repeating: the first browser run showed Chromium's "This page
 couldn't load" on `/shelf`, which looks exactly like a WebGL crash in the new code.** It was
