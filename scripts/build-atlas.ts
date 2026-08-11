@@ -165,8 +165,9 @@ async function main() {
   const artwork: Record<string, ArtworkRecord> = JSON.parse(readFileSync(ARTWORK_PATH, 'utf-8'));
 
   // Extract slugs with posters, sort alphabetically for determinism
-  const entries = Object.entries(artwork).filter(([_, record]) => record.poster != null);
-  const slugsWithPosters = entries.map(([slug]) => slug).sort();
+  const slugsWithPosters = Object.keys(artwork)
+    .filter((slug) => artwork[slug].poster != null)
+    .sort();
   const nullCount = Object.keys(artwork).length - slugsWithPosters.length;
 
   console.log(`Building atlas for ${slugsWithPosters.length} covers (${nullCount} null, skipped)...`);
