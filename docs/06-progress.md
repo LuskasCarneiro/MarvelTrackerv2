@@ -21,28 +21,24 @@ reading the settings page:
 | `http://localhost:3000/auth/confirm` | allowed | **blocked** |
 | `https://evil.example.com/steal` | blocked | blocked |
 
-**This setting has now flipped twice, and only one environment has ever worked at a time.**
-Measured three times across the day:
+**Production sign-up works.** Measured four times across the day, ending here:
 
-| `redirect_to` | first check | after the owner's fix | after adding localhost back |
-|---|---|---|---|
-| `marvel-trackerv2.vercel.app/auth/confirm` | blocked | **allowed** | **blocked** |
-| `localhost:3000/auth/confirm` | allowed | blocked | **allowed** |
-| `evil.example.com/steal` | blocked | blocked | blocked |
+| `redirect_to` | first check | fix 1 | fix 2 | **now** |
+|---|---|---|---|---|
+| `marvel-trackerv2.vercel.app/**` | blocked | allowed | blocked | **allowed** |
+| `localhost:3000/auth/confirm` | allowed | blocked | allowed | blocked |
+| `evil.example.com/steal` | blocked | blocked | blocked | blocked |
 
-It is behaving like a single value being **swapped** rather than a list being **appended
-to** — which is what Supabase's **Site URL** does, since it is one field and also the
-fallback target. The list that accepts many entries is **Redirect URLs**, and it needs both:
+Only one environment has ever been allowed at a time, which is the signature of Supabase's
+**Site URL** — one field, also the fallback target — being swapped, rather than the
+**Redirect URLs** list being appended to. Adding `http://localhost:3000/**` to that list
+makes local sign-up work again without disturbing production. **Not urgent:** nothing user
+facing is broken, it only bites the next person who tries the sign-up flow on a dev server.
 
-```
-Site URL:       https://marvel-trackerv2.vercel.app
-Redirect URLs:  https://marvel-trackerv2.vercel.app/**
-                http://localhost:3000/**
-```
-
-**Right now production sign-up is broken again and local works.** Re-run the probe in
-`docs/04-auth-and-rls.md` after any change — it needs no credentials beyond `.env`, and it
-answers in seconds what the dashboard page will happily let you misread.
+Re-run the probe in `docs/04-auth-and-rls.md` after any change to this. It needs no
+credentials beyond `.env` and answers in seconds what the dashboard page will happily let
+you misread — this setting has now been "fixed" three times, and reading the page was wrong
+every time.
 
 **Still true:** Supabase's built-in email sender is rate limited to a few messages an hour
 and is meant for development. Public sign-up is a settled decision, so custom SMTP is needed
