@@ -108,9 +108,31 @@ read at module scope, which prerenders automatically as a "predictable value".
 |---|---|
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
-| 2 — Accounts (Supabase auth, RLS, ratings) | **in progress** — blocked on the owner for the redirect allow-list |
-| 3 — The shelf (three.js, material system) | not started |
+| 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
+| 3 — The shelf (three.js, material system) | **first increment** — 152 cases render; no navigation, no interaction |
 | 4 — Polish (a11y, perf, SEO) | not started |
+
+### What Phase 3 still owes
+
+`/shelf` renders the whole catalogue at 15 draw calls and is linked from the masthead. What
+it does **not** do, roughly in order of how much each is missed:
+
+1. **Navigation.** OrbitControls only. A 66-title row is ~90 units long and there is no way
+   to travel it, and no way to move between eras. This is the gap you notice first.
+2. **Clicking a case does nothing.** It should go to that title's page. Cheapest large win
+   here, and it needs instance picking (raycast → `instanceId` → slug).
+3. **Pull-and-turn** — the signature interaction in `PLAN.md`: draw a case out, turn it,
+   read the back. Not started.
+4. **Thickness is encoded but not legible.** A VHS clamshell is 32 mm and a Blu-ray 12 mm;
+   at the current framing you cannot tell. The geometry is right, the presentation does not
+   reveal it.
+5. **No spine text**, so a case seen edge-on is blank — the one thing every real shelf has.
+6. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
+   applied, so steelbook does not read as metal, and VHS does not read as card.
+7. **No LOD, no adaptive quality, no DPR clamp beyond `[1, 1.5]`.** Deliberate — not needed
+   until measured on real hardware.
+8. **`/shelf` transfers 3.7 MB**, almost all atlas. Where KTX2 would earn its place.
+9. **No reduced-motion or no-WebGL path**, and it has never been opened on a phone.
 
 ### Corrections to earlier handovers — read these before trusting an old note
 
