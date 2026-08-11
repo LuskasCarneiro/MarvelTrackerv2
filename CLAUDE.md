@@ -99,9 +99,11 @@ feel it. Full reasoning, including how `press.stripe.com` actually works (three.
 | `docs/06-progress.md` | **Where the work stands. Read this second, always.** |
 | `docs/02-design-system.md` | Tokens' reasoning, the shelf layout, medium eras, motion budget. |
 | `docs/03-data-pipeline.md` | The three scripts, the join keys, the TMDB traps, palette conditioning. |
+| `docs/04-auth-and-rls.md` | The security model, why auth is client-side, the Next 16 traps. |
+| `docs/05-3d-shelf.md` | **The approved Phase 3 direction.** One continuous run, ageing wood, two orderings. |
 
-Docs still to be written as their phases begin: `01-architecture`, `04-auth-and-rls`,
-`05-3d-shelf`, `07-open-questions`, `adr/`.
+Docs still to be written as their phases begin: `01-architecture`, `07-open-questions`,
+`adr/`.
 
 **Two corrections to `PLAN.md`, both load-bearing:**
 

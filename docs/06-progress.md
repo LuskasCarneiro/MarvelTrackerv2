@@ -21,10 +21,28 @@ reading the settings page:
 | `http://localhost:3000/auth/confirm` | allowed | **blocked** |
 | `https://evil.example.com/steal` | blocked | blocked |
 
-Production works. **Local development sign-up now does not** — `http://localhost:3000/**`
-came off the list when production went on. Both belong there. It costs nothing to add back
-and it will otherwise waste somebody's afternoon in a future session, because the failure
-looks like broken code rather than a setting.
+**This setting has now flipped twice, and only one environment has ever worked at a time.**
+Measured three times across the day:
+
+| `redirect_to` | first check | after the owner's fix | after adding localhost back |
+|---|---|---|---|
+| `marvel-trackerv2.vercel.app/auth/confirm` | blocked | **allowed** | **blocked** |
+| `localhost:3000/auth/confirm` | allowed | blocked | **allowed** |
+| `evil.example.com/steal` | blocked | blocked | blocked |
+
+It is behaving like a single value being **swapped** rather than a list being **appended
+to** — which is what Supabase's **Site URL** does, since it is one field and also the
+fallback target. The list that accepts many entries is **Redirect URLs**, and it needs both:
+
+```
+Site URL:       https://marvel-trackerv2.vercel.app
+Redirect URLs:  https://marvel-trackerv2.vercel.app/**
+                http://localhost:3000/**
+```
+
+**Right now production sign-up is broken again and local works.** Re-run the probe in
+`docs/04-auth-and-rls.md` after any change — it needs no credentials beyond `.env`, and it
+answers in seconds what the dashboard page will happily let you misread.
 
 **Still true:** Supabase's built-in email sender is rate limited to a few messages an hour
 and is meant for development. Public sign-up is a settled decision, so custom SMTP is needed
@@ -111,6 +129,26 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
 | 3 — The shelf (three.js, material system) | **first increment** — 152 cases render; no navigation, no interaction |
 | 4 — Polish (a11y, perf, SEO) | not started |
+
+### Phase 3's direction is settled — read `docs/05-3d-shelf.md` before touching `src/app/shelf/`
+
+Agreed with the owner 2026-08-11, in a design session with no code written. The headline is
+that **the five-row layout currently built should be replaced by one continuous run**,
+because `CLAUDE.md`'s "the shelf ages *as you move through it*" is not what five era bins do.
+Also settled: the wood ages and dissolves at the streaming end, the infinite feeling comes
+from lamp falloff rather than looping the data, and there is a switch between release order
+and story chronology in which the object itself changes — Captain America is a Blu-ray by
+release and a film can by story.
+
+Two findings from that session worth not re-deriving:
+
+- **The chronology data is more usable than it looks.** Of 152: 88 are a bare year, 45 are
+  parseable by rule (`c. 2004`, `2013–2014`, `Christmas 2013`, `5000 BC – 2024`), 5 are
+  relative to another title, and **14 have no place on a timeline at all**.
+- **Those 14 are the best part, not a data problem.** Both *Spider-Verse* films, *Loki*,
+  *What If…?*, *Marvel Zombies*, *Legion*, *Your Friendly Neighborhood Spider-Man* — the
+  titles literally *about* unstable reality. They float off the run rather than being
+  assigned a year. **Do not "fix" them.**
 
 ### What Phase 3 still owes
 
