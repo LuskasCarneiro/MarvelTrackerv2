@@ -14,7 +14,8 @@ import {
   BODY_MATERIAL,
   COVER_SHININESS,
   buildShelfLayout,
-  type ShelfRowData,
+  type ShelfTitleData,
+  type EraLabel,
   type CellUv,
 } from "./instancing";
 
@@ -64,14 +65,14 @@ function createCoverMaterial(map: THREE.Texture, shininess: number): THREE.MeshP
 }
 
 type MediumRow = {
-  medium: ShelfRowData["medium"];
+  medium: ShelfTitleData["medium"];
   bodyMatrices: THREE.Matrix4[];
   coverMatrices: THREE.Matrix4[];
   coverUvs: CellUv[];
 };
 
 /** One InstancedMesh for the case body, one for the cover -- two draw calls per medium,
- * regardless of how many titles are on that shelf. */
+ * regardless of how many titles that medium contributes to the run. */
 function buildMediumMeshes(row: MediumRow, coverTexture: THREE.Texture) {
   const dims = DIMENSIONS[row.medium];
   const count = row.bodyMatrices.length;
@@ -212,12 +213,18 @@ function PerfLogger() {
 }
 
 /**
- * Travel. A 66-title row is ~90 units long and orbiting is no way to cross it, so both the
- * era buttons and the arrow keys set one focus point and this eases the camera to it.
+ * Travel, and the lamp that travels with you.
  *
- * It moves the camera and the orbit target by the *same* delta, which preserves the framing
- * angle and the zoom the viewer chose — jumping the target alone swings the camera round
- * the wall and loses the aisle view the default framing exists to give.
+ * The run is ~50 units long and orbiting is no way to cross it, so the era buttons and the
+ * arrow keys set one focus point and this eases the camera to it. It moves the camera and
+ * the orbit target by the *same* delta, which preserves the framing angle and the zoom the
+ * viewer chose — jumping the target alone swings the camera round the wall and loses the
+ * aisle view the default framing exists to give.
+ *
+ * The lamp rides along at the focus. docs/05-3d-shelf.md §2: the infinite feeling comes from
+ * light with real falloff, not from looping the geometry, which would lie — 1977 must not
+ * follow 2026. A fixed lamp cannot do that job on a run this long; travel would simply take
+ * you out of the light and leave the far end evenly dim.
  */
 function CameraRig({ focus }: { focus: { x: number; y: number } }) {
   const camera = useThree((s) => s.camera);
@@ -225,8 +232,14 @@ function CameraRig({ focus }: { focus: { x: number; y: number } }) {
   // controls slot is a union across every controls implementation.
   const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
   const delta = useRef(new THREE.Vector3());
+  const lamp = useRef<THREE.PointLight>(null);
 
   useFrame((_, dt) => {
+    if (lamp.current) {
+      // Eased on x only: the lamp is a fixture in the room, at a fixed height and a fixed
+      // distance off the shelf face, and only the section it stands over changes.
+      lamp.current.position.x += (focus.x - lamp.current.position.x) * Math.min(1, dt * 3.5);
+    }
     if (!controls) return;
     delta.current.set(focus.x - controls.target.x, focus.y - controls.target.y, 0);
     if (delta.current.lengthSq() < 1e-6) return;
@@ -236,58 +249,86 @@ function CameraRig({ focus }: { focus: { x: number; y: number } }) {
     controls.update();
   });
 
-  return null;
+  return (
+    <pointLight
+      ref={lamp}
+      position={[focus.x, LAMP_HEIGHT, LAMP_Z]}
+      intensity={LAMP_INTENSITY}
+      distance={LAMP_REACH}
+      decay={1.5}
+      color="#ffd9ad"
+    />
+  );
 }
 
-// Where the camera looked before any of this existed; also the "reset" and the starting
-// focus, so the first frame is unchanged from the previous increment.
-const HOME_FOCUS = { x: 5.2, y: -0.9 };
-const STEP_X = 2.4; // ~2 cases per arrow press at amaray width
+/** Head-height over the run and standing off its face, like a picture light on a wall unit.
+ * The reach is deliberately short — about eight columns each way — because the falloff is
+ * the whole effect: travel far enough and what you came from is genuinely dark. */
+const LAMP_HEIGHT = -1.2;
+const LAMP_Z = 4.0;
+const LAMP_INTENSITY = 95;
+const LAMP_REACH = 15;
 
-export default function ShelfScene({ rows }: { rows: ShelfRowData[] }) {
-  const layout = useMemo(() => buildShelfLayout(rows, atlasCells, CELL_SIZE, ATLAS_SIZE), [rows]);
-  const groundWidth = Math.max(layout.bounds.maxX + 6, 20);
+const HOME_X = 9;
+const STEP_X = 2.8; // ~2 columns per arrow press
+
+export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[]; eras: EraLabel[] }) {
+  const layout = useMemo(() => buildShelfLayout(titles, atlasCells, CELL_SIZE, ATLAS_SIZE), [titles]);
+  const groundWidth = Math.max(layout.bounds.maxX + 12, 20);
   const router = useRouter();
-  const [focus, setFocus] = useState(HOME_FOCUS);
+
+  // Measured off the run rather than assumed from LEVELS: the occupied volume runs from the
+  // bottom board to the top of the tallest case standing on the top one, and the midpoint of
+  // *that* is what keeps all four levels in frame. Deriving it from the level pitch alone
+  // aims at the middle of the boards, which sits a case-height too low and crops the top row.
+  const wallCentreY = (layout.bounds.minY + layout.bounds.maxY) / 2;
+  const wallHeight = layout.bounds.maxY - layout.bounds.minY;
+  // Far enough back that the full height fits at this fov, with a little air.
+  const cameraZ = (wallHeight / 2) / Math.tan((42 / 2) * (Math.PI / 180)) + 2.5;
+  const homeFocus = useMemo(() => ({ x: HOME_X, y: wallCentreY }), [wallCentreY]);
+  const [focus, setFocus] = useState(homeFocus);
 
   const pick = useCallback((slug: string) => router.push(`/title/${slug}`), [router]);
 
   useEffect(() => {
-    const rowYs = layout.media.map((m) => m.rowY);
     function onKey(e: KeyboardEvent) {
       const dx = e.key === "ArrowRight" ? STEP_X : e.key === "ArrowLeft" ? -STEP_X : 0;
-      const dRow = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
-      if (!dx && !dRow && e.key !== "Home") return;
+      const dy = e.key === "ArrowUp" ? 1 : e.key === "ArrowDown" ? -1 : 0;
+      if (!dx && !dy && e.key !== "Home") return;
       e.preventDefault();
       setFocus((f) => {
-        if (e.key === "Home") return HOME_FOCUS;
+        if (e.key === "Home") return homeFocus;
         if (dx) return { ...f, x: Math.min(layout.bounds.maxX, Math.max(0, f.x + dx)) };
-        // Nearest row, then one step in the pressed direction — so Up/Down walk the eras
-        // from wherever the viewer has orbited to, not from an index this has to remember.
-        const nearest = rowYs.reduce((best, y, i) => (Math.abs(y - f.y) < Math.abs(rowYs[best] - f.y) ? i : best), 0);
-        return { ...f, y: rowYs[Math.min(rowYs.length - 1, Math.max(0, nearest + dRow))] };
+        return { ...f, y: Math.min(layout.bounds.maxY, Math.max(layout.bounds.minY, f.y + dy)) };
       });
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [layout]);
 
+  // The era's own name, from catalogue.ts, against the x where that era begins. Eras are
+  // landmarks along one run now, not rows to select, so these travel rather than jump levels.
+  const landmarks = layout.landmarks.map((l) => ({
+    ...l,
+    label: eras.find((e) => e.medium === l.medium)?.label ?? l.medium,
+  }));
+
   return (
     <div className="h-[85vh] w-full">
       <div className="flex flex-wrap gap-2 px-6 pb-3">
-        {layout.media.map((row) => (
+        {landmarks.map((landmark) => (
           <button
-            key={row.medium}
+            key={landmark.medium}
             type="button"
-            onClick={() => setFocus({ x: 3, y: row.rowY })}
+            onClick={() => setFocus({ x: landmark.startX + 2, y: wallCentreY })}
             className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-mid hover:text-label-bright"
           >
-            {row.label}
+            {landmark.label}
           </button>
         ))}
         <button
           type="button"
-          onClick={() => setFocus(HOME_FOCUS)}
+          onClick={() => setFocus(homeFocus)}
           className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-dim hover:text-label-bright"
         >
           Reset view
@@ -298,32 +339,33 @@ export default function ShelfScene({ rows }: { rows: ShelfRowData[] }) {
         // (a depth pass over each InstancedMesh, same cost as the colour pass) for 152
         // instanced objects on the no-discrete-GPU laptop this is designed for, and this
         // harness renders through SwiftShader (software GL) -- upgrade path is a single
-        // baked contact-shadow decal per row if the wall reads as floating without one.
+        // baked contact-shadow decal per level if the run reads as floating without one.
         dpr={[1, 1.5]}
-        // Looking down the rows at an angle, not square at them.
+        // Looking down the run at an angle, not square at it.
         //
         // The first framing sat almost on the wall normal — about 10 degrees off — and every
         // case read as a flat poster. That throws away the entire reason this is 3D: you
         // could not see that a VHS clamshell is chunky and a Blu-ray case is thin, nor that
-        // thickness varies with runtime, because none of the depth faced the camera. At ~40
-        // degrees the rows recede like a video shop aisle and the objects read as objects.
+        // thickness varies with runtime, because none of the depth faced the camera. At ~35
+        // degrees the run recedes like a video shop aisle and the objects read as objects.
         //
-        // Rows are 7/13/16/50/66 titles, so this is a readable section rather than the whole
-        // wall; OrbitControls explores the rest.
-        camera={{ position: [-1.6, 1.1, 6.4], fov: 42 }}
+        // Far enough back to hold all four levels: the era change is a vertical band sweeping
+        // the full height, and framing one shelf at a time would hide the one thing the
+        // column-major layout exists to show.
+        camera={{ position: [HOME_X - 5.5, wallCentreY + 0.7, cameraZ], fov: 42 }}
         gl={{ antialias: true }}
         onCreated={({ gl }) => gl.setClearColor("#14100d")}
       >
-        {/* Fog in the background colour, as CaseScene.tsx does -- it's what keeps the far
-            end of a 90-unit-wide catalogue from reading as a hard-edged void. */}
-        <fog attach="fog" args={["#14100d", 7, 26]} />
+        {/* Fog in the background colour, as CaseScene.tsx does. With the lamp's falloff this
+            is the second half of "no visible end": light stops reaching, then the air closes. */}
+        <fog attach="fog" args={["#14100d", 13, 38]} />
 
-        {/* Warm-white key + dim cool fill, straight from CaseScene.tsx -- not
-            --color-tungsten, which is the colour of chrome drawn in lamplight, not the
-            lamp itself; using it as a light source drowns every cover in sepia. */}
-        <ambientLight intensity={0.55} color="#f0e4d2" />
-        <directionalLight position={[-2.2, 3.0, 3.2]} intensity={1.5} color="#ffd9ad" />
-        <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.45} color="#b9c2cc" />
+        {/* A dim room, not a display case. The warm key is now the travelling lamp in
+            CameraRig; what is left here is enough ambience that an unlit cover is dark rather
+            than black, plus a cool fill for shape -- not --color-tungsten, which is the colour
+            of chrome drawn in lamplight, not the lamp itself. */}
+        <ambientLight intensity={0.12} color="#f0e4d2" />
+        <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.18} color="#b9c2cc" />
 
         <Suspense fallback={null}>
           <ShelfContent layout={layout} onPick={pick} />
@@ -335,12 +377,12 @@ export default function ShelfScene({ rows }: { rows: ShelfRowData[] }) {
           <PerfLogger />
         </Suspense>
 
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[groundWidth / 2 - 3, layout.bounds.minY - 0.08, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[groundWidth / 2 - 6, layout.bounds.minY - 0.08, 0]}>
           <planeGeometry args={[groundWidth, 20]} />
           <meshPhongMaterial color="#1c1713" shininess={8} />
         </mesh>
 
-        <OrbitControls makeDefault target={[HOME_FOCUS.x, HOME_FOCUS.y, 0]} minDistance={1.5} maxDistance={40} />
+        <OrbitControls makeDefault target={[homeFocus.x, homeFocus.y, 0]} minDistance={1.5} maxDistance={40} />
         <CameraRig focus={focus} />
       </Canvas>
     </div>

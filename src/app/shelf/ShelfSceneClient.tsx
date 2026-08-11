@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ShelfRowData } from "./instancing";
+import type { EraLabel, ShelfTitleData } from "./instancing";
 
 // three.js belongs to this route alone. `ssr: false` because WebGL needs a canvas that
 // does not exist on the server, and next/dynamic's docs are explicit that ssr:false has to
@@ -16,6 +16,6 @@ const ShelfScene = dynamic(() => import("./ShelfScene"), {
   ),
 });
 
-export default function ShelfSceneClient({ rows }: { rows: ShelfRowData[] }) {
-  return <ShelfScene rows={rows} />;
+export default function ShelfSceneClient({ titles, eras }: { titles: ShelfTitleData[]; eras: EraLabel[] }) {
+  return <ShelfScene titles={titles} eras={eras} />;
 }

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { cropCellUv, depthScale, runtimeLogRange, type ShelfRowData } from "./instancing";
+import {
+  buildShelfLayout,
+  cropCellUv,
+  depthScale,
+  DIMENSIONS,
+  LEVELS,
+  runtimeLogRange,
+  type ShelfTitleData,
+} from "./instancing";
 
 describe("cropCellUv", () => {
   // Atlas cells are 256x360 (aspect 0.711). Face aspects on either side of that catch both
@@ -34,10 +42,11 @@ describe("cropCellUv", () => {
 });
 
 describe("depthScale", () => {
-  const rows: ShelfRowData[] = [
-    { medium: "amaray", label: "DVD Amaray", titles: [{ slug: "a", runtimeMin: 24, tint: "" }, { slug: "b", runtimeMin: 5025, tint: "" }] },
+  const titles: ShelfTitleData[] = [
+    { slug: "a", runtimeMin: 24, tint: "", medium: "amaray" },
+    { slug: "b", runtimeMin: 5025, tint: "", medium: "amaray" },
   ];
-  const range = runtimeLogRange(rows);
+  const range = runtimeLogRange(titles);
 
   it("gives a null runtime the thinnest depth, never a fabricated middle", () => {
     expect(depthScale(null, range)).toBe(0.8);
@@ -55,7 +64,67 @@ describe("depthScale", () => {
   });
 
   it("does not divide by zero when every runtime is identical", () => {
-    const flat = runtimeLogRange([{ medium: "amaray", label: "DVD Amaray", titles: [{ slug: "a", runtimeMin: 100, tint: "" }] }]);
+    const flat = runtimeLogRange([{ slug: "a", runtimeMin: 100, tint: "", medium: "amaray" }]);
     expect(depthScale(100, flat)).toBe(1.0);
+  });
+});
+
+describe("buildShelfLayout — one continuous run, column-major", () => {
+  // Two eras' worth, enough to cross a medium boundary mid-run and to fill three columns.
+  const run: ShelfTitleData[] = Array.from({ length: 10 }, (_, i) => ({
+    slug: `t${i}`,
+    runtimeMin: 100,
+    tint: "hsl(20 20% 40%)",
+    medium: i < 4 ? ("vhs" as const) : ("amaray" as const),
+  }));
+  const cellSize = { w: 256, h: 360 };
+  const cells = Object.fromEntries(run.map((t, i) => [t.slug, { x: i * 256, y: 0 }]));
+  const layout = buildShelfLayout(run, cells, cellSize, 4096);
+
+  // Instance order within a medium is run order — that is the whole of the picking lookup,
+  // so a layout change that quietly reorders instances would send a click to the wrong title.
+  const positions = new Map<string, { x: number; y: number }>();
+  for (const bucket of layout.media) {
+    bucket.slugs.forEach((slug, i) => {
+      const p = bucket.bodyMatrices[i];
+      positions.set(slug, { x: p.elements[12], y: p.elements[13] });
+    });
+  }
+
+  it("places every title exactly once", () => {
+    expect(positions.size).toBe(run.length);
+  });
+
+  it("fills top to bottom within a column, then steps right", () => {
+    const column0 = run.slice(0, LEVELS).map((t) => positions.get(t.slug)!);
+    // One column is one moment in time: same x, descending y.
+    expect(new Set(column0.map((p) => p.x.toFixed(6))).size).toBe(1);
+    for (let i = 1; i < column0.length; i++) expect(column0[i].y).toBeLessThan(column0[i - 1].y);
+    // The next column stands to the right of it, clear of the widest case in column 0.
+    expect(positions.get("t4")!.x).toBeGreaterThan(column0[0].x + DIMENSIONS.vhs.w / 2);
+  });
+
+  it("reuses the same four levels for every column, rather than growing downwards", () => {
+    const levels = new Set([...positions.values()].map((p) => Math.round(p.y * 1000)));
+    // vhs and amaray differ in height, so a level can carry two distinct case centres; what
+    // must not happen is a new level per column.
+    expect(levels.size).toBeLessThanOrEqual(LEVELS * 2);
+    expect(layout.boardSlabMatrices).toHaveLength(LEVELS);
+  });
+
+  it("marks where each era begins, in run order, so the buttons travel rather than jump rows", () => {
+    expect(layout.landmarks.map((l) => l.medium)).toEqual(["vhs", "amaray"]);
+    expect(layout.landmarks[0].startX).toBeLessThan(layout.landmarks[1].startX);
+  });
+
+  it("keeps a narrow case centred in its column instead of shifting the run", () => {
+    // t3 (vhs, 110mm) shares column 0 with three other vhs; t4 starts the amaray column.
+    const mixed: ShelfTitleData[] = [
+      { slug: "wide", runtimeMin: 100, tint: "", medium: "amaray" },
+      { slug: "narrow", runtimeMin: 100, tint: "", medium: "vhs" },
+    ];
+    const mixedLayout = buildShelfLayout(mixed, {}, cellSize, 4096);
+    const xs = mixedLayout.media.flatMap((m) => m.bodyMatrices.map((b) => b.elements[12]));
+    expect(new Set(xs.map((x) => x.toFixed(6))).size).toBe(1);
   });
 });

@@ -10,15 +10,12 @@ export type ShelfTitleData = {
   slug: string;
   runtimeMin: number | null;
   tint: string;
+  medium: Medium;
 };
 
-export type ShelfRowData = {
-  medium: Medium;
-  /** The era's name, from catalogue.ts — user-facing copy, so it travels rather than being
-   * re-typed here. Used by the era jump buttons. */
-  label: string;
-  titles: ShelfTitleData[];
-};
+/** An era's name, from catalogue.ts — user-facing copy, so it travels rather than being
+ * re-typed here. The scene turns these into the landmark buttons. */
+export type EraLabel = { medium: Medium; label: string };
 
 // Real millimetres, 1 unit = 100mm — the brief's case-dimensions table, verbatim.
 const DIMENSIONS_MM: Record<Medium, { h: number; w: number; d: number }> = {
@@ -86,8 +83,8 @@ const BLANK_COVER_INSET = 0.006; // further forward still, so it wins the depth 
  * the extremes still land at 0.8x/1.2x, and a typical 90–180 minute film becomes
  * distinguishable from its neighbours instead of rounding down to "the short one".
  */
-export function runtimeLogRange(rows: ShelfRowData[]): { min: number; max: number } {
-  const runtimes = rows.flatMap((r) => r.titles.map((t) => t.runtimeMin)).filter((n): n is number => n != null);
+export function runtimeLogRange(titles: ShelfTitleData[]): { min: number; max: number } {
+  const runtimes = titles.map((t) => t.runtimeMin).filter((n): n is number => n != null);
   return { min: Math.log(Math.min(...runtimes)), max: Math.log(Math.max(...runtimes)) };
 }
 
@@ -149,7 +146,6 @@ export function cropCellUv(
 export type ShelfLayout = {
   media: {
     medium: Medium;
-    label: string;
     bodyMatrices: THREE.Matrix4[];
     coverMatrices: THREE.Matrix4[];
     coverUvs: CellUv[];
@@ -159,9 +155,13 @@ export type ShelfLayout = {
      * instance picking is this array plus `e.instanceId`.
      */
     slugs: string[];
-    /** Centre height of this row's cases — what the camera aims at when jumping to an era. */
-    rowY: number;
   }[];
+  /**
+   * Where each era begins along the run, in world x. Era boundaries are not layout any more
+   * (see docs/05-3d-shelf.md §1) — they are landmarks you pass, so this is what the jump
+   * buttons aim at rather than a row to select.
+   */
+  landmarks: { medium: Medium; startX: number }[];
   /**
    * 3 of 152 titles have no atlas cell at all (no poster on TMDB yet — see the brief).
    * Their instanced cover slot gets an arbitrary, always-hidden UV window (cell 0, since
@@ -191,58 +191,81 @@ function matrix(x: number, y: number, z: number, sx: number, sy: number, sz: num
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), IDENTITY_QUAT, new THREE.Vector3(sx, sy, sz));
 }
 
+/** How many shelves tall the run is. Four gives the mass of a real bookcase and keeps the
+ * journey to ~50 units instead of ~205 (see docs/05-3d-shelf.md §1). */
+export const LEVELS = 4;
+
+/** Every level is the same pitch, sized for the tallest case in the catalogue. Column-major
+ * means any medium can appear at any level, so a per-level height would have to be that max
+ * anyway — and a run whose shelves stepped up and down would read as broken. */
+const LEVEL_PITCH = Math.max(...Object.values(DIMENSIONS).map((d) => d.h)) + ROW_CLEARANCE + BOARD_THICKNESS;
+
 /**
- * Lays out every shelf row: face-out, left to right, small gap, chronological within a row
- * (rows arrive pre-sorted from catalogue.ts). Rows stack top to bottom in era order, each on
- * its own board, so moving down the wall moves forward through time — see the brief.
+ * One continuous run, chronological end to end, filled **column-major**: consecutive titles
+ * stack top to bottom within a column, then the run steps right. See docs/05-3d-shelf.md §1
+ * for why this replaced five era rows — "the shelf ages as you move through it" is not five
+ * bins you jump between, and rows of 7 against rows of 66 read as broken rather than designed.
+ *
+ * A column is one moment in time, so an era change sweeps past as a **vertical band**: you
+ * watch clamshells give way to Amarays across the full height at once. Era boundaries stop
+ * being layout and become landmarks, which is what `landmarks` is for.
+ *
+ * `titles` arrives in the order the run should read; this function does not sort.
  */
 export function buildShelfLayout(
-  rows: ShelfRowData[],
+  titles: ShelfTitleData[],
   atlasCells: Record<string, CellPx>,
   cellSize: { w: number; h: number },
   atlasSize: number
 ): ShelfLayout {
-  const logRange = runtimeLogRange(rows);
-  const media: ShelfLayout["media"] = [];
+  const logRange = runtimeLogRange(titles);
   const blankCovers: ShelfLayout["blankCovers"] = [];
   const boardSlabMatrices: THREE.Matrix4[] = [];
   const boardLipMatrices: THREE.Matrix4[] = [];
+  const landmarks: ShelfLayout["landmarks"] = [];
   const bounds = { minX: 0, maxX: 0, minY: Infinity, maxY: -Infinity };
 
-  let boardTop = 0;
-
-  rows.forEach((row, rowIndex) => {
-    const dims = DIMENSIONS[row.medium];
-
-    if (rowIndex > 0) {
-      // Each board sits low enough that THIS row's own cases clear the previous board's
-      // underside by ROW_CLEARANCE — using the row *above*'s height here instead
-      // undershoots whenever a row is taller than the one before it. steel (172mm) is
-      // followed by none (190mm): an 18mm increase that ate the 15cm clearance and clipped
-      // 'none' case tops 3cm through the steel board above (caught by hand-tracing the
-      // board Y values, not by looking at a screenshot — the default camera never frames
-      // that pair of rows).
-      boardTop -= ROW_CLEARANCE + BOARD_THICKNESS + dims.h;
+  // One bucket per medium, in first-seen order, because an InstancedMesh needs its instances
+  // grouped by the material they share. Instance order within a bucket is run order, which is
+  // what makes `slugs[instanceId]` a straight lookup when picking.
+  const buckets = new Map<Medium, ShelfLayout["media"][number]>();
+  const bucketFor = (medium: Medium) => {
+    let bucket = buckets.get(medium);
+    if (!bucket) {
+      bucket = { medium, bodyMatrices: [], coverMatrices: [], coverUvs: [], slugs: [] };
+      buckets.set(medium, bucket);
     }
+    return bucket;
+  };
 
-    const faceAspect = dims.w / dims.h;
-    const bodyMatrices: THREE.Matrix4[] = [];
-    const coverMatrices: THREE.Matrix4[] = [];
-    const coverUvs: CellUv[] = [];
+  const columns: ShelfTitleData[][] = [];
+  titles.forEach((title, i) => {
+    const column = Math.floor(i / LEVELS);
+    (columns[column] ??= []).push(title);
+  });
 
-    row.titles.forEach((title, i) => {
-      const x = i * (dims.w + GAP_X) + dims.w / 2;
+  let columnLeft = 0;
+  columns.forEach((column) => {
+    // A column is as wide as its widest member: a VHS (110mm) sharing a column with Amarays
+    // (135mm) centres within it rather than dragging the rest of the run out of alignment.
+    const columnWidth = Math.max(...column.map((t) => DIMENSIONS[t.medium].w));
+
+    column.forEach((title, level) => {
+      const dims = DIMENSIONS[title.medium];
+      const x = columnLeft + columnWidth / 2;
+      const boardTop = -level * LEVEL_PITCH;
       const y = boardTop + dims.h / 2;
       const ds = depthScale(title.runtimeMin, logRange);
       const d = dims.d * ds;
+      const bucket = bucketFor(title.medium);
 
       // Base geometry is built at the medium's nominal depth; only Z scales per instance.
-      bodyMatrices.push(matrix(x, y, 0, 1, 1, ds));
+      bucket.bodyMatrices.push(matrix(x, y, 0, 1, 1, ds));
 
       const cellPx = atlasCells[title.slug];
-      coverUvs.push(cropCellUv(cellPx ?? { x: 0, y: 0 }, cellSize, atlasSize, faceAspect));
-      const coverZ = d / 2 + COVER_INSET;
-      coverMatrices.push(matrix(x, y, coverZ, 1, 1, 1));
+      bucket.coverUvs.push(cropCellUv(cellPx ?? { x: 0, y: 0 }, cellSize, atlasSize, dims.w / dims.h));
+      bucket.coverMatrices.push(matrix(x, y, d / 2 + COVER_INSET, 1, 1, 1));
+      bucket.slugs.push(title.slug);
 
       if (!cellPx) {
         blankCovers.push({
@@ -253,32 +276,33 @@ export function buildShelfLayout(
         });
       }
 
+      if (!landmarks.some((l) => l.medium === title.medium)) {
+        landmarks.push({ medium: title.medium, startX: x });
+      }
+
       bounds.maxX = Math.max(bounds.maxX, x + dims.w / 2);
       bounds.minY = Math.min(bounds.minY, boardTop);
       bounds.maxY = Math.max(bounds.maxY, y + dims.h / 2);
     });
 
-    const rowWidth = row.titles.length ? row.titles.length * dims.w + (row.titles.length - 1) * GAP_X : 0;
-    const rowCenterX = rowWidth / 2;
-    const slabWidth = rowWidth + BOARD_MARGIN * 2;
-
-    boardSlabMatrices.push(matrix(rowCenterX, boardTop - BOARD_THICKNESS / 2, 0, slabWidth, BOARD_THICKNESS, BOARD_DEPTH));
-    // The lip: a brighter trim strip along the board's front-top edge — the one surface a
-    // face-out row never hides behind its own cases.
-    boardLipMatrices.push(
-      matrix(rowCenterX, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, slabWidth, BOARD_LIP_HEIGHT, 0.03)
-    );
-
-    media.push({
-      medium: row.medium,
-      label: row.label,
-      bodyMatrices,
-      coverMatrices,
-      coverUvs,
-      slugs: row.titles.map((t) => t.slug),
-      rowY: boardTop + dims.h / 2,
-    });
+    columnLeft += columnWidth + GAP_X;
   });
 
-  return { media, blankCovers, boardSlabMatrices, boardLipMatrices, bounds };
+  // One board per level, spanning the whole run: the furniture is continuous even though the
+  // objects standing on it change in steps (docs/05-3d-shelf.md §3).
+  const runWidth = bounds.maxX + BOARD_MARGIN * 2;
+  const boardCenterX = runWidth / 2 - BOARD_MARGIN;
+  for (let level = 0; level < LEVELS; level++) {
+    const boardTop = -level * LEVEL_PITCH;
+    boardSlabMatrices.push(
+      matrix(boardCenterX, boardTop - BOARD_THICKNESS / 2, 0, runWidth, BOARD_THICKNESS, BOARD_DEPTH)
+    );
+    // The lip: a brighter trim strip along the board's front-top edge — the one surface a
+    // face-out run never hides behind its own cases.
+    boardLipMatrices.push(
+      matrix(boardCenterX, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, runWidth, BOARD_LIP_HEIGHT, 0.03)
+    );
+  }
+
+  return { media: [...buckets.values()], blankCovers, landmarks, boardSlabMatrices, boardLipMatrices, bounds };
 }

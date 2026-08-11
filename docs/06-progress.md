@@ -148,9 +148,10 @@ Two findings from that session worth not re-deriving:
 
 ### What Phase 3 still owes
 
-`/shelf` renders the whole catalogue at 15 draw calls, is linked from the masthead, and as
-of 2026-08-11 you can travel it and click into a title. What it does **not** do, roughly in
-order of how much each is missed:
+`/shelf` is **one continuous run** now, not five era rows — 152 titles, column-major, four
+shelves tall, release order end to end, at 13 draw calls, with a lamp that travels with you.
+You can cross it and click into a title. What it does **not** do, roughly in order of how
+much each is missed:
 
 1. ~~**Navigation.**~~ **Done 2026-08-11.** Era buttons and the arrow keys set one focus
    point; a rig eases the camera to it. Up/Down walk the eras, Left/Right travel a row,
@@ -243,6 +244,37 @@ order of how much each is missed:
 ---
 
 ## Log
+
+### 2026-08-12 — one continuous run, and a lamp that travels with you
+
+`docs/05-3d-shelf.md` §7 puts the continuous run first and says to look at it before funding
+anything else, so that is all this is: the structural change, plus the lamp §2 asks for.
+
+- **Five era rows became one column-major run**, four shelves tall, release order end to
+  end. `buildShelfLayout` takes a flat list now and buckets instances by medium internally,
+  so the draw-call story is unchanged (13, down from 15 — four long boards instead of five
+  short ones). A column is one moment in time; the medium changes underfoot as you travel.
+- **The lamp rides the focus point.** Ambient dropped to 0.12 and the warm directional key
+  is gone; what lights the run is one point light with real falloff, eased along x with the
+  camera. Travel far enough and where you came from is genuinely dark — §2's "infinite
+  without lying", since looping the geometry would put 1977 after 2026.
+- **The framing is measured, not guessed.** Camera height and distance come from the run's
+  own bounds; deriving them from the level pitch aimed a case-height too low and cropped the
+  top shelf, which is what the first screenshot showed.
+
+**Looked at, four passes, before being called done** — the v1 lesson holds and earned its
+keep twice here. Pass 1 cropped the top and bottom shelves and lit the whole run evenly;
+pass 2 fixed the framing and the falloff; pass 3 filled the dead third of the frame.
+
+**Picking re-verified, not assumed.** Instance → slug is a bare array index, so a layout
+rewrite that reorders instances yields a *plausible wrong title*, never an error. Three
+covers identified by eye in the screenshot were clicked: Captain America (1990), Blade II
+(2002) and Howard the Duck (1986) each opened their own page.
+
+**Measured once it existed:** the eras are wildly uneven along the run — VHS is 2 columns of
+38 and the streaming era is 17. The first three eras share the opening screen. Recorded in
+`docs/05-3d-shelf.md`, because it decides how much the landmark buttons and the era-sweep
+"vertical band" are worth before anything is spent on either.
 
 ### 2026-08-11 — the shelf can be travelled and clicked
 

@@ -11,12 +11,34 @@ from, and `docs/02-design-system.md` for the palette and the lamp.
 
 ## Where it actually stands
 
-`/shelf` renders all 152 titles as home-video cases in five era rows, at **15 draw calls**
-and 46k triangles — one `InstancedMesh` per medium for the bodies and one for the covers, so
-a row of 66 costs what a row of 7 costs. Covers come from a single 4096² atlas. It is linked
-from the masthead.
+**Built as of 2026-08-12: §1's continuous run, §2's travelling lamp, §6's click-through,
+arrow keys and era landmarks.** `/shelf` renders all 152 titles as one column-major run,
+four shelves tall, release order end to end, at **13 draw calls** and 46k triangles — one
+`InstancedMesh` per medium for the bodies and one for the covers, so the 66 streaming-era
+titles cost what the 7 VHS ones cost. Covers come from a single 4096² atlas.
 
-It does not navigate, nothing is clickable, and the materials are shininess-only.
+Not built: pull-and-turn, the two orderings, the wear gradient and back panel, the
+historical objects, spine text, era materials. Scroll still zooms rather than travels.
+
+### Measured once it existed: the eras are not evenly spaced, and landmarks are cheap
+
+Column-major packing divides the run length by four, and the catalogue is heavily weighted
+to the present. The five eras begin at these columns of 38:
+
+| era | first column | share of the run |
+|---|---|---|
+| VHS clamshell | 0 | 2 columns |
+| DVD Amaray | 1 | 3 columns |
+| Blu-ray case | 5 | 4 columns |
+| Steelbook | 9 | 12 columns |
+| No physical release | 21 | **17 columns — 66 titles** |
+
+So the first three eras all sit within the opening screen, and an era jump between them
+moves the camera a metre. That is not a layout fault to fix, it is what the catalogue is:
+Marvel made more in the last six years than in the previous thirty. It does mean the
+landmark buttons earn their keep only at the far end, and that **the "vertical band" era
+sweep is a one-column event for the early media** — worth knowing before spending anything
+on making those transitions ceremonial.
 
 **The spike that preceded it** (`/spike/case`, one Amaray at real dimensions) answered the
 question Phase 3 was funded on: procedural geometry does read as a physical object, and
