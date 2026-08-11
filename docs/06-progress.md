@@ -10,32 +10,29 @@ any session that changed anything, then commit and push.
 **Phase 2 — Accounts. IN PROGRESS.** One thing is owed by the owner and it is blocking real
 sign-ups; see immediately below.
 
-### ⚠ Sign-up is broken on the live site, and only the owner can fix it
+### ✅ Resolved 2026-08-11 — the redirect allow-list, and the one it now excludes
 
-**Supabase's Site URL is still `http://localhost:3000`, and the production domain is not in
-the redirect allow-list.** Measured by asking the auth server, not by reading the dashboard:
+The owner fixed it in the dashboard. Re-measured by asking the auth server rather than
+reading the settings page:
 
-| `redirect_to` | result |
-|---|---|
-| `https://marvel-trackerv2.vercel.app/auth/confirm` | **blocked** → falls back to `http://localhost:3000` |
-| `http://localhost:3000/auth/confirm` | allowed |
-| `https://evil.example.com/steal` | blocked — so the mechanism works, the list is just wrong |
+| `redirect_to` | before | now |
+|---|---|---|
+| `https://marvel-trackerv2.vercel.app/auth/confirm` | blocked | **allowed** |
+| `http://localhost:3000/auth/confirm` | allowed | **blocked** |
+| `https://evil.example.com/steal` | blocked | blocked |
 
-A stranger signing up on the live site gets a real email with a link that sends them to
-`http://localhost:3000`, which on their machine is nothing. **The account is created and can
-never be confirmed**, and every surface — build, deploy, page render — looks healthy.
+Production works. **Local development sign-up now does not** — `http://localhost:3000/**`
+came off the list when production went on. Both belong there. It costs nothing to add back
+and it will otherwise waste somebody's afternoon in a future session, because the failure
+looks like broken code rather than a setting.
 
-Fix in the Supabase dashboard, **Authentication → URL Configuration**:
-1. Site URL → `https://marvel-trackerv2.vercel.app`
-2. Redirect URLs → add `https://marvel-trackerv2.vercel.app/**`, keep `http://localhost:3000/**`
+**Still true:** Supabase's built-in email sender is rate limited to a few messages an hour
+and is meant for development. Public sign-up is a settled decision, so custom SMTP is needed
+before this is announced anywhere. Not a code change.
 
-Also, before this is shown to anyone: Supabase's built-in email sender is rate limited to a
-few messages an hour and is meant for development. Public sign-up is settled, so custom SMTP
-is needed. Not a code change.
-
-**Because of this, the end-to-end flow — sign up, confirm, sign in, rate — has never been
-run against production by anyone.** Everything below it is verified; that path is not, and
-cannot be from this machine.
+**Still unverified by anyone:** the full sign up → confirm → sign in → rate path, end to
+end, against production. It is now *possible*, which it was not before, but it needs a real
+mailbox and a human.
 
 ### What is done and verified
 

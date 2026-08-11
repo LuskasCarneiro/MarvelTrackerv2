@@ -5,30 +5,26 @@ Accounts, and the privacy promise. The code is in `src/lib/supabase/`, `src/app/
 
 ---
 
-## ⚠ Owner action required — sign-up is broken on the live site until this is done
+## The redirect allow-list — fixed for production, now missing localhost
 
-**Supabase's Site URL is still `http://localhost:3000` and the deployed domain is not in the
-redirect allow-list.** Measured, not assumed — asking the auth server directly:
+Resolved 2026-08-11. Re-measured by asking the auth server, which is the only way to know:
 
-| redirect_to | result |
-|---|---|
-| `https://marvel-trackerv2.vercel.app/auth/confirm` | **blocked** → falls back to `http://localhost:3000` |
-| `http://localhost:3000/auth/confirm` | allowed |
-| `https://evil.example.com/steal` | blocked *(the mechanism works — the list is just wrong)* |
+| redirect_to | before | now |
+|---|---|---|
+| `https://marvel-trackerv2.vercel.app/auth/confirm` | blocked → fell back to `localhost:3000` | **allowed** |
+| `http://localhost:3000/auth/confirm` | allowed | **blocked** |
+| `https://evil.example.com/steal` | blocked | blocked |
 
-So a real person signing up on the live site receives a confirmation email whose link sends
-them to `http://localhost:3000`, which on their machine is nothing at all. The account is
-created and can never be confirmed. **The site looks like it works and the deploy is green**
-— which is the same shape of fault as the Phase 0 deployment bug, arriving from a different
-direction.
+**Production sign-up works. Local development sign-up does not** — localhost came off the
+list as production went on, and both belong there. Add `http://localhost:3000/**` back under
+**Authentication → URL Configuration**.
 
-Fix, in the Supabase dashboard under **Authentication → URL Configuration**:
-
-1. Set **Site URL** to `https://marvel-trackerv2.vercel.app`
-2. Add to **Redirect URLs**: `https://marvel-trackerv2.vercel.app/**` and keep
-   `http://localhost:3000/**` for local work
-
-Re-run the check in this file's table to confirm; it needs no credentials beyond `.env`.
+Worth stating why this class of setting keeps biting: it names an environment, it lives in a
+dashboard where no diff will ever show it to you, and it fails only for people who are not
+whoever set it up. Originally that was everyone except the developer; now it is only the
+developer. **Check it by asking the service, not by reading the settings page** — the probe
+above needs no credentials beyond `.env`, and the hostile URL in it is what distinguishes
+"the list is wrong" from "the list is empty".
 
 **Also worth knowing before real users arrive:** Supabase's built-in email service is rate
 limited to a handful of messages per hour, and it is intended for development. Public

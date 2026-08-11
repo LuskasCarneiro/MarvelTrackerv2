@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { shelves, spineWidth } from "@/lib/catalogue";
 import ShelfWall, { type ShelfRow } from "./ShelfWall";
 
@@ -33,6 +34,16 @@ export default function Home() {
         <p className="mt-3 max-w-prose text-lg text-label-mid">
           Every film and series, on the shelf it shipped on.
         </p>
+        {/* The 3D shelf is the same catalogue as the object it describes. Linked rather than
+            substituted: this page works without WebGL, on a slow connection and for a
+            crawler, and the room costs 3.7 MB to enter — so entering it stays a choice. */}
+        <Link
+          href="/shelf"
+          className="mt-5 inline-block font-display text-xs uppercase tracking-[0.15em] text-label-dim transition duration-200 hover:text-tungsten"
+          style={{ fontVariationSettings: '"wdth" 100, "wght" 500' }}
+        >
+          See the shelf in 3D <span aria-hidden="true">&rarr;</span>
+        </Link>
       </header>
 
       <ShelfWall rows={rows} />
