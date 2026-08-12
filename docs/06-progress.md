@@ -123,7 +123,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
-| 3 — The shelf (three.js, material system) | **in progress** — twelve per-universe bookcases, scroll pulls a title out, click-through, two orderings, touch and reduced-motion paths; no historical objects, no spine text |
+| 3 — The shelf (three.js, material system) | **in progress** — twelve per-universe bookcases, scroll pulls a title out, click-through, two orderings with the objects changing, touch and reduced-motion paths, browser smoke tests in CI; no spine text, no bump or foil maps |
 | 4 — Polish (a11y, perf, SEO) | **begun** — metadata, sitemap, robots and structured data done; a11y audit and perf not started |
 
 ### Phase 3's direction — read `docs/05-3d-shelf.md` §0 first
@@ -237,6 +237,25 @@ does **not** do, roughly in order of how much each is missed:
 ---
 
 ## Log
+
+### 2026-08-12 — a caption that failed the contrast floor, and the basics it lacked
+
+**The shelf caption shipped at 3.16:1 for an afternoon.** It is the one piece of text in this
+app with no known background — it floats over a canvas showing whatever cover art is behind
+it — and its scrim was 85% opaque. Against a bright cover the dim second line fell under the
+4.5 floor. The token contrast tests could not see it, and neither could a screenshot taken
+over a dark poster.
+
+Opaque now, and guarded in `scripts/contrast.test.ts` by a test that **reads the opacity out
+of the component** rather than restating it. Broken on purpose first to prove the guard
+works: 3.29:1 and red, then green once restored. A guard that has never failed is not yet a
+guard.
+
+Also added, both simply missing: a **skip link** (without one every page starts at the
+masthead's auth link, and `/shelf` starts at a canvas that swallows the arrow keys), and a
+**link from the shelf to the catalogue** — the honest accessible equivalent of a WebGL room
+is not an `aria-label`, it is the same 152 titles as text, and that page already existed with
+nothing pointing at it from here.
 
 ### 2026-08-12 — Phase 4 begun: findable, shareable, and claiming nothing
 

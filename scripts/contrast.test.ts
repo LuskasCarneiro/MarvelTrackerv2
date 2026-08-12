@@ -122,6 +122,40 @@ describe('WCAG contrast ratios', () => {
     expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 
+  /**
+   * The shelf caption is the one piece of text in this app that does not sit on a known
+   * background: it floats over a WebGL canvas showing whatever cover art happens to be
+   * behind it. Its scrim is therefore the background, and any transparency in that scrim
+   * lets the artwork through.
+   *
+   * This is not hypothetical. The scrim shipped at 85% for an afternoon, and against a
+   * bright cover the dim second line measured **3.16:1** — under the floor, invisible to the
+   * token tests above, and invisible to a screenshot taken over a dark poster. The opacity
+   * is read out of the component rather than restated here, so lowering it fails this test.
+   */
+  it('the shelf caption sits on a scrim opaque enough for its own text', () => {
+    const scene = readFileSync(resolve(__dirname, '../src/app/shelf/ShelfScene.tsx'), 'utf-8');
+    const scrim = scene.match(/rounded bg-shelf-dark(\/(\d+))?\s/);
+    expect(scrim, 'the caption scrim was renamed; this test no longer guards it').not.toBeNull();
+
+    const alpha = scrim![2] ? Number(scrim![2]) / 100 : 1;
+    // Worst case is white artwork directly behind the caption.
+    const behind = [1, 1, 1] as const;
+    const scrimRgb = hexToRgb(colors['color-shelf-dark']).map(
+      (channel, i) => alpha * channel + (1 - alpha) * behind[i]
+    ) as [number, number, number];
+    const scrimLuminance =
+      0.2126 * toLinearRgb(scrimRgb[0]) + 0.7152 * toLinearRgb(scrimRgb[1]) + 0.0722 * toLinearRgb(scrimRgb[2]);
+
+    // The caption's two lines: label-bright for the name, label-dim for the year and form.
+    for (const token of ['color-label-bright', 'color-label-dim']) {
+      const textLuminance = getLuminance(colors[token]);
+      const ratio =
+        (Math.max(textLuminance, scrimLuminance) + 0.05) / (Math.min(textLuminance, scrimLuminance) + 0.05);
+      expect(ratio, `${token} on the caption scrim at ${alpha * 100}% over white artwork`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('--color-tungsten on --color-shelf-dark should be ≥4.5:1', () => {
     const ratio = getContrastRatio(
       colors['color-tungsten'],

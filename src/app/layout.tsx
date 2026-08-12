@@ -54,10 +54,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${archivo.variable} ${newsreader.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        {/* The first thing a keyboard reaches, and only visible once it does. Without it,
+            every page starts with the masthead's auth link, and /shelf starts with a canvas
+            that swallows the arrow keys. */}
+        <a
+          href="#content"
+          className="sr-only rounded bg-shelf-raised px-4 py-2 text-sm text-label-bright focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+        >
+          Skip to content
+        </a>
         <header className="flex justify-end border-b border-shelf-edge px-6 py-4">
           <AuthStatus />
         </header>
-        {children}
+        <div id="content" className="flex flex-1 flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );

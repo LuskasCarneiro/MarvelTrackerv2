@@ -774,9 +774,11 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           route's bundle would cost more than it tells you here. */}
       {active && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-8">
-          {/* On a scrim, not straight onto the room: the caption sits over whatever artwork
-              happens to be behind it, and the quality floor is a contrast ratio, not a hope. */}
-          <div className="flex flex-col items-center gap-1 rounded bg-shelf-dark/85 px-5 py-2 text-center">
+          {/* On an opaque scrim, not a translucent one: the caption sits over whatever
+              artwork happens to be behind it, and at 85% over a bright cover the dim second
+              line measured 3.16:1 — under the 4.5 floor. Measured, not eyeballed; the guard
+              is in scripts/contrast.test.ts. */}
+          <div className="flex flex-col items-center gap-1 rounded bg-shelf-dark px-5 py-2 text-center">
           <p className="font-display text-sm uppercase tracking-[0.16em] text-label-bright">{active.label}</p>
           <p className="text-xs text-label-dim">
             {order === "release" ? active.releaseYear : storyYearLabel(active.storyYear)} · {FORM_NAMES[active.form]} ·

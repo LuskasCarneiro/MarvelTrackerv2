@@ -48,9 +48,17 @@ export default function ShelfPage() {
   return (
     <main className="min-h-screen bg-shelf-dark">
       <div className="px-6 py-4">
-        <h1 className="font-display text-xs uppercase tracking-[0.2em] text-label-dim">
-          The shelf — Phase 3
-        </h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h1 className="font-display text-xs uppercase tracking-[0.2em] text-label-dim">
+            The shelf — Phase 3
+          </h1>
+          {/* The honest accessible equivalent of a WebGL canvas is not an aria-label, it is
+              the same 152 titles as text. That page exists; this is a link to it, for anyone
+              who cannot use the room and for anyone who would simply rather read. */}
+          <a href="/" className="text-sm text-label-mid underline hover:text-label-bright">
+            Browse the same titles as a catalogue
+          </a>
+        </div>
         <p className="mt-1 text-sm text-label-mid">
           One shelf per universe, each as tall as its collection needs. Scroll or swipe to draw a title out of the
           shelf and put it back; the arrows move to the next universe.{" "}
