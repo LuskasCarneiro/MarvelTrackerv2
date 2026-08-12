@@ -62,23 +62,29 @@ describe("depthScale", () => {
   ]);
 
   it("gives a null runtime the thinnest depth, never a fabricated middle", () => {
-    expect(depthScale(null, range)).toBe(0.8);
+    expect(depthScale(null, range)).toBe(depthScale(24, range));
   });
 
-  it("puts the catalogue minimum at 0.8x and the maximum at 1.2x", () => {
-    expect(depthScale(24, range)).toBeCloseTo(0.8, 6);
-    expect(depthScale(5025, range)).toBeCloseTo(1.2, 6);
+  // The range itself is a design choice and moves; what must hold is that the shortest title
+  // is the thinnest object, the longest the thickest, and the spread is wide enough to see.
+  it("spreads the catalogue across a visibly different range of thicknesses", () => {
+    const thinnest = depthScale(24, range);
+    const thickest = depthScale(5025, range);
+    expect(thinnest).toBeLessThan(1);
+    expect(thickest).toBeGreaterThan(1);
+    expect(thickest / thinnest).toBeGreaterThan(1.6);
   });
 
   it("orders a typical film thicker than the shortest title without pinning it to the max", () => {
     const s = depthScale(126, range); // a typical ~2h film
-    expect(s).toBeGreaterThan(0.8);
-    expect(s).toBeLessThan(1.0); // well short of the multi-season-series max
+    expect(s).toBeGreaterThan(depthScale(24, range));
+    expect(s).toBeLessThan(depthScale(5025, range) * 0.8); // well short of the multi-season max
   });
 
   it("does not divide by zero when every runtime is identical", () => {
     const flat = runtimeLogRange([title("a", "amaray")]);
-    expect(depthScale(100, flat)).toBe(1.0);
+    expect(depthScale(100, flat)).toBeGreaterThan(0);
+    expect(Number.isFinite(depthScale(100, flat))).toBe(true);
   });
 });
 

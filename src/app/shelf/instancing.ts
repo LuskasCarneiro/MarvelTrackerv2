@@ -111,7 +111,9 @@ export const BODY_MATERIAL: Record<Form, { color: string; shininess: number; spe
   vhs: { color: "#17130f", shininess: 25, specular: "#2b241c" },
   amaray: { color: "#15120f", shininess: 55, specular: "#3a332b" }, // = the spike, exactly
   bluray: { color: "#100e0c", shininess: 70, specular: "#463e34" },
-  steel: { color: "#131313", shininess: 100, specular: "#8f897f" },
+  // Steel is the one form that should catch the lamp and throw it back: embossed metal,
+  // not a printed sleeve. The cheap half of PLAN.md's foil map, without the map.
+  steel: { color: "#15161a", shininess: 150, specular: "#bcb4a4" },
   none: { color: "#231f1a", shininess: 4, specular: "#1a1714" },
 };
 
@@ -126,7 +128,7 @@ export const COVER_SHININESS: Record<Form, number> = {
   vhs: 60,
   amaray: 95, // = the spike, exactly
   bluray: 105,
-  steel: 115,
+  steel: 145,
   none: 4,
 };
 
@@ -157,11 +159,22 @@ export function runtimeLogRange(titles: ShelfTitleData[]): { min: number; max: n
   return { min: Math.log(Math.min(...runtimes)), max: Math.log(Math.max(...runtimes)) };
 }
 
+/**
+ * How far thickness may stray from a form's nominal depth. Widened from 0.8-1.2x once the
+ * objects were seen at a shelf's framing rather than one at a time: at plus or minus 20% a
+ * two-hour film and a six-season run were the same object, which wastes the one channel that
+ * is free here. Wider than reality, deliberately, and for the same reason spineWidth()
+ * exaggerates in the DOM: the ordering is what carries the meaning, and it has to survive
+ * being seen edge-on, at an angle, in the dark.
+ */
+const DEPTH_MIN = 0.7;
+const DEPTH_MAX = 1.45;
+
 export function depthScale(runtimeMin: number | null, logRange: { min: number; max: number }): number {
-  if (runtimeMin == null) return 0.8;
-  if (logRange.max === logRange.min) return 1.0;
+  if (runtimeMin == null) return DEPTH_MIN;
+  if (logRange.max === logRange.min) return (DEPTH_MIN + DEPTH_MAX) / 2;
   const t = (Math.log(runtimeMin) - logRange.min) / (logRange.max - logRange.min);
-  return 0.8 + 0.4 * Math.min(1, Math.max(0, t));
+  return DEPTH_MIN + (DEPTH_MAX - DEPTH_MIN) * Math.min(1, Math.max(0, t));
 }
 
 export type CellPx = { x: number; y: number };
