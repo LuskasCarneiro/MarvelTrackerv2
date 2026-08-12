@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, useProgress, useTexture } from "@react-three/drei";
@@ -40,12 +41,10 @@ if (atlasManifest.atlases.length > 1) {
   console.warn(`[shelf] ${atlasManifest.atlases.length} atlas sheets committed; only "${ATLAS_PATH}" is sampled.`);
 }
 
-// Mirrors --color-shelf-raised / --color-shelf-edge in globals.css. Not read live via
-// getComputedStyle: three materials want plain colours, this file has no other reason to
-// touch the DOM, and both values are contrast-checked in CI against their CSS source, so a
-// commented, hardcoded mirror is simpler than a runtime dependency on layout timing.
-const SHELF_RAISED = "#1c1713";
-const SHELF_EDGE = "#2a231c";
+// The board colours used to be mirrored from globals.css here. They are per-instance now —
+// see WOOD_FRESH / WOOD_WORN and tintByWear — because each unit's furniture is aged by what
+// stands on it, and an instance colour is not something a material can hold.
+
 
 /**
  * The technical crux (see the brief): an InstancedMesh shares one material, so which atlas
@@ -323,9 +322,7 @@ function ShelfContent({
   // without this guard every swipe opens a title page.
   const pressedAt = useRef<{ x: number; y: number } | null>(null);
 
-  const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
-  const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
   const lamp = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
 
@@ -355,7 +352,7 @@ function ShelfContent({
    * selection. The camera follows the case being pulled, so it is always the one in the
    * middle of the screen, and the lamp follows the camera.
    */
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     const items = universe.items;
     if (!items.length) return;
 
@@ -396,6 +393,11 @@ function ShelfContent({
 
     // Follow. Camera and orbit target move by the same delta, which keeps the viewer's angle
     // and zoom — moving the target alone swings the camera round the shelf.
+    // Read off the frame state rather than captured from render: these are the objects
+    // three.js expects to be mutated, and a value obtained during render must not be.
+    const camera = state.camera;
+    const controls = state.controls as unknown as { target: THREE.Vector3; update: () => void } | null;
+
     if (controls) {
       const ease = instant ? 1 : Math.min(1, dt * 3.2);
       // Horizontally the camera goes where the case is; vertically it only leans towards it.
@@ -511,27 +513,40 @@ function webglSupported(): boolean {
   }
 }
 
+/**
+ * A media query is an external store, so it is read with the hook meant for one. The obvious
+ * version — useState plus an effect that sets it — is a cascading render, and React's lint
+ * rules reject it.
+ */
+function useMediaQuery(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = window.matchMedia(query);
+      list.addEventListener("change", onChange);
+      return () => list.removeEventListener("change", onChange);
+    },
+    [query]
+  );
+  // The server snapshot is `false` for both queries this app asks: motion is allowed and the
+  // pointer is fine unless the browser says otherwise.
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false
+  );
+}
+
 /** The camera's easing is time-based motion the viewer did not ask for, so it goes when
  * reduced motion is set. The pull itself stays: it is driven by the scroll position, not by
  * a clock — it is the gesture, not an animation played at you. */
 function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduced(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-  return reduced;
+  return useMediaQuery("(prefers-reduced-motion: reduce)");
 }
 
 /** Touch devices get no wheel and no hover, so one finger walks the shelf instead of
  * orbiting it — the shelf is the thing, and looking around is the desktop luxury. */
 function useCoarsePointer(): boolean {
-  const [coarse, setCoarse] = useState(false);
-  useEffect(() => setCoarse(window.matchMedia("(pointer: coarse)").matches), []);
-  return coarse;
+  return useMediaQuery("(pointer: coarse)");
 }
 
 /** Pixels of scroll per title. One flick of a trackpad brings out about two. */
@@ -583,8 +598,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   const reducedMotion = usePrefersReducedMotion();
   const coarsePointer = useCoarsePointer();
   const { progress: loaded } = useProgress();
-  const [canDraw, setCanDraw] = useState(true);
-  useEffect(() => setCanDraw(webglSupported()), []);
+  const [canDraw] = useState(webglSupported);
 
   const goToUniverse = useCallback(
     (index: number) => {
@@ -655,9 +669,9 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         <p className="text-sm text-label-mid">
           This shelf needs WebGL, which this browser has turned off or does not support.
         </p>
-        <a className="text-sm text-label-bright underline" href="/">
+        <Link className="text-sm text-label-bright underline" href="/">
           Browse the same 152 titles as a catalogue
-        </a>
+        </Link>
       </div>
     );
   }

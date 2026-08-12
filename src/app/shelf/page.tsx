@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { titles } from "@/lib/catalogue";
 import ShelfSceneClient from "./ShelfSceneClient";
 import type { UniverseData } from "./instancing";
@@ -55,9 +56,9 @@ export default function ShelfPage() {
           {/* The honest accessible equivalent of a WebGL canvas is not an aria-label, it is
               the same 152 titles as text. That page exists; this is a link to it, for anyone
               who cannot use the room and for anyone who would simply rather read. */}
-          <a href="/" className="text-sm text-label-mid underline hover:text-label-bright">
+          <Link href="/" className="text-sm text-label-mid underline hover:text-label-bright">
             Browse the same titles as a catalogue
-          </a>
+          </Link>
         </div>
         <p className="mt-1 text-sm text-label-mid">
           One shelf per universe, each as tall as its collection needs. Scroll or swipe to draw a title out of the
