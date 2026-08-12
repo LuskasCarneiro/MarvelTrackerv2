@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import { Archivo, Newsreader } from "next/font/google";
 import AuthStatus from "@/components/AuthStatus";
 import "./globals.css";
@@ -23,12 +24,27 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
+  // Without metadataBase every Open Graph image resolves relative to whatever host served the
+  // page, so a preview deployment would advertise itself as the canonical home of all 152
+  // titles. One origin, stated once, in lib/seo.ts.
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Marvel Tracker — the shelf",
     template: "%s · Marvel Tracker",
   },
   description:
     "Every Marvel film and series, kept as a shelf of home-video releases. The object tells you the era.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Marvel Tracker",
+    locale: "en_GB",
+    url: "/",
+    title: "Marvel Tracker — the shelf",
+    description:
+      "Every Marvel film and series, kept as a shelf of home-video releases. The object tells you the era.",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

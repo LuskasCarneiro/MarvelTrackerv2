@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { titles } from "@/lib/catalogue";
 import ShelfSceneClient from "./ShelfSceneClient";
 import type { UniverseData } from "./instancing";
@@ -28,6 +29,19 @@ for (const title of [...titles].sort((a, b) => a.releaseYear - b.releaseYear || 
 
 // Biggest first, so the shelf you land on is the one with the most on it.
 const universes: UniverseData[] = [...order.values()].sort((a, b) => b.titles.length - a.titles.length);
+
+export const metadata: Metadata = {
+  title: "The shelf in 3D",
+  description:
+    "All 152 Marvel films and series as home-video releases on twelve shelves, one per universe. Scroll to draw a title off the shelf.",
+  alternates: { canonical: "/shelf" },
+  openGraph: {
+    url: "/shelf",
+    title: "The shelf in 3D · Marvel Tracker",
+    description:
+      "All 152 Marvel films and series as home-video releases on twelve shelves, one per universe.",
+  },
+};
 
 // Spike, not a feature yet -- see CLAUDE.md / AGENTS.md.
 export default function ShelfPage() {

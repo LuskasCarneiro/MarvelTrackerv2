@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { shareImage, titleJsonLd } from "@/lib/seo";
 import Image from "next/image";
 import { getTitle, shelves, titles, tmdbImage } from "@/lib/catalogue";
 import RatingControl from "./RatingControl";
@@ -16,9 +17,21 @@ export async function generateMetadata({
   const title = getTitle(slug);
   if (!title) return {};
 
+  const image = shareImage(title);
+  const description = title.note || `${title.displayTitle} (${title.releaseYear}) in the Marvel Tracker archive.`;
+
   return {
     title: title.displayTitle,
-    description: title.note,
+    description,
+    alternates: { canonical: `/title/${title.slug}` },
+    openGraph: {
+      type: title.kind === "film" ? "video.movie" : "video.tv_show",
+      url: `/title/${title.slug}`,
+      title: title.displayTitle,
+      description,
+      // A backdrop is the shape a link preview wants; a poster is not, but it beats nothing.
+      ...(image ? { images: [{ url: image, alt: `Artwork for ${title.displayTitle}` }] } : {}),
+    },
   };
 }
 
@@ -34,6 +47,13 @@ export default async function TitlePage({ params }: PageProps<"/title/[slug]">) 
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-16">
+      {/* Structured data, carrying facts only: no medium (worked out by rule, not verified
+          per title) and no aggregateRating (there is nothing to aggregate). A claim made to a
+          machine is a claim that gets repeated. See lib/seo.ts. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(titleJsonLd(title)) }}
+      />
       <Link
         href="/"
         className="font-display text-xs uppercase tracking-[0.15em] text-label-dim transition duration-200 hover:text-tungsten"

@@ -124,7 +124,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
 | 3 — The shelf (three.js, material system) | **in progress** — twelve per-universe bookcases, scroll pulls a title out, click-through, two orderings, touch and reduced-motion paths; no historical objects, no spine text |
-| 4 — Polish (a11y, perf, SEO) | not started |
+| 4 — Polish (a11y, perf, SEO) | **begun** — metadata, sitemap, robots and structured data done; a11y audit and perf not started |
 
 ### Phase 3's direction — read `docs/05-3d-shelf.md` §0 first
 
@@ -237,6 +237,28 @@ does **not** do, roughly in order of how much each is missed:
 ---
 
 ## Log
+
+### 2026-08-12 — Phase 4 begun: findable, shareable, and claiming nothing
+
+The site is public and had a title and a description and nothing else. Added: `metadataBase`
+on one stated origin (`src/lib/seo.ts`), canonical links, Open Graph and Twitter cards,
+`app/sitemap.ts` (154 URLs) and `app/robots.ts`.
+
+Three decisions worth keeping:
+
+- **One origin, stated in code, not an env var.** A preview deployment must not advertise
+  itself as the canonical home of 152 titles, and a wrong `metadataBase` only shows up in
+  somebody else's link preview weeks later.
+- **`/auth/` is disallowed to crawlers** because it carries a one-time confirmation token: a
+  crawler that follows one burns it. `/sign-in` is a form, not a document.
+- **The structured data claims only facts.** No medium (worked out by rule, not verified per
+  title), no `aggregateRating` (there is nothing to aggregate), and a four-digit year rather
+  than a fabricated month and day. A test asserts all three across all 152, because nobody
+  ever looks at JSON-LD — a machine does, and then repeats it.
+
+Verified against the built output, not the source: `robots.txt` and `sitemap.xml` as served,
+the `<head>` of a title page, the JSON-LD block, and that the share image returns 200 from
+TMDB. A title with no artwork emits no `og:image` at all rather than a broken one.
 
 ### 2026-08-12 — the shelf is under CI now
 
