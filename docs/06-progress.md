@@ -238,6 +238,22 @@ does **not** do, roughly in order of how much each is missed:
 
 ## Log
 
+### 2026-08-12 — the object you are holding says what it is
+
+A caption under the case being drawn out: name, year, and what the object is. Three decisions
+worth keeping:
+
+- **The name crosses the boundary, the note does not.** One short string per title, not 152
+  notes shipped into this route's bundle for something that is a click away.
+- **Story order prints the story year**, not the release year — the story year is what chose
+  the object, and 2011 beside a 35mm film can invites exactly the wrong reading. BC says BC,
+  and a title with no place on a timeline says "Outside time".
+- **React sees the active title once per title, not once per frame.** The pull runs in the
+  frame loop; nothing there should re-render anything.
+
+It sits on a scrim, because the caption lands over whatever artwork happens to be behind it
+and the quality floor is a contrast ratio rather than a hope.
+
 ### 2026-08-12 — in story order, the object changes too
 
 The last unbuilt step of `docs/05-3d-shelf.md`'s order of work, and the half of the two
