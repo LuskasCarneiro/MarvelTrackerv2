@@ -245,6 +245,22 @@ much each is missed:
 
 ## Log
 
+### 2026-08-12 — the bookcases age, and fit what they hold
+
+- **Wear per unit**, from the median release year of what stands on it, normalised across the
+  room so it never goes stale. It travels on `setColorAt` — a per-instance attribute, not a
+  material — which is why twelve differently-aged bookcases are still two draw calls. Only
+  how dark and dry the wood looks varies, never its style (docs/05-3d-shelf.md §3).
+- **Units are as tall as their collection needs**, capped at four levels and bottom-aligned to
+  one floor. Four levels for everything turned Spider-Verse's two films into a one-column
+  tower with two empty shelves — a sliver, not a bookcase.
+- **The camera stands back by what it is looking at**: the height fit of the current unit
+  against the width fit of the viewport, whichever is further, eased so a universe change
+  dollies. Without it a two-title shelf sat adrift in a frame built for fifty-seven.
+
+Both of the last two were found by looking at a screenshot of the smallest universes; neither
+is visible from the MCU, which is the shelf you land on.
+
 ### 2026-08-12 — the shelf on a phone, and a loading state
 
 Closing gaps that were listed and never done, rather than adding anything new.

@@ -186,6 +186,15 @@ export type UniverseShelf = {
   label: string;
   startX: number;
   endX: number;
+  /** 0 = untouched, 1 = the most worn unit in the room. See unitWear(). */
+  wear: number;
+  /** How many shelves this unit has — see levelsFor(). */
+  levels: number;
+  /** Mid-height of this unit's own carcass, which is what the camera frames while you are
+   * standing at it. Units are different heights, so this is not a constant. */
+  centreY: number;
+  /** Full height of this unit's carcass, for choosing how far back to stand. */
+  height: number;
   /** Every case on this shelf, in the order the scroll walks them: down a column, then
    * right to the next. A column is one moment in time, so this reads as time passing. */
   items: ShelfItem[];
@@ -222,6 +231,10 @@ export type ShelfLayout = {
   }[];
   boardSlabMatrices: THREE.Matrix4[];
   boardLipMatrices: THREE.Matrix4[];
+  /** Wear per board instance, in the same order as the matrices above, so the furniture can
+   * be tinted per unit without a material or a draw call per bookcase. */
+  boardSlabWear: number[];
+  boardLipWear: number[];
   /** World-space bounds of every case (not the boards), for framing the default camera. */
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
 };
@@ -243,13 +256,28 @@ function matrix(x: number, y: number, z: number, sx: number, sy: number, sz: num
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), IDENTITY_QUAT, new THREE.Vector3(sx, sy, sz));
 }
 
-/** How many shelves tall each unit is. Four gives the mass of a real bookcase. */
+/** The tallest a unit gets. Four gives the mass of a real bookcase. */
 export const LEVELS = 4;
+
+/**
+ * How many shelves a unit needs. Filling every unit to four levels turns Spider-Verse's two
+ * films into a one-column tower with two empty shelves above them — a sliver, not a
+ * bookcase. Roughly three titles per level keeps every unit at least as wide as it is tall,
+ * so the room reads as furniture of different sizes rather than as broken copies of one
+ * shape. Units are bottom-aligned, so a short one is a low shelf, not a tall one hanging in
+ * the air.
+ */
+export function levelsFor(count: number): number {
+  return Math.min(LEVELS, Math.max(1, Math.ceil(count / 3)));
+}
 
 /** Every level is the same pitch, sized for the tallest case in the catalogue. Column-major
  * means any medium can appear at any level, so a per-level height would have to be that max
  * anyway — and a run whose shelves stepped up and down would read as broken. */
 const LEVEL_PITCH = Math.max(...Object.values(DIMENSIONS).map((d) => d.h)) + ROW_CLEARANCE + BOARD_THICKNESS;
+
+/** The bottom board of every unit, tall or short — they all stand on the same floor. */
+const FLOOR_BOARD_Y = -(LEVELS - 1) * LEVEL_PITCH;
 
 /** Clear air between one universe's unit and the next. Wide enough that they read as
  * separate pieces of furniture rather than one run with a gap in it. */
@@ -261,6 +289,27 @@ const BACK_PANEL_THICKNESS = 0.03;
 /** How many pieces of carcass each unit adds beyond its shelves: a top, two uprights and a
  * back. Exported so the layout test can assert the furniture without re-deriving it. */
 export const CARCASS_PIECES = 4;
+
+/**
+ * How worn each unit's furniture looks, from the median release year of what stands on it —
+ * oldest most worn, newest untouched. docs/05-3d-shelf.md §3: the objects change in steps and
+ * the furniture changes as a gradient, and what the gradient carries is **wear, not style**.
+ * A 1980s unit morphing into a 2020s unit is a costume change and would look like one.
+ *
+ * Normalised across the room rather than against fixed years, so it never goes stale: the
+ * oldest bookcase present is always the worn one.
+ */
+export function unitWear(runs: ShelfRun[]): number[] {
+  const medians = runs.map((run) => {
+    const years = [...run.titles, ...run.floating].map((t) => t.releaseYear).sort((a, b) => a - b);
+    return years.length ? years[Math.floor(years.length / 2)] : 0;
+  });
+  const present = medians.filter((y) => y > 0);
+  const oldest = Math.min(...present);
+  const newest = Math.max(...present);
+  if (newest === oldest) return medians.map(() => 0.5);
+  return medians.map((year) => (year > 0 ? (newest - year) / (newest - oldest) : 0.5));
+}
 
 /**
  * The archive as a room of shelf units — **one per universe**, left to right, each filled
@@ -284,6 +333,9 @@ export function buildShelfLayout(
   const blankCovers: ShelfLayout["blankCovers"] = [];
   const boardSlabMatrices: THREE.Matrix4[] = [];
   const boardLipMatrices: THREE.Matrix4[] = [];
+  const boardSlabWear: number[] = [];
+  const boardLipWear: number[] = [];
+  const wearByUnit = unitWear(runs);
   const universes: UniverseShelf[] = [];
   const bounds = { minX: 0, maxX: 0, minY: Infinity, maxY: -Infinity };
 
@@ -331,12 +383,14 @@ export function buildShelfLayout(
   };
 
   let unitLeft = 0;
-  runs.forEach((run) => {
+  runs.forEach((run, runIndex) => {
+    const wear = wearByUnit[runIndex];
     const items: ShelfItem[] = [];
 
+    const levels = levelsFor(run.titles.length);
     const columns: ShelfTitleData[][] = [];
     run.titles.forEach((title, i) => {
-      const column = Math.floor(i / LEVELS);
+      const column = Math.floor(i / levels);
       (columns[column] ??= []).push(title);
     });
 
@@ -347,13 +401,17 @@ export function buildShelfLayout(
       const columnWidth = Math.max(...column.map((t) => DIMENSIONS[t.medium].w));
       column.forEach((title, level) => {
         const dims = DIMENSIONS[title.medium];
-        items.push(place(title, columnLeft + columnWidth / 2, -level * LEVEL_PITCH + dims.h / 2, 0));
+        // level 0 is this unit's top shelf, and the unit is bottom-aligned to the floor.
+        const boardTop = FLOOR_BOARD_Y + (levels - 1 - level) * LEVEL_PITCH;
+        items.push(place(title, columnLeft + columnWidth / 2, boardTop + dims.h / 2, 0));
       });
       columnLeft += columnWidth + GAP_X;
     });
 
     const unitRight = Math.max(columnLeft - GAP_X, unitLeft + DIMENSIONS.amaray.w);
     const unitWidth = unitRight - unitLeft;
+    const unitTop = FLOOR_BOARD_Y + levels * LEVEL_PITCH;
+    const unitBottom = FLOOR_BOARD_Y - BOARD_THICKNESS;
 
     // The unanchored ones (story order's fourteen). They hang above their own universe's
     // unit with nothing underneath, spread across its width and scattered by a hash of the
@@ -364,7 +422,7 @@ export function buildShelfLayout(
       const x = unitLeft + 0.7 + spread * Math.max(unitWidth - 1.4, 0.5) + (jitter - 0.5) * 0.9;
       // Above the carcass, not just above the top row of cases: the unit now has a top board,
       // and hanging these at case height would push them through it.
-      const y = LEVEL_PITCH + 0.8 + jitter * 1.6;
+      const y = unitTop + 0.8 + jitter * 1.6;
       items.push(place(title, x, y, (hashUnit(`${title.slug}-z`) - 0.5) * 1.2));
     });
 
@@ -376,20 +434,21 @@ export function buildShelfLayout(
     // stops the floating-in-void feeling, and it gives the lamp a surface to fall on.
     const slabWidth = unitWidth + BOARD_MARGIN * 2;
     const centreX = unitLeft + unitWidth / 2;
-    const unitTop = LEVEL_PITCH;
-    const unitBottom = -(LEVELS - 1) * LEVEL_PITCH - BOARD_THICKNESS;
     const unitHeight = unitTop - unitBottom;
 
-    for (let level = 0; level < LEVELS; level++) {
-      const boardTop = -level * LEVEL_PITCH;
+    for (let level = 0; level < levels; level++) {
+      const boardTop = FLOOR_BOARD_Y + (levels - 1 - level) * LEVEL_PITCH;
       boardSlabMatrices.push(matrix(centreX, boardTop - BOARD_THICKNESS / 2, 0, slabWidth, BOARD_THICKNESS, BOARD_DEPTH));
+      boardSlabWear.push(wear);
       // The lip: a brighter trim strip along the board's front-top edge — the one surface a
       // face-out shelf never hides behind its own cases.
       boardLipMatrices.push(
         matrix(centreX, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, slabWidth, BOARD_LIP_HEIGHT, 0.03)
       );
+      boardLipWear.push(wear);
     }
     boardSlabMatrices.push(matrix(centreX, unitTop - BOARD_THICKNESS / 2, 0, slabWidth, BOARD_THICKNESS, BOARD_DEPTH));
+    boardSlabWear.push(wear);
     for (const side of [-1, 1]) {
       boardSlabMatrices.push(
         matrix(
@@ -401,19 +460,40 @@ export function buildShelfLayout(
           BOARD_DEPTH
         )
       );
+      boardSlabWear.push(wear);
     }
     boardSlabMatrices.push(
       matrix(centreX, unitBottom + unitHeight / 2, -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS, slabWidth, unitHeight, BACK_PANEL_THICKNESS)
     );
+    boardSlabWear.push(wear);
 
-    universes.push({ key: run.key, label: run.label, startX: unitLeft, endX: unitRight, items });
+    universes.push({
+      key: run.key,
+      label: run.label,
+      startX: unitLeft,
+      endX: unitRight,
+      wear,
+      levels,
+      centreY: (unitBottom + unitTop) / 2,
+      height: unitTop - unitBottom,
+      items,
+    });
     unitLeft = unitRight + UNIVERSE_GAP;
   });
 
   // Frame the furniture, not just the cases: the carcass runs from its own top board down to
   // below the bottom shelf, and a camera fitted to the cases alone crops both.
-  bounds.minY = Math.min(bounds.minY, -(LEVELS - 1) * LEVEL_PITCH - BOARD_THICKNESS);
-  bounds.maxY = Math.max(bounds.maxY, LEVEL_PITCH);
+  bounds.minY = Math.min(bounds.minY, FLOOR_BOARD_Y - BOARD_THICKNESS);
+  bounds.maxY = Math.max(bounds.maxY, ...universes.map((u) => u.centreY * 2 - (FLOOR_BOARD_Y - BOARD_THICKNESS)));
 
-  return { media: [...buckets.values()], universes, blankCovers, boardSlabMatrices, boardLipMatrices, bounds };
+  return {
+    media: [...buckets.values()],
+    universes,
+    blankCovers,
+    boardSlabMatrices,
+    boardLipMatrices,
+    boardSlabWear,
+    boardLipWear,
+    bounds,
+  };
 }

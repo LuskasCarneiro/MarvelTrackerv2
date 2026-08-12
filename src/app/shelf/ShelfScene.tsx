@@ -101,20 +101,48 @@ function buildMediumMeshes(row: MediumRow, coverTexture: THREE.Texture) {
   return { body, cover };
 }
 
-/** Both boards (the slab and its brighter front lip) are one InstancedMesh each across all
- * five rows -- a unit box, scaled per instance, same trick as the case bodies' thickness. */
-function buildBoardMeshes(slabMatrices: THREE.Matrix4[], lipMatrices: THREE.Matrix4[]) {
+/**
+ * Every piece of every bookcase, as two InstancedMeshes -- a unit box scaled per instance,
+ * the same trick as the case bodies' thickness.
+ *
+ * The wear gradient rides on `setColorAt`, which is why twelve differently-aged bookcases
+ * still cost two draw calls: an instance colour is a per-instance attribute, not a material.
+ * What varies is only how dark and how dry the wood looks, never its style -- a 1980s unit
+ * morphing into a 2020s one would be a costume change and would look like one
+ * (docs/05-3d-shelf.md §3).
+ */
+const WOOD_FRESH = new THREE.Color("#241d16");
+const WOOD_WORN = new THREE.Color("#140f0b");
+const LIP_FRESH = new THREE.Color("#33291f");
+const LIP_WORN = new THREE.Color("#221b14");
+
+function tintByWear(mesh: THREE.InstancedMesh, wear: number[], fresh: THREE.Color, worn: THREE.Color) {
+  const colour = new THREE.Color();
+  wear.forEach((amount, i) => mesh.setColorAt(i, colour.lerpColors(fresh, worn, amount)));
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+}
+
+function buildBoardMeshes(
+  slabMatrices: THREE.Matrix4[],
+  lipMatrices: THREE.Matrix4[],
+  slabWear: number[],
+  lipWear: number[]
+) {
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
 
-  const slabMaterial = new THREE.MeshPhongMaterial({ color: SHELF_RAISED, shininess: 8, specular: "#1a140f" });
+  const slabMaterial = new THREE.MeshPhongMaterial({ color: "#ffffff", shininess: 8, specular: "#1a140f" });
   const slab = new THREE.InstancedMesh(unitBox, slabMaterial, slabMatrices.length);
   slabMatrices.forEach((m, i) => slab.setMatrixAt(i, m));
   slab.instanceMatrix.needsUpdate = true;
+  tintByWear(slab, slabWear, WOOD_FRESH, WOOD_WORN);
 
-  const lipMaterial = new THREE.MeshPhongMaterial({ color: SHELF_EDGE, shininess: 20, specular: "#3a2f22" });
+  // A worn unit's lip has lost its sheen as well as its colour: the front edge is the one
+  // surface a hand actually touches.
+  const lipMaterial = new THREE.MeshPhongMaterial({ color: "#ffffff", shininess: 20, specular: "#3a2f22" });
   const lip = new THREE.InstancedMesh(unitBox, lipMaterial, lipMatrices.length);
   lipMatrices.forEach((m, i) => lip.setMatrixAt(i, m));
   lip.instanceMatrix.needsUpdate = true;
+  tintByWear(lip, lipWear, LIP_FRESH, LIP_WORN);
 
   return { slab, lip };
 }
@@ -164,10 +192,12 @@ const LAMP_REACH = 15;
 /** How far a pointer may travel between down and up and still count as a tap. */
 const TAP_SLOP = 8;
 
-/** The camera's vertical field of view, and how much shelf should fit across the frame at
- * minimum — about four cases, which is what keeps a phone usable. */
+/** The camera's vertical field of view, how much shelf should fit across the frame at
+ * minimum — about four cases, which is what keeps a phone usable — and the air left above
+ * and below a unit so it does not touch the edges. */
 const FOV = 42;
 const VISIBLE_WIDTH = 6;
+const HEIGHT_MARGIN = 3.4;
 
 /** How close the camera may aim to the end of a unit before it stops following. */
 const EDGE_MARGIN = 3.2;
@@ -199,19 +229,13 @@ function ShelfContent({
   onPick,
   universe,
   progress,
-  centreY,
   instant,
-  baseZ,
 }: {
   layout: Layout;
   onPick: (slug: string) => void;
   universe: UniverseShelf;
-  /** Mid-height of a shelf unit — what the camera stays framed on while it travels. */
-  centreY: number;
   /** With reduced motion set, the camera arrives instead of gliding. */
   instant: boolean;
-  /** Distance that frames a unit on a landscape viewport; narrower ones stand further back. */
-  baseZ: number;
   /** Live scroll position, in titles, within this universe. A ref rather than state: it
    * changes on every wheel event and nothing in React needs to re-render for it. */
   progress: React.RefObject<number>;
@@ -228,7 +252,10 @@ function ShelfContent({
     [layout, texture]
   );
   const meshByMedium = useMemo(() => new Map(mediumMeshes.map((m) => [m.medium, m])), [mediumMeshes]);
-  const boards = useMemo(() => buildBoardMeshes(layout.boardSlabMatrices, layout.boardLipMatrices), [layout]);
+  const boards = useMemo(
+    () => buildBoardMeshes(layout.boardSlabMatrices, layout.boardLipMatrices, layout.boardSlabWear, layout.boardLipWear),
+    [layout]
+  );
 
   // The three titles with no artwork carry their own plane (see ShelfLayout.blankCovers); it
   // has to travel with the case, or a pulled case leaves its blank front behind on the shelf.
@@ -245,19 +272,22 @@ function ShelfContent({
   const lamp = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
 
-  // fov is vertical, so a portrait phone sees a much narrower slice of the room than a
-  // laptop does and the bookcase runs off both edges. Standing further back for narrow
-  // viewports keeps a unit in frame; wide viewports are unchanged.
-  useEffect(() => {
+  /**
+   * How far back to stand at this unit. Two constraints, and the further wins:
+   *
+   * - its **height** must fit the vertical fov, which is what makes a four-level MCU unit
+   *   different from Spider-Verse's two films on one shelf;
+   * - a minimum **width** must fit across, which matters on a portrait phone, where fov is
+   *   vertical and the frame is narrow. (Scaling the distance by the aspect ratio was the
+   *   first attempt and put a phone three and a half times too far back.)
+   */
+  const standBack = useMemo(() => {
+    const halfFov = Math.tan((FOV / 2) * (Math.PI / 180));
     const aspect = size.width / Math.max(size.height, 1);
-    // Horizontal fov is the vertical one scaled by aspect, so this solves for the distance
-    // at which VISIBLE_WIDTH units of shelf fit across, and keeps whichever of the two fits
-    // is further. Scaling the distance by the aspect ratio itself was the first attempt and
-    // it put a phone three and a half times too far back — the bookcase became a postage
-    // stamp in the corner.
-    const widthFit = VISIBLE_WIDTH / 2 / (Math.tan((FOV / 2) * (Math.PI / 180)) * Math.max(aspect, 0.1));
-    camera.position.z = Math.max(baseZ, widthFit);
-  }, [camera, size, baseZ]);
+    const heightFit = universe.height / 2 / halfFov + HEIGHT_MARGIN;
+    const widthFit = VISIBLE_WIDTH / 2 / (halfFov * Math.max(aspect, 0.1));
+    return Math.max(heightFit, widthFit);
+  }, [universe, size]);
 
   /**
    * The interaction, in one frame loop.
@@ -314,7 +344,7 @@ function ShelfContent({
       // Following y outright swings the view a whole unit's height as the walk steps down a
       // column, which throws the shelf into a corner of the frame — the case ends up centred
       // and the furniture it belongs to ends up off screen.
-      const aimY = centreY + (item.y - centreY) * 0.2;
+      const aimY = universe.centreY + (item.y - universe.centreY) * 0.2;
       // ...and it stays inside the unit it is looking at. Aiming squarely at the first case
       // on a shelf points a third of the frame at the empty room beside it, which is what
       // arriving at every universe looked like; a case sitting off-centre with its own
@@ -331,6 +361,8 @@ function ShelfContent({
       camera.position.y += dy;
       controls.update();
       if (lamp.current) lamp.current.position.x = controls.target.x;
+      // Dolly rather than jump: moving to a smaller unit walks the camera in towards it.
+      camera.position.z += (standBack - camera.position.z) * ease;
     }
   });
 
@@ -646,9 +678,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             onPick={pick}
             universe={shelf}
             progress={progress}
-            centreY={wallCentreY}
             instant={reducedMotion}
-            baseZ={cameraZ}
           />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only

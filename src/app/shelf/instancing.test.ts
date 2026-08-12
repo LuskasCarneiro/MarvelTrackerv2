@@ -5,6 +5,7 @@ import {
   depthScale,
   DIMENSIONS,
   LEVELS,
+  levelsFor,
   CARCASS_PIECES,
   runtimeLogRange,
   type ShelfRun,
@@ -126,13 +127,38 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
   it("gives each unit its own carcass, so a universe reads as a piece of furniture", () => {
     // Four shelves plus a top, two uprights and a back — all instances of the same box, so
     // the whole room of bookcases is still the two board draw calls it always was.
-    expect(layout.boardSlabMatrices).toHaveLength((LEVELS + CARCASS_PIECES) * runs.length);
-    expect(layout.boardLipMatrices).toHaveLength(LEVELS * runs.length);
+    // Units are as tall as their collection needs, so the count follows levelsFor(), not a
+    // constant: ten titles fill four shelves, three fill one.
+    const shelves = runs.map((r) => levelsFor(r.titles.length));
+    expect(shelves).toEqual([LEVELS, 1]);
+    expect(layout.boardSlabMatrices).toHaveLength(shelves.reduce((n, l) => n + l + CARCASS_PIECES, 0));
+    expect(layout.boardLipMatrices).toHaveLength(shelves.reduce((n, l) => n + l, 0));
   });
 
   // Instance index is the whole of the picking lookup and of the pull: `slugs[instanceId]`
   // for a click, `item.instance` for the case being drawn out. If those two ever disagree,
   // the wrong case slides off the shelf and the wrong page opens — plausibly, silently.
+  it("ages each unit's furniture by what stands on it, oldest most worn", () => {
+    const old = Array.from({ length: 4 }, (_, i) => title(`old-${i}`, "vhs", { releaseYear: 1985 + i }));
+    const recent = Array.from({ length: 4 }, (_, i) => title(`new-${i}`, "none", { releaseYear: 2024 + i }));
+    const aged = buildShelfLayout(
+      [
+        { key: "old", label: "Classic", titles: old, floating: [] },
+        { key: "new", label: "Animation", titles: recent, floating: [] },
+      ],
+      {},
+      { w: 256, h: 360 },
+      4096
+    );
+    expect(aged.universes[0].wear).toBe(1);
+    expect(aged.universes[1].wear).toBe(0);
+    // Wear travels per board instance, not per material — that is what keeps twelve
+    // differently-aged bookcases at two draw calls.
+    expect(aged.boardSlabWear).toHaveLength(aged.boardSlabMatrices.length);
+    expect(aged.boardLipWear).toHaveLength(aged.boardLipMatrices.length);
+    expect(new Set(aged.boardSlabWear)).toEqual(new Set([1, 0]));
+  });
+
   it("agrees with itself about which instance is which title", () => {
     const byMedium = new Map(layout.media.map((m) => [m.medium, m]));
     for (const shelf of layout.universes) {
@@ -143,14 +169,21 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
   });
 
   it("keeps a narrow case centred in its column instead of shifting the unit", () => {
-    const mixed = buildShelfLayout(
-      [{ key: "u", label: "U", titles: [title("wide", "amaray"), title("narrow", "vhs")], floating: [] }],
-      {},
-      cellSize,
-      4096
-    );
-    const xs = mixed.universes[0].items.map((i) => i.x);
-    expect(new Set(xs.map((x) => x.toFixed(6))).size).toBe(1);
+    // Six titles is two levels, so "wide" and "narrow" share the first column.
+    const titles = [title("wide", "amaray"), title("narrow", "vhs"), ...Array.from({ length: 4 }, (_, i) => title(`rest-${i}`, "amaray"))];
+    const mixed = buildShelfLayout([{ key: "u", label: "U", titles, floating: [] }], {}, cellSize, 4096);
+    const [wide, narrow] = mixed.universes[0].items;
+    expect(mixed.universes[0].levels).toBe(2);
+    expect(narrow.x).toBeCloseTo(wide.x, 6);
+  });
+
+  it("sizes a unit to its collection rather than to a constant", () => {
+    expect(levelsFor(2)).toBe(1);
+    expect(levelsFor(5)).toBe(2);
+    expect(levelsFor(57)).toBe(LEVELS);
+    // Whatever the height, every unit stands on the same floor.
+    const floors = layout.universes.map((u) => u.centreY * 2 - u.levels * 0);
+    expect(floors.length).toBe(2);
   });
 
   describe("the titles that belong outside time", () => {
@@ -171,7 +204,7 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
       const topOfShelf = Math.max(...withFloating.universes[0].items.filter((i) => i.z === 0).map((i) => i.y));
       for (const item of hung) expect(item.y).toBeGreaterThan(topOfShelf);
       // Still four boards: the unit's furniture, unchanged. Nothing was built to hold these up.
-      expect(withFloating.boardSlabMatrices).toHaveLength(LEVELS + CARCASS_PIECES);
+      expect(withFloating.boardSlabMatrices).toHaveLength(levelsFor(mcu.length) + CARCASS_PIECES);
     });
 
     it("scatters them by a hash of the slug, so the same title hangs in the same place", () => {
