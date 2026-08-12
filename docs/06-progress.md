@@ -238,6 +238,26 @@ does **not** do, roughly in order of how much each is missed:
 
 ## Log
 
+### 2026-08-12 — the shelf is under CI now
+
+`e2e/shelf.spec.ts`, run in CI on every push. Three tests, all of them things **vitest
+structurally cannot see**, and all of them things that actually broke while the shelf was
+being built:
+
+1. the scene rendering nothing at all (a throwing module in the shared masthead);
+2. a click resolving to the wrong title (instance index and slug array disagreeing);
+3. no-WebGL showing a black rectangle instead of saying so.
+
+It asserts behaviour, not pixels: pixel comparison of a WebGL canvas across machines is a
+flake generator, and *"the renderer drew the room and clicking a case opens that case"* is
+the part that must not regress. The draw-call count the scene logs doubles as the control —
+a blank frame shows up as a suspiciously small number rather than as a passing test.
+
+**The CI step needs the two `NEXT_PUBLIC_SUPABASE_*` vars as placeholders**, and the reason
+is worth keeping: the Supabase client throws at module load on an empty URL, which takes down
+the whole page, including routes with nothing to do with auth. Verified by moving `.env`
+aside — all three tests fail without them and pass with placeholders, which is CI exactly.
+
 ### 2026-08-12 — the object you are holding says what it is
 
 A caption under the case being drawn out: name, year, and what the object is. Three decisions

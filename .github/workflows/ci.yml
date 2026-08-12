@@ -57,3 +57,21 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # The 3D shelf cannot be tested any other way. vitest does not run a browser, so it
+      # cannot see a scene that renders nothing, a click that opens the wrong title, or a
+      # module that throws before the canvas mounts — all three of which happened while it
+      # was being built, and none of which failed a unit test at the time.
+      - name: Install Playwright's browser
+        run: npx playwright install --with-deps chromium
+
+      # Placeholder values, because they are placeholders: the two NEXT_PUBLIC vars are public
+      # by design and the shelf never calls Supabase. They are here because the client throws
+      # at module load on an empty URL, which takes the whole page down — including routes
+      # that have nothing to do with auth. That is exactly how this first failed in a fresh
+      # worktree, and it looked like a WebGL bug for ten minutes.
+      - name: Shelf smoke test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_placeholder_for_ci
+        run: npx playwright test e2e/shelf.spec.ts
