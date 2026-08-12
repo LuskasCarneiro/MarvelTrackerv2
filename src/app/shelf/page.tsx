@@ -16,6 +16,7 @@ for (const title of [...titles].sort((a, b) => a.releaseYear - b.releaseYear || 
   const universe = order.get(title.universe) ?? { key: title.universe, label: title.universeName, titles: [] };
   universe.titles.push({
     slug: title.slug,
+    label: title.displayTitle,
     runtimeMin: title.runtimeMin,
     tint: title.tint,
     medium: title.medium,

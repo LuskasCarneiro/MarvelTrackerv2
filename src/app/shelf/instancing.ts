@@ -16,6 +16,9 @@ export type Form = Medium | "tablet" | "volume" | "can" | "reel";
 
 export type ShelfTitleData = {
   slug: string;
+  /** What to print when this title is drawn out — catalogue.ts's displayTitle, which already
+   * carries the series number for the 19 titles that repeat. */
+  label: string;
   runtimeMin: number | null;
   tint: string;
   medium: Medium;
@@ -229,6 +232,9 @@ export type ShelfRun = {
  */
 export type ShelfItem = {
   slug: string;
+  label: string;
+  releaseYear: number;
+  storyYear: number | null;
   /** What this instance is drawn as — the medium in release order, the era's object in story
    * order. Which InstancedMesh it lives in, and therefore how a raycast resolves. */
   form: Form;
@@ -442,7 +448,19 @@ export function buildShelfLayout(
     bounds.minY = Math.min(bounds.minY, y - dims.h / 2);
     bounds.maxY = Math.max(bounds.maxY, y + dims.h / 2);
 
-    return { slug: title.slug, form, instance, x, y, z, ds, coverZ };
+    return {
+      slug: title.slug,
+      label: title.label,
+      releaseYear: title.releaseYear,
+      storyYear: title.storyYear,
+      form,
+      instance,
+      x,
+      y,
+      z,
+      ds,
+      coverZ,
+    };
   };
 
   let unitLeft = 0;

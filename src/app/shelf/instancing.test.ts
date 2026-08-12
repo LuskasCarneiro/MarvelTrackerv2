@@ -14,6 +14,7 @@ import {
 
 const title = (slug: string, medium: ShelfTitleData["medium"], extra: Partial<ShelfTitleData> = {}): ShelfTitleData => ({
   slug,
+  label: slug,
   runtimeMin: 100,
   tint: "hsl(20 20% 40%)",
   medium,

@@ -214,6 +214,34 @@ const LAMP_Z = 4.0;
 const LAMP_INTENSITY = 95;
 const LAMP_REACH = 15;
 
+/**
+ * What to call each object. Release order's five are the media as the design system names
+ * them; story order's four are what the story would have been carried on. Deliberately not
+ * derived from `catalogue.ts`'s shelf labels: those name an *era of release*, and in story
+ * order this is naming an object instead.
+ */
+const FORM_NAMES: Record<Form, string> = {
+  vhs: "VHS clamshell",
+  amaray: "DVD Amaray",
+  bluray: "Blu-ray case",
+  steel: "Steelbook",
+  none: "No physical release",
+  tablet: "Clay tablet",
+  volume: "Bound volume",
+  can: "35mm film can",
+  reel: "Super 8 reel",
+};
+
+/**
+ * The year to print beside an object. In story order that has to be the *story* year, not the
+ * release year: the story year is what chose the object, and printing 2011 next to a 35mm
+ * film can invites exactly the wrong reading. A title with no place on a timeline says so.
+ */
+function storyYearLabel(year: number | null): string {
+  if (year === null) return "Outside time";
+  return year < 0 ? `${Math.abs(year)} BC` : String(year);
+}
+
 /** How far a pointer may travel between down and up and still count as a tap. */
 const TAP_SLOP = 8;
 
@@ -255,12 +283,16 @@ function ShelfContent({
   universe,
   progress,
   instant,
+  onActive,
 }: {
   layout: Layout;
   onPick: (slug: string) => void;
   universe: UniverseShelf;
   /** With reduced motion set, the camera arrives instead of gliding. */
   instant: boolean;
+  /** Called when the walk reaches a different title, so the DOM can name it. Once per title,
+   * not once per frame: the pull runs at 60fps and React has no business seeing that. */
+  onActive: (item: ShelfItem) => void;
   /** Live scroll position, in titles, within this universe. A ref rather than state: it
    * changes on every wheel event and nothing in React needs to re-render for it. */
   progress: React.RefObject<number>;
@@ -359,6 +391,7 @@ function ShelfContent({
       blank.position.setFromMatrixPosition(m);
       blank.quaternion.setFromRotationMatrix(m);
     }
+    if (posed.current !== item) onActive(item);
     posed.current = item;
 
     // Follow. Camera and orbit target move by the same delta, which keeps the viewer's angle
@@ -507,6 +540,7 @@ const SCROLL_PER_TITLE = 260;
 export default function ShelfScene({ universes }: { universes: UniverseData[] }) {
   const [order, setOrder] = useState<"release" | "story">("release");
   const [current, setCurrent] = useState(0);
+  const [active, setActive] = useState<ShelfItem | null>(null);
   const router = useRouter();
   const progress = useRef(0);
   const surface = useRef<HTMLDivElement>(null);
@@ -709,6 +743,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             universe={shelf}
             progress={progress}
             instant={reducedMotion}
+            onActive={setActive}
           />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
@@ -733,6 +768,23 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           maxDistance={40}
         />
       </Canvas>
+      {/* What you have just drawn off the shelf. The cover art alone does not say which
+          season of Daredevil this is, nor what the object is — and 19 titles repeat. The note
+          and the rest of the record stay on the title page: shipping 152 of them into this
+          route's bundle would cost more than it tells you here. */}
+      {active && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-8">
+          {/* On a scrim, not straight onto the room: the caption sits over whatever artwork
+              happens to be behind it, and the quality floor is a contrast ratio, not a hope. */}
+          <div className="flex flex-col items-center gap-1 rounded bg-shelf-dark/85 px-5 py-2 text-center">
+          <p className="font-display text-sm uppercase tracking-[0.16em] text-label-bright">{active.label}</p>
+          <p className="text-xs text-label-dim">
+            {order === "release" ? active.releaseYear : storyYearLabel(active.storyYear)} · {FORM_NAMES[active.form]} ·
+            click to open
+          </p>
+          </div>
+        </div>
+      )}
       {/* The atlas is 3 MB, and until it arrives the room is empty with nothing to say so —
           measured on the live site, where a cold load spends several seconds looking broken. */}
       {loaded < 100 && (
