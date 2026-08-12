@@ -14,6 +14,9 @@ import {
   BODY_MATERIAL,
   COVER_SHININESS,
   buildShelfLayout,
+  formForStoryYear,
+  ROUND_FORMS,
+  type Form,
   type ShelfTitleData,
   type ShelfItem,
   type ShelfRun,
@@ -67,33 +70,55 @@ function createCoverMaterial(map: THREE.Texture, shininess: number): THREE.MeshP
   return material;
 }
 
-type MediumRow = {
-  medium: ShelfTitleData["medium"];
+type FormRow = {
+  form: Form;
   bodyMatrices: THREE.Matrix4[];
   coverMatrices: THREE.Matrix4[];
   coverUvs: CellUv[];
 };
 
-/** One InstancedMesh for the case body, one for the cover -- two draw calls per medium,
- * regardless of how many titles that medium contributes to the run. */
-function buildMediumMeshes(row: MediumRow, coverTexture: THREE.Texture) {
-  const dims = DIMENSIONS[row.medium];
+/**
+ * The body of one form. A can and a reel are cylinders standing on edge like a record, so the
+ * geometry is pre-rotated to face +z and every instance matrix stays a plain translate-scale
+ * — the same shape of transform the cases use, and the pull works on it unchanged.
+ */
+function bodyGeometryFor(form: Form): THREE.BufferGeometry {
+  const dims = DIMENSIONS[form];
+  if (ROUND_FORMS.has(form)) {
+    const cylinder = new THREE.CylinderGeometry(dims.w / 2, dims.w / 2, dims.d, 32);
+    cylinder.rotateX(Math.PI / 2);
+    return cylinder;
+  }
+  return new RoundedBoxGeometry(dims.w, dims.h, dims.d, 2, CORNER_RADIUS);
+}
+
+/** The printed face. A disc for the round forms — a film can carries a circular label, and
+ * CircleGeometry's UVs already fill 0..1, so the atlas window crops it without any extra work. */
+function coverGeometryFor(form: Form): THREE.BufferGeometry {
+  const dims = DIMENSIONS[form];
+  if (ROUND_FORMS.has(form)) return new THREE.CircleGeometry((dims.w / 2) * 0.86, 32);
+  // Shrunk off the true face size the same amount the spike shrinks its poster plane, so
+  // the printed insert sits within the moulded corner radius instead of poking past it.
+  return new THREE.PlaneGeometry(dims.w - CORNER_RADIUS * 0.6, dims.h - CORNER_RADIUS * 0.6);
+}
+
+/** One InstancedMesh for the body, one for the cover -- two draw calls per form,
+ * regardless of how many titles that form contributes to the room. */
+function buildMediumMeshes(row: FormRow, coverTexture: THREE.Texture) {
   const count = row.bodyMatrices.length;
 
-  const bodyGeometry = new RoundedBoxGeometry(dims.w, dims.h, dims.d, 2, CORNER_RADIUS);
-  const bm = BODY_MATERIAL[row.medium];
+  const bodyGeometry = bodyGeometryFor(row.form);
+  const bm = BODY_MATERIAL[row.form];
   const bodyMaterial = new THREE.MeshPhongMaterial({ color: bm.color, shininess: bm.shininess, specular: bm.specular });
   const body = new THREE.InstancedMesh(bodyGeometry, bodyMaterial, count);
   row.bodyMatrices.forEach((m, i) => body.setMatrixAt(i, m));
   body.instanceMatrix.needsUpdate = true;
 
-  // Shrunk off the true face size the same amount the spike shrinks its poster plane, so
-  // the printed insert sits within the moulded corner radius instead of poking past it.
-  const coverGeometry = new THREE.PlaneGeometry(dims.w - CORNER_RADIUS * 0.6, dims.h - CORNER_RADIUS * 0.6);
+  const coverGeometry = coverGeometryFor(row.form);
   const cellData = new Float32Array(count * 4);
   row.coverUvs.forEach((uv, i) => cellData.set([uv.u0, uv.v0, uv.du, uv.dv], i * 4));
   coverGeometry.setAttribute("aCell", new THREE.InstancedBufferAttribute(cellData, 4));
-  const coverMaterial = createCoverMaterial(coverTexture, COVER_SHININESS[row.medium]);
+  const coverMaterial = createCoverMaterial(coverTexture, COVER_SHININESS[row.form]);
   const cover = new THREE.InstancedMesh(coverGeometry, coverMaterial, count);
   row.coverMatrices.forEach((m, i) => cover.setMatrixAt(i, m));
   cover.instanceMatrix.needsUpdate = true;
@@ -248,10 +273,10 @@ function ShelfContent({
   });
 
   const mediumMeshes = useMemo(
-    () => layout.media.map((row) => ({ medium: row.medium, slugs: row.slugs, ...buildMediumMeshes(row, texture) })),
+    () => layout.media.map((row) => ({ form: row.form, slugs: row.slugs, ...buildMediumMeshes(row, texture) })),
     [layout, texture]
   );
-  const meshByMedium = useMemo(() => new Map(mediumMeshes.map((m) => [m.medium, m])), [mediumMeshes]);
+  const meshByForm = useMemo(() => new Map(mediumMeshes.map((m) => [m.form, m])), [mediumMeshes]);
   const boards = useMemo(
     () => buildBoardMeshes(layout.boardSlabMatrices, layout.boardLipMatrices, layout.boardSlabWear, layout.boardLipWear),
     [layout]
@@ -311,7 +336,7 @@ function ShelfContent({
     // hanging out of the shelf behind it.
     if (posed.current && posed.current !== item) {
       const previous = posed.current;
-      const mesh = meshByMedium.get(previous.medium);
+      const mesh = meshByForm.get(previous.form);
       if (mesh) {
         mesh.body.setMatrixAt(previous.instance, poseCase(previous, 0, false));
         mesh.cover.setMatrixAt(previous.instance, poseCase(previous, 0, true));
@@ -321,7 +346,7 @@ function ShelfContent({
       blankRefs.current.get(previous.slug)?.position.set(previous.x, previous.y, previous.z + previous.coverZ);
     }
 
-    const mesh = meshByMedium.get(item.medium);
+    const mesh = meshByForm.get(item.form);
     if (mesh) {
       mesh.body.setMatrixAt(item.instance, poseCase(item, amount, false));
       mesh.cover.setMatrixAt(item.instance, poseCase(item, amount, true));
@@ -372,9 +397,9 @@ function ShelfContent({
           the event as `instanceId`; body and cover are built from the same title order, so
           either hit resolves through the medium's slug array. stopPropagation keeps a click
           that passes through a gap from also hitting the shelf behind it. */}
-      {mediumMeshes.map(({ medium, slugs, body, cover }) => (
+      {mediumMeshes.map(({ form, slugs, body, cover }) => (
         <group
-          key={medium}
+          key={form}
           onPointerDown={(e: ThreeEvent<PointerEvent>) => {
             pressedAt.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
           }}
@@ -493,12 +518,17 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
     () =>
       universes.map((u) => {
         if (order === "release") return { key: u.key, label: u.label, titles: u.titles, floating: [] };
+        // The object changes with the ordering, not just the order: a 1943 story becomes a
+        // film can, a 5000 BC one a clay tablet. Most titles are unaffected, because a 2015
+        // story shipped on 2015 media — which is the point (docs/05-3d-shelf.md §4).
+        const asStory = (t: ShelfTitleData) => ({ ...t, form: formForStoryYear(t.storyYear, t.medium) });
         return {
           key: u.key,
           label: u.label,
           titles: u.titles
             .filter((t) => t.storyYear !== null)
-            .sort((a, b) => a.storyYear! - b.storyYear! || a.releaseYear - b.releaseYear),
+            .sort((a, b) => a.storyYear! - b.storyYear! || a.releaseYear - b.releaseYear)
+            .map(asStory),
           floating: u.titles.filter((t) => t.storyYear === null),
         };
       }),

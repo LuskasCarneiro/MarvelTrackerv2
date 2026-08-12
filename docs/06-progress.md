@@ -123,62 +123,55 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
-| 3 — The shelf (three.js, material system) | **in progress** — 152 cases render, travel and click-through work; no pull-and-turn, no spine text |
+| 3 — The shelf (three.js, material system) | **in progress** — twelve per-universe bookcases, scroll pulls a title out, click-through, two orderings, touch and reduced-motion paths; no historical objects, no spine text |
 | 4 — Polish (a11y, perf, SEO) | not started |
 
-### Phase 3's direction is settled — read `docs/05-3d-shelf.md` before touching `src/app/shelf/`
+### Phase 3's direction — read `docs/05-3d-shelf.md` §0 first
 
-Agreed with the owner 2026-08-11, in a design session with no code written. The headline is
-that **the five-row layout currently built should be replaced by one continuous run**,
-because `CLAUDE.md`'s "the shelf ages *as you move through it*" is not what five era bins do.
-Also settled: the wood ages and dissolves at the streaming end, the infinite feeling comes
-from lamp falloff rather than looping the data, and there is a switch between release order
-and story chronology in which the object itself changes — Captain America is a Blu-ray by
-release and a film can by story.
+**Superseded 2026-08-12 by the owner: the archive is a room of bookcases, one per universe.**
+`docs/05-3d-shelf.md` §0 holds the reasoning; §1's single continuous run was built, looked at,
+and replaced. What survives is that **each unit still ages along its own length** — the MCU's
+runs DVD → Blu-ray → steelbook → nothing-physical — so "the shelf ages as you move through it"
+holds per shelf, and the archive gains a way to be browsed by universe.
 
-Two findings from that session worth not re-deriving:
+Still settled from the 2026-08-11 design session: the furniture ages as a slow gradient while
+the objects change in steps, the infinite feeling comes from lamp falloff rather than looping
+the data, and there is a switch between release order and story chronology in which the object
+itself changes — Captain America is a Blu-ray by release and a film can by story. The object
+half of that switch is **not built**; the reshuffle is.
+
+Two findings worth not re-deriving:
 
 - **The chronology data is more usable than it looks.** Of 152: 88 are a bare year, 45 are
   parseable by rule (`c. 2004`, `2013–2014`, `Christmas 2013`, `5000 BC – 2024`), 5 are
-  relative to another title, and **14 have no place on a timeline at all**.
+  relative to another title, and **14 have no place on a timeline at all**. All of this is
+  implemented in `src/lib/chronology.ts`, written against the real strings.
 - **Those 14 are the best part, not a data problem.** Both *Spider-Verse* films, *Loki*,
   *What If…?*, *Marvel Zombies*, *Legion*, *Your Friendly Neighborhood Spider-Man* — the
-  titles literally *about* unstable reality. They float off the run rather than being
-  assigned a year. **Do not "fix" them.**
+  titles literally *about* unstable reality. In story order they hang above their own unit
+  rather than being assigned a year. **Do not "fix" them.**
 
 ### What Phase 3 still owes
 
-`/shelf` is **one continuous run** now, not five era rows — 152 titles, column-major, four
-shelves tall, release order end to end, at 13 draw calls, with a lamp that travels with you.
-You can cross it and click into a title. What it does **not** do, roughly in order of how
-much each is missed:
+`/shelf` is a room of **twelve bookcases, one per universe**, each as tall as its collection
+needs and bottom-aligned to one floor, at **16 draw calls**. Scrolling draws a title out of
+the shelf and puts it back; arrows move between universes; a click opens the title's page;
+release and story orders both work; touch, reduced-motion and no-WebGL paths exist. What it
+does **not** do, roughly in order of how much each is missed:
 
-1. ~~**Navigation.**~~ **Done 2026-08-11.** Era buttons and the arrow keys set one focus
-   point; a rig eases the camera to it. Up/Down walk the eras, Left/Right travel a row,
-   Home resets. The rig moves the camera and the orbit target by the *same* delta, which
-   keeps the viewer's angle and zoom — moving the target alone swings the camera round the
-   wall and throws away the aisle framing the whole scene is built on.
-2. ~~**Clicking a case does nothing.**~~ **Done 2026-08-11.** Instance picking is one array:
-   `layout.media[].slugs`, indexed by the hit's `instanceId`. Verified in a browser, not by
-   reading it — a click at the centre of the canvas lands on `/title/spider-man-2002` and
-   the page it opens says "Spider-Man". Still 15 draw calls afterwards.
-3. **Pull-and-turn** — the signature interaction in `PLAN.md`: draw a case out, turn it,
-   read the back. Not started.
-4. **Thickness is encoded but not legible.** A VHS clamshell is 32 mm and a Blu-ray 12 mm;
-   at the current framing you cannot tell. The geometry is right, the presentation does not
-   reveal it.
-5. **No spine text**, so a case seen edge-on is blank — the one thing every real shelf has.
-6. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
-   applied, so steelbook does not read as metal, and VHS does not read as card.
-7. **No LOD, no adaptive quality, no DPR clamp beyond `[1, 1.5]`.** Deliberate — not needed
-   until measured on real hardware.
-8. **`/shelf` transfers 3.7 MB**, almost all atlas. Where KTX2 would earn its place.
-   **And there is no loading state while it arrives**: the Suspense fallback is `null`, so a
-   cold load on production shows an empty room with a ground plane for several seconds and
-   nothing to say the shelf is coming. Measured 2026-08-11 against the live site — the first
-   browser check screenshotted at 8s and caught exactly that blank frame, then the same run
-   at 25s rendered all 152. A first-time visitor on a slow connection sees the 8s version.
-9. **No reduced-motion or no-WebGL path**, and it has never been opened on a phone.
+1. **Pull-and-turn is half built.** The case comes out and turns, but you cannot read the back
+   of it, which is what `PLAN.md` describes.
+2. **No spine text**, so a case seen edge-on is blank — the one thing every real shelf has.
+3. **Thickness is encoded but not legible.** A VHS clamshell is 32 mm and a Blu-ray 12 mm; at
+   this framing you cannot tell.
+4. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
+   applied, so steelbook does not read as metal and VHS does not read as card.
+5. **`/shelf` transfers 3.7 MB**, almost all atlas — where KTX2 would earn its place. There is
+   a loading state now, which is the cheap half of this problem.
+6. **No LOD and no adaptive quality**, beyond a DPR clamp of `[1, 1.5]`. Deliberate: not
+   needed until measured on real hardware.
+7. **The room has no floor detail and no walls**, and `docs/05-3d-shelf.md` §3 is explicit
+   that a half-built room is worse than honest darkness. The back panel per unit is in.
 
 ### Corrections to earlier handovers — read these before trusting an old note
 
@@ -244,6 +237,23 @@ much each is missed:
 ---
 
 ## Log
+
+### 2026-08-12 — in story order, the object changes too
+
+The last unbuilt step of `docs/05-3d-shelf.md`'s order of work, and the half of the two
+orderings that carries the surprise.
+
+- 5000 BC is a **clay tablet**, 1845 a **bound volume**, the 1940s a **35mm film can**, the
+  1960s–70s a **Super 8 reel**, and from the 1980s on it is the media we already had. Eternals
+  opens the MCU shelf as a tablet; Captain America and Agent Carter stand as cans.
+- **The layout buckets by form, not medium** — a rename more than a change. A form decides
+  geometry, material, and therefore which `InstancedMesh` an instance lives in.
+- **Round forms are cylinders pre-rotated to face the viewer**, so every instance matrix stays
+  a plain translate-scale and the pull works on them unchanged. Their labels are
+  `CircleGeometry`, whose UVs already fill 0..1, so the atlas window crops a disc for free.
+- **Most of the catalogue is untouched, and that is the point.** A test asserts the switch
+  changes a *minority*: if it ever became most of the catalogue, the two orderings would read
+  as two different apps rather than one shelf seen another way.
 
 ### 2026-08-12 — the bookcases age, and fit what they hold
 

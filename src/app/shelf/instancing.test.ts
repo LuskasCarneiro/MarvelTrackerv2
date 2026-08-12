@@ -160,10 +160,10 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
   });
 
   it("agrees with itself about which instance is which title", () => {
-    const byMedium = new Map(layout.media.map((m) => [m.medium, m]));
+    const byForm = new Map(layout.media.map((m) => [m.form, m]));
     for (const shelf of layout.universes) {
       for (const item of shelf.items) {
-        expect(byMedium.get(item.medium)!.slugs[item.instance]).toBe(item.slug);
+        expect(byForm.get(item.form)!.slugs[item.instance]).toBe(item.slug);
       }
     }
   });

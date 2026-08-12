@@ -6,6 +6,14 @@
 import * as THREE from "three";
 import type { Medium } from "@/lib/catalogue";
 
+/**
+ * What the object *is*. In release order that is the home-video medium it shipped on; in
+ * story order it is what would have carried the story at the time — see formForStoryYear()
+ * and docs/05-3d-shelf.md §4. The five media are shared between both, because a 2015 story
+ * on a 2015 Blu-ray is the same object either way.
+ */
+export type Form = Medium | "tablet" | "volume" | "can" | "reel";
+
 export type ShelfTitleData = {
   slug: string;
   runtimeMin: number | null;
@@ -15,7 +23,33 @@ export type ShelfTitleData = {
   /** When the story happens, for the story ordering. Null for the 14 titles that belong
    * outside time — see lib/chronology.ts and docs/05-3d-shelf.md §5. */
   storyYear: number | null;
+  /** What to draw. Defaults to the medium, which is what release order wants. */
+  form?: Form;
 };
+
+/**
+ * The object a story would have reached you on, had someone been there to record it.
+ *
+ * docs/05-3d-shelf.md §4, and it says the important thing plainly: **this is a conceit, not a
+ * fact.** Nothing was recorded in 1943. The two orderings converge in the modern era — for
+ * roughly 120 titles a 2015 story shipped on 2015 media and the object does not change — and
+ * diverge in the past, which is exactly where the surprise is: Captain America is a Blu-ray
+ * by release and a film can by story.
+ *
+ * A title with no place on a timeline keeps its own medium; it is already saying something
+ * else by hanging off the shelf.
+ */
+export function formForStoryYear(storyYear: number | null, medium: Medium): Form {
+  if (storyYear === null) return medium;
+  if (storyYear < -1000) return "tablet"; // 5000 BC — Eternals
+  if (storyYear < 1900) return "volume"; // 1845 — a bound volume
+  if (storyYear < 1960) return "can"; // the 1940s — 35mm film can
+  if (storyYear < 1980) return "reel"; // the 1960s and 70s — Super 8
+  if (storyYear < 2000) return "vhs";
+  if (storyYear < 2010) return "amaray";
+  if (storyYear < 2020) return "steel";
+  return "none";
+}
 
 /**
  * One universe's titles as they cross the server/client boundary, in release order. The
@@ -32,9 +66,24 @@ const DIMENSIONS_MM: Record<Medium, { h: number; w: number; d: number }> = {
   none: { h: 190, w: 135, d: 3 },
 };
 
-export const DIMENSIONS: Record<Medium, { h: number; w: number; d: number }> = Object.fromEntries(
-  Object.entries(DIMENSIONS_MM).map(([medium, { h, w, d }]) => [medium, { h: h / 100, w: w / 100, d: d / 100 }])
-) as Record<Medium, { h: number; w: number; d: number }>;
+/** The historical objects, in the same real millimetres. A can and a reel are round, so w is
+ * their diameter and d their depth on the shelf — they stand on edge like a record. */
+const HISTORICAL_MM: Record<Exclude<Form, Medium>, { h: number; w: number; d: number }> = {
+  tablet: { h: 160, w: 120, d: 30 },
+  volume: { h: 190, w: 130, d: 40 },
+  can: { h: 170, w: 170, d: 25 },
+  reel: { h: 150, w: 150, d: 16 },
+};
+
+export const DIMENSIONS: Record<Form, { h: number; w: number; d: number }> = Object.fromEntries(
+  Object.entries({ ...DIMENSIONS_MM, ...HISTORICAL_MM }).map(([form, { h, w, d }]) => [
+    form,
+    { h: h / 100, w: w / 100, d: d / 100 },
+  ])
+) as Record<Form, { h: number; w: number; d: number }>;
+
+/** The round forms need a cylinder and a circular label rather than a box and a plane. */
+export const ROUND_FORMS: ReadonlySet<Form> = new Set<Form>(["can", "reel"]);
 
 /**
  * Corner rounding. One constant for every medium: RoundedBoxGeometry clamps radius to half
@@ -49,7 +98,13 @@ export const CORNER_RADIUS = 0.025;
  * (bluray) -> embossed metal, high specular (steel). 'none' is deliberately duller than all
  * of them — "a thin matte card", not a case (see the brief).
  */
-export const BODY_MATERIAL: Record<Medium, { color: string; shininess: number; specular: string }> = {
+export const BODY_MATERIAL: Record<Form, { color: string; shininess: number; specular: string }> = {
+  // The historical objects, kept as quiet as the cases: dry clay, worn leather, dull steel,
+  // dark plastic. The covers are still the only colour in the room.
+  tablet: { color: "#3a3229", shininess: 2, specular: "#221c15" },
+  volume: { color: "#241a14", shininess: 30, specular: "#4a3a2c" },
+  can: { color: "#2a2c2e", shininess: 90, specular: "#8a8a8a" },
+  reel: { color: "#1b1b1d", shininess: 60, specular: "#55565a" },
   vhs: { color: "#17130f", shininess: 25, specular: "#2b241c" },
   amaray: { color: "#15120f", shininess: 55, specular: "#3a332b" }, // = the spike, exactly
   bluray: { color: "#100e0c", shininess: 70, specular: "#463e34" },
@@ -59,7 +114,12 @@ export const BODY_MATERIAL: Record<Medium, { color: string; shininess: number; s
 
 /** The cover sits under a clear sleeve that is glossier than the case itself — except
  * 'none', which has no sleeve at all ("no gloss", per the brief). */
-export const COVER_SHININESS: Record<Medium, number> = {
+export const COVER_SHININESS: Record<Form, number> = {
+  // A pressed clay face and a printed can lid have no sleeve over them at all.
+  tablet: 2,
+  volume: 25,
+  can: 45,
+  reel: 30,
   vhs: 60,
   amaray: 95, // = the spike, exactly
   bluray: 105,
@@ -169,7 +229,9 @@ export type ShelfRun = {
  */
 export type ShelfItem = {
   slug: string;
-  medium: Medium;
+  /** What this instance is drawn as — the medium in release order, the era's object in story
+   * order. Which InstancedMesh it lives in, and therefore how a raycast resolves. */
+  form: Form;
   /** Index of this case within its medium's InstancedMesh — what a raycast hit returns. */
   instance: number;
   x: number;
@@ -202,7 +264,7 @@ export type UniverseShelf = {
 
 export type ShelfLayout = {
   media: {
-    medium: Medium;
+    form: Form;
     bodyMatrices: THREE.Matrix4[];
     coverMatrices: THREE.Matrix4[];
     coverUvs: CellUv[];
@@ -341,22 +403,23 @@ export function buildShelfLayout(
 
   // One bucket per medium across the whole room, because an InstancedMesh needs its
   // instances grouped by the material they share — a shelf unit is not a draw call.
-  const buckets = new Map<Medium, ShelfLayout["media"][number]>();
-  const bucketFor = (medium: Medium) => {
-    let bucket = buckets.get(medium);
+  const buckets = new Map<Form, ShelfLayout["media"][number]>();
+  const bucketFor = (form: Form) => {
+    let bucket = buckets.get(form);
     if (!bucket) {
-      bucket = { medium, bodyMatrices: [], coverMatrices: [], coverUvs: [], slugs: [] };
-      buckets.set(medium, bucket);
+      bucket = { form, bodyMatrices: [], coverMatrices: [], coverUvs: [], slugs: [] };
+      buckets.set(form, bucket);
     }
     return bucket;
   };
 
   /** Adds one case to its medium's bucket and returns where it went. */
   const place = (title: ShelfTitleData, x: number, y: number, z: number): ShelfItem => {
-    const dims = DIMENSIONS[title.medium];
+    const form = title.form ?? title.medium;
+    const dims = DIMENSIONS[form];
     const ds = depthScale(title.runtimeMin, logRange);
     const coverZ = (dims.d * ds) / 2 + COVER_INSET;
-    const bucket = bucketFor(title.medium);
+    const bucket = bucketFor(form);
     const instance = bucket.slugs.length;
 
     // Base geometry is built at the medium's nominal depth; only Z scales per instance.
@@ -379,7 +442,7 @@ export function buildShelfLayout(
     bounds.minY = Math.min(bounds.minY, y - dims.h / 2);
     bounds.maxY = Math.max(bounds.maxY, y + dims.h / 2);
 
-    return { slug: title.slug, medium: title.medium, instance, x, y, z, ds, coverZ };
+    return { slug: title.slug, form, instance, x, y, z, ds, coverZ };
   };
 
   let unitLeft = 0;
@@ -398,9 +461,9 @@ export function buildShelfLayout(
     columns.forEach((column) => {
       // A column is as wide as its widest member: a VHS (110mm) sharing a column with
       // Amarays (135mm) centres within it rather than dragging the unit out of alignment.
-      const columnWidth = Math.max(...column.map((t) => DIMENSIONS[t.medium].w));
+      const columnWidth = Math.max(...column.map((t) => DIMENSIONS[t.form ?? t.medium].w));
       column.forEach((title, level) => {
-        const dims = DIMENSIONS[title.medium];
+        const dims = DIMENSIONS[title.form ?? title.medium];
         // level 0 is this unit's top shelf, and the unit is bottom-aligned to the floor.
         const boardTop = FLOOR_BOARD_Y + (levels - 1 - level) * LEVEL_PITCH;
         items.push(place(title, columnLeft + columnWidth / 2, boardTop + dims.h / 2, 0));

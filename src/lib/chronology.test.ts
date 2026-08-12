@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { storyYear } from "./chronology";
+import { formForStoryYear } from "@/app/shelf/instancing";
 import { titles } from "./catalogue";
 
 describe("storyYear", () => {
@@ -51,6 +52,38 @@ describe("storyYear", () => {
     for (const unplaceable of ["multiverse", "outside time", "its own reality", "several centuries", "various eras", "ambiguous", "—"]) {
       expect(storyYear(unplaceable), unplaceable).toBeNull();
     }
+  });
+});
+
+describe("the object the story would have reached you on", () => {
+  // The switch has to change the objects that ought to change and leave the rest alone —
+  // docs/05-3d-shelf.md §4 says the two orderings converge in the modern era, and that is
+  // what makes the divergence in the past land rather than read as noise.
+  it("turns the past into its own objects", () => {
+    expect(formForStoryYear(-5000, "steel")).toBe("tablet"); // Eternals
+    expect(formForStoryYear(1845, "bluray")).toBe("volume");
+    expect(formForStoryYear(1943, "bluray")).toBe("can"); // Captain America: The First Avenger
+    expect(formForStoryYear(1973, "steel")).toBe("reel"); // X-Men: Days of Future Past
+    expect(formForStoryYear(1995, "steel")).toBe("vhs"); // Captain Marvel
+  });
+
+  it("leaves a modern story as the medium it shipped on", () => {
+    expect(formForStoryYear(2008, "amaray")).toBe("amaray");
+    expect(formForStoryYear(2015, "steel")).toBe("steel");
+    expect(formForStoryYear(2024, "none")).toBe("none");
+  });
+
+  it("leaves a title with no place on a timeline as it is", () => {
+    expect(formForStoryYear(null, "none")).toBe("none");
+  });
+
+  it("changes the object for a minority of the catalogue, not most of it", () => {
+    const changed = titles.filter((t) => formForStoryYear(t.storyYear, t.medium) !== t.medium);
+    // Measured, not asserted at a round number: if this ever became most of the catalogue the
+    // switch would read as a different app rather than as the same shelf seen another way.
+    expect(changed.length).toBeGreaterThan(10);
+    expect(changed.length).toBeLessThan(titles.length / 2);
+    expect(changed.map((t) => t.title)).toContain("Captain America: The First Avenger");
   });
 });
 
