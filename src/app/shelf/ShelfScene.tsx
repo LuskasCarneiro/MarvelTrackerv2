@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, useTexture } from "@react-three/drei";
+import { OrbitControls, useProgress, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { tintToHsl } from "@/lib/tint";
@@ -161,6 +161,14 @@ const LAMP_Z = 4.0;
 const LAMP_INTENSITY = 95;
 const LAMP_REACH = 15;
 
+/** How far a pointer may travel between down and up and still count as a tap. */
+const TAP_SLOP = 8;
+
+/** The camera's vertical field of view, and how much shelf should fit across the frame at
+ * minimum — about four cases, which is what keeps a phone usable. */
+const FOV = 42;
+const VISIBLE_WIDTH = 6;
+
 /** How close the camera may aim to the end of a unit before it stops following. */
 const EDGE_MARGIN = 3.2;
 
@@ -192,12 +200,18 @@ function ShelfContent({
   universe,
   progress,
   centreY,
+  instant,
+  baseZ,
 }: {
   layout: Layout;
   onPick: (slug: string) => void;
   universe: UniverseShelf;
   /** Mid-height of a shelf unit — what the camera stays framed on while it travels. */
   centreY: number;
+  /** With reduced motion set, the camera arrives instead of gliding. */
+  instant: boolean;
+  /** Distance that frames a unit on a landscape viewport; narrower ones stand further back. */
+  baseZ: number;
   /** Live scroll position, in titles, within this universe. A ref rather than state: it
    * changes on every wheel event and nothing in React needs to re-render for it. */
   progress: React.RefObject<number>;
@@ -220,10 +234,30 @@ function ShelfContent({
   // has to travel with the case, or a pulled case leaves its blank front behind on the shelf.
   const blankRefs = useRef(new Map<string, THREE.Mesh>());
 
+  // Where the pointer went down, so a drag that ends over a case is not read as a click on
+  // it. On touch the gesture that walks the shelf ends with a finger up over a case, and
+  // without this guard every swipe opens a title page.
+  const pressedAt = useRef<{ x: number; y: number } | null>(null);
+
   const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
   const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
   const lamp = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
+
+  // fov is vertical, so a portrait phone sees a much narrower slice of the room than a
+  // laptop does and the bookcase runs off both edges. Standing further back for narrow
+  // viewports keeps a unit in frame; wide viewports are unchanged.
+  useEffect(() => {
+    const aspect = size.width / Math.max(size.height, 1);
+    // Horizontal fov is the vertical one scaled by aspect, so this solves for the distance
+    // at which VISIBLE_WIDTH units of shelf fit across, and keeps whichever of the two fits
+    // is further. Scaling the distance by the aspect ratio itself was the first attempt and
+    // it put a phone three and a half times too far back — the bookcase became a postage
+    // stamp in the corner.
+    const widthFit = VISIBLE_WIDTH / 2 / (Math.tan((FOV / 2) * (Math.PI / 180)) * Math.max(aspect, 0.1));
+    camera.position.z = Math.max(baseZ, widthFit);
+  }, [camera, size, baseZ]);
 
   /**
    * The interaction, in one frame loop.
@@ -275,7 +309,7 @@ function ShelfContent({
     // Follow. Camera and orbit target move by the same delta, which keeps the viewer's angle
     // and zoom — moving the target alone swings the camera round the shelf.
     if (controls) {
-      const ease = Math.min(1, dt * 3.2);
+      const ease = instant ? 1 : Math.min(1, dt * 3.2);
       // Horizontally the camera goes where the case is; vertically it only leans towards it.
       // Following y outright swings the view a whole unit's height as the walk steps down a
       // column, which throws the shelf into a corner of the frame — the case ends up centred
@@ -309,8 +343,16 @@ function ShelfContent({
       {mediumMeshes.map(({ medium, slugs, body, cover }) => (
         <group
           key={medium}
+          onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+            pressedAt.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
+          }}
           onClick={(e: ThreeEvent<MouseEvent>) => {
             if (e.instanceId === undefined) return;
+            const from = pressedAt.current;
+            const travelled = from
+              ? Math.hypot(e.nativeEvent.clientX - from.x, e.nativeEvent.clientY - from.y)
+              : 0;
+            if (travelled > TAP_SLOP) return;
             e.stopPropagation();
             onPick(slugs[e.instanceId]);
           }}
@@ -365,6 +407,43 @@ function PerfLogger() {
   return null;
 }
 
+/**
+ * Whether this browser can draw the shelf at all. Probed once, on a throwaway canvas: R3F
+ * will happily mount and then fail, and a black rectangle with no explanation is worse than
+ * saying so and pointing at the catalogue, which carries the same 152 titles in the DOM.
+ */
+function webglSupported(): boolean {
+  try {
+    const probe = document.createElement("canvas");
+    return Boolean(probe.getContext("webgl2") ?? probe.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+/** The camera's easing is time-based motion the viewer did not ask for, so it goes when
+ * reduced motion is set. The pull itself stays: it is driven by the scroll position, not by
+ * a clock — it is the gesture, not an animation played at you. */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return reduced;
+}
+
+/** Touch devices get no wheel and no hover, so one finger walks the shelf instead of
+ * orbiting it — the shelf is the thing, and looking around is the desktop luxury. */
+function useCoarsePointer(): boolean {
+  const [coarse, setCoarse] = useState(false);
+  useEffect(() => setCoarse(window.matchMedia("(pointer: coarse)").matches), []);
+  return coarse;
+}
+
 /** Pixels of scroll per title. One flick of a trackpad brings out about two. */
 const SCROLL_PER_TITLE = 260;
 
@@ -402,9 +481,14 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   // bottom board to the top of the tallest case standing on the top one, and the midpoint of
   // *that* is what keeps all four levels in frame.
   const wallCentreY = (layout.bounds.minY + layout.bounds.maxY) / 2;
-  const cameraZ = (layout.bounds.maxY - layout.bounds.minY) / 2 / Math.tan((42 / 2) * (Math.PI / 180)) + 3.4;
+  const cameraZ = (layout.bounds.maxY - layout.bounds.minY) / 2 / Math.tan((FOV / 2) * (Math.PI / 180)) + 3.4;
 
   const pick = useCallback((slug: string) => router.push(`/title/${slug}`), [router]);
+  const reducedMotion = usePrefersReducedMotion();
+  const coarsePointer = useCoarsePointer();
+  const { progress: loaded } = useProgress();
+  const [canDraw, setCanDraw] = useState(true);
+  useEffect(() => setCanDraw(webglSupported()), []);
 
   const goToUniverse = useCallback(
     (index: number) => {
@@ -442,16 +526,48 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       else return;
       e.preventDefault();
     }
+    // Touch: a vertical drag walks the shelf, at roughly the distance the finger moved.
+    // Held in a closure variable rather than state — it changes on every touchmove and
+    // nothing renders differently for it.
+    let lastTouchY: number | null = null;
+    function onTouchStart(e: TouchEvent) {
+      lastTouchY = e.touches[0]?.clientY ?? null;
+    }
+    function onTouchMove(e: TouchEvent) {
+      const y = e.touches[0]?.clientY;
+      if (y === undefined || lastTouchY === null) return;
+      e.preventDefault();
+      walk((lastTouchY - y) / SCROLL_PER_TITLE);
+      lastTouchY = y;
+    }
+
     el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("keydown", onKey);
     return () => {
       el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("keydown", onKey);
     };
   }, [layout, current, goToUniverse]);
 
+  if (!canDraw) {
+    return (
+      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-sm text-label-mid">
+          This shelf needs WebGL, which this browser has turned off or does not support.
+        </p>
+        <a className="text-sm text-label-bright underline" href="/">
+          Browse the same 152 titles as a catalogue
+        </a>
+      </div>
+    );
+  }
+
   return (
-    <div ref={surface} className="h-[85vh] w-full">
+    <div ref={surface} className="relative h-[62vh] w-full touch-none sm:h-[85vh]">
       <div className="flex flex-wrap items-baseline gap-3 px-6 pb-3">
         <button
           type="button"
@@ -509,7 +625,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         // Looking along the shelf at an angle, not square at it: at ~35 degrees the cases
         // read as objects with depth rather than as flat posters, which is the entire reason
         // this is 3D. Far enough back to hold all four levels of a unit.
-        camera={{ position: [-4.2, wallCentreY + 0.5, cameraZ], fov: 42 }}
+        camera={{ position: [-4.2, wallCentreY + 0.5, cameraZ], fov: FOV }}
         gl={{ antialias: true }}
         onCreated={({ gl }) => gl.setClearColor("#14100d")}
       >
@@ -525,7 +641,15 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.18} color="#b9c2cc" />
 
         <Suspense fallback={null}>
-          <ShelfContent layout={layout} onPick={pick} universe={shelf} progress={progress} centreY={wallCentreY} />
+          <ShelfContent
+            layout={layout}
+            onPick={pick}
+            universe={shelf}
+            progress={progress}
+            centreY={wallCentreY}
+            instant={reducedMotion}
+            baseZ={cameraZ}
+          />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
               mounts (and starts its timer) once the atlas texture -- and therefore the
@@ -539,8 +663,25 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           <meshPhongMaterial color="#1c1713" shininess={8} />
         </mesh>
 
-        <OrbitControls makeDefault enableZoom={false} target={[0, wallCentreY, 0]} minDistance={1.5} maxDistance={40} />
+        <OrbitControls
+          makeDefault
+          enableZoom={false}
+          enableRotate={!coarsePointer}
+          enablePan={!coarsePointer}
+          target={[0, wallCentreY, 0]}
+          minDistance={1.5}
+          maxDistance={40}
+        />
       </Canvas>
+      {/* The atlas is 3 MB, and until it arrives the room is empty with nothing to say so —
+          measured on the live site, where a cold load spends several seconds looking broken. */}
+      {loaded < 100 && (
+        <div className="pointer-events-none absolute inset-0 flex items-end justify-center pb-16">
+          <p className="font-display text-xs uppercase tracking-[0.2em] text-label-dim">
+            Building the shelf… {Math.round(loaded)}%
+          </p>
+        </div>
+      )}
     </div>
   );
 }

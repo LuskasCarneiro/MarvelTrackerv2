@@ -245,6 +245,26 @@ much each is missed:
 
 ## Log
 
+### 2026-08-12 — the shelf on a phone, and a loading state
+
+Closing gaps that were listed and never done, rather than adding anything new.
+
+- **A loading state.** The atlas is 3 MB and the Suspense fallback was null, so a cold load
+  was an empty room for several seconds. Worth recording *how* it was verified: a warm local
+  cache renders before the overlay can be seen, so the harness holds the atlas back for five
+  seconds. **A fast machine hides a slow first visit** — if you cannot see the loading state,
+  that is not evidence it works.
+- **Touch.** One finger walks the shelf; on coarse pointers OrbitControls no longer takes
+  that gesture for rotation. A pick now requires the pointer to have moved less than 8px
+  between down and up — without that guard every swipe opens whatever case it ended over,
+  which is the sort of bug that only exists on devices you have not opened.
+- **Viewport fit.** fov is vertical, so a portrait phone saw a narrow slice with the unit
+  running off both edges. The camera solves for the distance at which six units of shelf fit
+  across, and keeps whichever of the width and height fits is further. **Scaling the distance
+  by the aspect ratio was wrong** — it put a phone three and a half times too far back.
+- **Reduced motion** drops the camera easing and keeps the pull, which is driven by scroll
+  position rather than a clock. **No WebGL** says so and links to the catalogue.
+
 ### 2026-08-12 — a room of bookcases, one per universe, and scroll pulls a title out
 
 **Owner's direction, and it supersedes the continuous run built earlier the same day.** See

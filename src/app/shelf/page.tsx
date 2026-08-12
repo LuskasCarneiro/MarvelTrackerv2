@@ -37,9 +37,9 @@ export default function ShelfPage() {
           The shelf — Phase 3
         </h1>
         <p className="mt-1 text-sm text-label-mid">
-          One shelf per universe, four levels tall. Scroll to draw a title out of the shelf and
-          put it back; the arrows move to the next universe. Drag to look around, and click a
-          case to open it.
+          One shelf per universe, four levels tall. Scroll or swipe to draw a title out of the
+          shelf and put it back; the arrows move to the next universe.{" "}
+          <span className="hidden sm:inline">Drag to look around, and click a case to open it.</span>
         </p>
       </div>
       <ShelfSceneClient universes={universes} />
