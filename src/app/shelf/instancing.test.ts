@@ -5,9 +5,21 @@ import {
   depthScale,
   DIMENSIONS,
   LEVELS,
+  CARCASS_PIECES,
   runtimeLogRange,
+  type ShelfRun,
   type ShelfTitleData,
 } from "./instancing";
+
+const title = (slug: string, medium: ShelfTitleData["medium"], extra: Partial<ShelfTitleData> = {}): ShelfTitleData => ({
+  slug,
+  runtimeMin: 100,
+  tint: "hsl(20 20% 40%)",
+  medium,
+  releaseYear: 2000,
+  storyYear: 2000,
+  ...extra,
+});
 
 describe("cropCellUv", () => {
   // Atlas cells are 256x360 (aspect 0.711). Face aspects on either side of that catch both
@@ -42,11 +54,10 @@ describe("cropCellUv", () => {
 });
 
 describe("depthScale", () => {
-  const titles: ShelfTitleData[] = [
-    { slug: "a", runtimeMin: 24, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 },
-    { slug: "b", runtimeMin: 5025, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 },
-  ];
-  const range = runtimeLogRange(titles);
+  const range = runtimeLogRange([
+    title("a", "amaray", { runtimeMin: 24 }),
+    title("b", "amaray", { runtimeMin: 5025 }),
+  ]);
 
   it("gives a null runtime the thinnest depth, never a fabricated middle", () => {
     expect(depthScale(null, range)).toBe(0.8);
@@ -64,105 +75,110 @@ describe("depthScale", () => {
   });
 
   it("does not divide by zero when every runtime is identical", () => {
-    const flat = runtimeLogRange([{ slug: "a", runtimeMin: 100, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 }]);
+    const flat = runtimeLogRange([title("a", "amaray")]);
     expect(depthScale(100, flat)).toBe(1.0);
   });
 });
 
-describe("buildShelfLayout — one continuous run, column-major", () => {
-  // Two eras' worth, enough to cross a medium boundary mid-run and to fill three columns.
-  const run: ShelfTitleData[] = Array.from({ length: 10 }, (_, i) => ({
-    slug: `t${i}`,
-    runtimeMin: 100,
-    tint: "hsl(20 20% 40%)",
-    medium: i < 4 ? ("vhs" as const) : ("amaray" as const),
-    releaseYear: 1990 + i,
-    storyYear: 1990 + i,
-  }));
+describe("buildShelfLayout — one shelf unit per universe", () => {
   const cellSize = { w: 256, h: 360 };
-  const cells = Object.fromEntries(run.map((t, i) => [t.slug, { x: i * 256, y: 0 }]));
-  const layout = buildShelfLayout(run, cells, cellSize, 4096);
+  const mcu: ShelfTitleData[] = Array.from({ length: 10 }, (_, i) =>
+    title(`mcu-${i}`, i < 4 ? "vhs" : "amaray", { releaseYear: 1990 + i, storyYear: 1990 + i })
+  );
+  const sony: ShelfTitleData[] = Array.from({ length: 3 }, (_, i) => title(`sony-${i}`, "bluray"));
+  const runs: ShelfRun[] = [
+    { key: "mcu", label: "MCU", titles: mcu, floating: [] },
+    { key: "sony", label: "Sony / Spider-Man", titles: sony, floating: [] },
+  ];
+  const cells = Object.fromEntries([...mcu, ...sony].map((t, i) => [t.slug, { x: i * 256, y: 0 }]));
+  const layout = buildShelfLayout(runs, cells, cellSize, 4096);
 
-  // Instance order within a medium is run order — that is the whole of the picking lookup,
-  // so a layout change that quietly reorders instances would send a click to the wrong title.
-  const positions = new Map<string, { x: number; y: number }>();
-  for (const bucket of layout.media) {
-    bucket.slugs.forEach((slug, i) => {
-      const p = bucket.bodyMatrices[i];
-      positions.set(slug, { x: p.elements[12], y: p.elements[13] });
-    });
-  }
+  const positionOf = (slug: string) => {
+    for (const shelf of layout.universes) {
+      const item = shelf.items.find((i) => i.slug === slug);
+      if (item) return item;
+    }
+    throw new Error(`${slug} was not placed`);
+  };
 
-  it("places every title exactly once", () => {
-    expect(positions.size).toBe(run.length);
+  it("places every title exactly once, on its own universe's shelf", () => {
+    expect(layout.universes.map((u) => u.key)).toEqual(["mcu", "sony"]);
+    expect(layout.universes[0].items).toHaveLength(mcu.length);
+    expect(layout.universes[1].items).toHaveLength(sony.length);
+    expect(layout.media.flatMap((m) => m.slugs)).toHaveLength(mcu.length + sony.length);
   });
 
-  it("fills top to bottom within a column, then steps right", () => {
-    const column0 = run.slice(0, LEVELS).map((t) => positions.get(t.slug)!);
+  it("stands the units side by side with clear air between them", () => {
+    const [first, second] = layout.universes;
+    expect(second.startX).toBeGreaterThan(first.endX + 1);
+    // ...and every case on a unit is within that unit's own span.
+    for (const item of second.items) expect(item.x).toBeGreaterThan(first.endX);
+  });
+
+  it("fills a unit top to bottom within a column, then steps right", () => {
+    const column0 = mcu.slice(0, LEVELS).map((t) => positionOf(t.slug));
     // One column is one moment in time: same x, descending y.
     expect(new Set(column0.map((p) => p.x.toFixed(6))).size).toBe(1);
     for (let i = 1; i < column0.length; i++) expect(column0[i].y).toBeLessThan(column0[i - 1].y);
-    // The next column stands to the right of it, clear of the widest case in column 0.
-    expect(positions.get("t4")!.x).toBeGreaterThan(column0[0].x + DIMENSIONS.vhs.w / 2);
+    expect(positionOf("mcu-4").x).toBeGreaterThan(column0[0].x + DIMENSIONS.vhs.w / 2);
   });
 
-  it("reuses the same four levels for every column, rather than growing downwards", () => {
-    const levels = new Set([...positions.values()].map((p) => Math.round(p.y * 1000)));
-    // vhs and amaray differ in height, so a level can carry two distinct case centres; what
-    // must not happen is a new level per column.
-    expect(levels.size).toBeLessThanOrEqual(LEVELS * 2);
-    expect(layout.boardSlabMatrices).toHaveLength(LEVELS);
+  it("gives each unit its own carcass, so a universe reads as a piece of furniture", () => {
+    // Four shelves plus a top, two uprights and a back — all instances of the same box, so
+    // the whole room of bookcases is still the two board draw calls it always was.
+    expect(layout.boardSlabMatrices).toHaveLength((LEVELS + CARCASS_PIECES) * runs.length);
+    expect(layout.boardLipMatrices).toHaveLength(LEVELS * runs.length);
   });
 
-  it("marks where each era begins, in run order, so the buttons travel rather than jump rows", () => {
-    expect(layout.landmarks.map((l) => l.medium)).toEqual(["vhs", "amaray"]);
-    expect(layout.landmarks[0].startX).toBeLessThan(layout.landmarks[1].startX);
+  // Instance index is the whole of the picking lookup and of the pull: `slugs[instanceId]`
+  // for a click, `item.instance` for the case being drawn out. If those two ever disagree,
+  // the wrong case slides off the shelf and the wrong page opens — plausibly, silently.
+  it("agrees with itself about which instance is which title", () => {
+    const byMedium = new Map(layout.media.map((m) => [m.medium, m]));
+    for (const shelf of layout.universes) {
+      for (const item of shelf.items) {
+        expect(byMedium.get(item.medium)!.slugs[item.instance]).toBe(item.slug);
+      }
+    }
   });
 
-  it("keeps a narrow case centred in its column instead of shifting the run", () => {
-    // t3 (vhs, 110mm) shares column 0 with three other vhs; t4 starts the amaray column.
-    const mixed: ShelfTitleData[] = [
-      { slug: "wide", runtimeMin: 100, tint: "", medium: "amaray", releaseYear: 2000, storyYear: 2000 },
-      { slug: "narrow", runtimeMin: 100, tint: "", medium: "vhs", releaseYear: 1990, storyYear: 1990 },
-    ];
-    const mixedLayout = buildShelfLayout(mixed, {}, cellSize, 4096);
-    const xs = mixedLayout.media.flatMap((m) => m.bodyMatrices.map((b) => b.elements[12]));
+  it("keeps a narrow case centred in its column instead of shifting the unit", () => {
+    const mixed = buildShelfLayout(
+      [{ key: "u", label: "U", titles: [title("wide", "amaray"), title("narrow", "vhs")], floating: [] }],
+      {},
+      cellSize,
+      4096
+    );
+    const xs = mixed.universes[0].items.map((i) => i.x);
     expect(new Set(xs.map((x) => x.toFixed(6))).size).toBe(1);
   });
 
   describe("the titles that belong outside time", () => {
-    const floating: ShelfTitleData[] = [
-      { slug: "loki", runtimeMin: 300, tint: "", medium: "none", releaseYear: 2021, storyYear: null },
-      { slug: "what-if", runtimeMin: 300, tint: "", medium: "none", releaseYear: 2021, storyYear: null },
+    const floating = [
+      title("loki", "none", { storyYear: null }),
+      title("what-if", "none", { storyYear: null }),
     ];
-    const withFloating = buildShelfLayout(run, cells, cellSize, 4096, floating);
-    const floatingPositions = withFloating.media
-      .flatMap((m) => m.slugs.map((slug, i) => ({ slug, m: m.bodyMatrices[i] })))
-      .filter((p) => floating.some((f) => f.slug === p.slug));
+    const withFloating = buildShelfLayout(
+      [{ key: "mcu", label: "MCU", titles: mcu, floating }],
+      cells,
+      cellSize,
+      4096
+    );
+    const hung = withFloating.universes[0].items.filter((i) => floating.some((f) => f.slug === i.slug));
 
-    it("hangs them above the run, with no board underneath", () => {
-      expect(floatingPositions).toHaveLength(2);
-      for (const p of floatingPositions) expect(p.m.elements[13]).toBeGreaterThan(layout.bounds.maxY);
-      // Still four boards: the run's furniture, unchanged. Nothing was built to hold these up.
-      expect(withFloating.boardSlabMatrices).toHaveLength(LEVELS);
-    });
-
-    it("is clickable like anything else on the run", () => {
-      const slugs = withFloating.media.flatMap((m) => m.slugs);
-      expect(slugs).toContain("loki");
-      expect(slugs.length).toBe(run.length + floating.length);
+    it("hangs them above their own unit, with no board underneath", () => {
+      expect(hung).toHaveLength(2);
+      const topOfShelf = Math.max(...withFloating.universes[0].items.filter((i) => i.z === 0).map((i) => i.y));
+      for (const item of hung) expect(item.y).toBeGreaterThan(topOfShelf);
+      // Still four boards: the unit's furniture, unchanged. Nothing was built to hold these up.
+      expect(withFloating.boardSlabMatrices).toHaveLength(LEVELS + CARCASS_PIECES);
     });
 
     it("scatters them by a hash of the slug, so the same title hangs in the same place", () => {
-      const again = buildShelfLayout(run, cells, cellSize, 4096, floating);
-      const first = floatingPositions.map((p) => p.m.elements[12]);
-      const repeat = again.media
-        .flatMap((m) => m.slugs.map((slug, i) => ({ slug, x: m.bodyMatrices[i].elements[12] })))
-        .filter((p) => floating.some((f) => f.slug === p.slug))
-        .map((p) => p.x);
-      expect(repeat).toEqual(first);
-      // ...and not in a neat row.
-      expect(floatingPositions[0].m.elements[13]).not.toBe(floatingPositions[1].m.elements[13]);
+      const again = buildShelfLayout([{ key: "mcu", label: "MCU", titles: mcu, floating }], cells, cellSize, 4096);
+      const repeat = again.universes[0].items.filter((i) => floating.some((f) => f.slug === i.slug));
+      expect(repeat.map((i) => [i.x, i.y, i.z])).toEqual(hung.map((i) => [i.x, i.y, i.z]));
+      expect(hung[0].y).not.toBe(hung[1].y); // ...and not in a neat row
     });
   });
 });

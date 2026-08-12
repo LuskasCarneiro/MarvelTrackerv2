@@ -54,6 +54,38 @@ question Phase 3 was funded on: procedural geometry does read as a physical obje
 
 ---
 
+## 0. Superseded 2026-08-12 by the owner: one shelf per universe
+
+**§1's single continuous run was built, looked at, and then replaced at the owner's
+direction.** The archive is now a **room of bookcases, one per universe** — twelve of them,
+standing side by side, each four levels tall and chronological within itself.
+
+The tension is worth stating once: universes cut across "the shelf ages *as you move through
+it*". What saves it is that **each unit still ages along its own length** — the MCU's runs
+DVD → Blu-ray → steelbook → nothing-physical as you travel it, and Classic era is clamshells
+throughout. The concept survives per shelf; what changes is that the archive is now browsable
+by universe, which no single run allowed.
+
+What the room gained that the run could not have:
+
+- **A unit is a piece of furniture.** Four shelves, a top, two uprights and a back panel —
+  every piece another instance of the same box, so twelve bookcases cost no extra draw calls.
+  The back panel is §3's one concession to building a room, and it is what stopped each unit
+  reading as covers floating in a void.
+- **Scroll draws a title out.** `sin(π · fraction)` takes the case off the shelf, turns it
+  toward the camera and puts it back within one step of the scroll, so keeping the wheel
+  moving returns it and brings out the next. This is `PLAN.md`'s pull-and-turn, arrived at
+  from the other end — driven by travel rather than by a click.
+- **Arrows move between universes**, and the lamp travels with you, so the neighbouring
+  bookcases are genuinely there in the dark rather than merely absent.
+
+Sizes are wildly uneven and that is the truth of the catalogue: MCU 57, Classic era 14,
+X-Men 13, Defenders 13, Sony 11, ABC 10, Animation 10, Hulu 9, Classic TV 5, Mutants 5,
+Fantastic Four 3, Spider-Verse 2.
+
+The rest of this document still holds — the lamp, the wear gradient, the two orderings, the
+historical objects — with "the run" now meaning "a unit".
+
 ## 1. One continuous run, not five rows
 
 **The current five-row layout contradicts the concept and should be replaced.**

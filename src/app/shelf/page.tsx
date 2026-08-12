@@ -1,33 +1,34 @@
-import { shelves, titles } from "@/lib/catalogue";
+import { titles } from "@/lib/catalogue";
 import ShelfSceneClient from "./ShelfSceneClient";
-import type { EraLabel, ShelfTitleData } from "./instancing";
+import type { UniverseData } from "./instancing";
 
 // A Server Component, deliberately -- see src/app/page.tsx's ShelfRow for the same call.
-// Only the four fields the 3D scene actually draws with cross the client boundary; a
-// Client Component that imported "@/lib/catalogue" directly would pull all 152 notes,
-// backdrops and TMDB ids into this route's browser bundle for a scene that draws with
-// none of them (see docs/06-progress.md, "Prop or import, it still ships").
+// Only the fields the 3D scene actually draws with cross the client boundary; a Client
+// Component that imported "@/lib/catalogue" directly would pull all 152 notes, backdrops and
+// TMDB ids into this route's browser bundle for a scene that draws with none of them (see
+// docs/06-progress.md, "Prop or import, it still ships").
 //
-// One continuous run, release order end to end -- not five era bins. The medium changes
-// underfoot as the years pass, which is the whole idea (docs/05-3d-shelf.md §1). Sorted by
-// the same rule the DOM shelves use, so the two orders never disagree.
-const run: ShelfTitleData[] = [...titles]
-  .sort((a, b) => a.releaseYear - b.releaseYear || a.title.localeCompare(b.title))
-  .map((title) => ({
+// One shelf unit per universe, standing side by side in one room, each chronological within
+// itself -- so a unit still ages along its own length (the MCU's runs DVD to Blu-ray to
+// steelbook to nothing-physical) while the room as a whole is browsable by universe.
+const order = new Map<string, UniverseData>();
+for (const title of [...titles].sort((a, b) => a.releaseYear - b.releaseYear || a.title.localeCompare(b.title))) {
+  const universe = order.get(title.universe) ?? { key: title.universe, label: title.universeName, titles: [] };
+  universe.titles.push({
     slug: title.slug,
     runtimeMin: title.runtimeMin,
     tint: title.tint,
     medium: title.medium,
     releaseYear: title.releaseYear,
     storyYear: title.storyYear,
-  }));
+  });
+  order.set(title.universe, universe);
+}
 
-// The era names, for the landmark buttons. catalogue.ts owns this copy.
-const eras: EraLabel[] = shelves.map((shelf) => ({ medium: shelf.medium, label: shelf.label }));
+// Biggest first, so the shelf you land on is the one with the most on it.
+const universes: UniverseData[] = [...order.values()].sort((a, b) => b.titles.length - a.titles.length);
 
-// Spike, not a feature yet -- see CLAUDE.md / AGENTS.md. Phase 3's structural increment:
-// the whole catalogue as one continuous run you travel along, in the conventions
-// src/app/spike/case/CaseScene.tsx already proved out. Pull-and-turn is a later increment.
+// Spike, not a feature yet -- see CLAUDE.md / AGENTS.md.
 export default function ShelfPage() {
   return (
     <main className="min-h-screen bg-shelf-dark">
@@ -36,12 +37,12 @@ export default function ShelfPage() {
           The shelf — Phase 3
         </h1>
         <p className="mt-1 text-sm text-label-mid">
-          All 152 titles in one run, four shelves tall, by release or by when the story
-          happens. Scroll or use the arrow keys to travel it, drag to look around, and click a
+          One shelf per universe, four levels tall. Scroll to draw a title out of the shelf and
+          put it back; the arrows move to the next universe. Drag to look around, and click a
           case to open it.
         </p>
       </div>
-      <ShelfSceneClient titles={run} eras={eras} />
+      <ShelfSceneClient universes={universes} />
     </main>
   );
 }

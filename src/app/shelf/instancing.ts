@@ -17,9 +17,11 @@ export type ShelfTitleData = {
   storyYear: number | null;
 };
 
-/** An era's name, from catalogue.ts — user-facing copy, so it travels rather than being
- * re-typed here. The scene turns these into the landmark buttons. */
-export type EraLabel = { medium: Medium; label: string };
+/**
+ * One universe's titles as they cross the server/client boundary, in release order. The
+ * scene re-sorts them per ordering mode; the layout never sorts.
+ */
+export type UniverseData = { key: string; label: string; titles: ShelfTitleData[] };
 
 // Real millimetres, 1 unit = 100mm — the brief's case-dimensions table, verbatim.
 const DIMENSIONS_MM: Record<Medium, { h: number; w: number; d: number }> = {
@@ -147,6 +149,48 @@ export function cropCellUv(
   };
 }
 
+/**
+ * One universe's worth of shelf: its titles in the order they should read, plus any that
+ * cannot be placed on it at all (in story order, the ones that belong outside time).
+ */
+export type ShelfRun = {
+  key: string;
+  /** The universe's name, from catalogue.ts — user-facing copy, so it travels. */
+  label: string;
+  titles: ShelfTitleData[];
+  floating: ShelfTitleData[];
+};
+
+/**
+ * One case, as placed. The matrices below are built from these; they are kept because the
+ * scroll interaction has to re-pose a single instance every frame (pulling it out of the
+ * shelf and putting it back), and recomposing from numbers is clearer than decomposing a
+ * Matrix4 to find out where the case was.
+ */
+export type ShelfItem = {
+  slug: string;
+  medium: Medium;
+  /** Index of this case within its medium's InstancedMesh — what a raycast hit returns. */
+  instance: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Per-instance depth scale, encoding runtime. */
+  ds: number;
+  /** The cover plane's offset in front of the case's own centre. */
+  coverZ: number;
+};
+
+export type UniverseShelf = {
+  key: string;
+  label: string;
+  startX: number;
+  endX: number;
+  /** Every case on this shelf, in the order the scroll walks them: down a column, then
+   * right to the next. A column is one moment in time, so this reads as time passing. */
+  items: ShelfItem[];
+};
+
 export type ShelfLayout = {
   media: {
     medium: Medium;
@@ -160,12 +204,8 @@ export type ShelfLayout = {
      */
     slugs: string[];
   }[];
-  /**
-   * Where each era begins along the run, in world x. Era boundaries are not layout any more
-   * (see docs/05-3d-shelf.md §1) — they are landmarks you pass, so this is what the jump
-   * buttons aim at rather than a row to select.
-   */
-  landmarks: { medium: Medium; startX: number }[];
+  /** The shelves, left to right, one per universe. */
+  universes: UniverseShelf[];
   /**
    * 3 of 152 titles have no atlas cell at all (no poster on TMDB yet — see the brief).
    * Their instanced cover slot gets an arbitrary, always-hidden UV window (cell 0, since
@@ -173,9 +213,6 @@ export type ShelfLayout = {
    * non-instanced, opaque plane per title, in its own tint, positioned a hair further
    * forward so it wins the depth test and fully occludes that slot — "a blank case, not a
    * crash", using the exact tintToHsl()+setHSL() pattern CaseScene.tsx uses for its spine.
-   * A plain position (rather than a full Matrix4): every blank-cover transform is pure
-   * translation, so there is nothing a JSX `position` prop loses over `matrix` — and it
-   * sidesteps needing `matrixAutoUpdate={false}` on three non-instanced meshes for no gain.
    */
   blankCovers: {
     slug: string;
@@ -206,8 +243,7 @@ function matrix(x: number, y: number, z: number, sx: number, sy: number, sz: num
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), IDENTITY_QUAT, new THREE.Vector3(sx, sy, sz));
 }
 
-/** How many shelves tall the run is. Four gives the mass of a real bookcase and keeps the
- * journey to ~50 units instead of ~205 (see docs/05-3d-shelf.md §1). */
+/** How many shelves tall each unit is. Four gives the mass of a real bookcase. */
 export const LEVELS = 4;
 
 /** Every level is the same pitch, sized for the tallest case in the catalogue. Column-major
@@ -215,41 +251,44 @@ export const LEVELS = 4;
  * anyway — and a run whose shelves stepped up and down would read as broken. */
 const LEVEL_PITCH = Math.max(...Object.values(DIMENSIONS).map((d) => d.h)) + ROW_CLEARANCE + BOARD_THICKNESS;
 
+/** Clear air between one universe's unit and the next. Wide enough that they read as
+ * separate pieces of furniture rather than one run with a gap in it. */
+const UNIVERSE_GAP = 2.6;
+
+const UPRIGHT_WIDTH = 0.07;
+const BACK_PANEL_THICKNESS = 0.03;
+
+/** How many pieces of carcass each unit adds beyond its shelves: a top, two uprights and a
+ * back. Exported so the layout test can assert the furniture without re-deriving it. */
+export const CARCASS_PIECES = 4;
+
 /**
- * One continuous run, chronological end to end, filled **column-major**: consecutive titles
- * stack top to bottom within a column, then the run steps right. See docs/05-3d-shelf.md §1
- * for why this replaced five era rows — "the shelf ages as you move through it" is not five
- * bins you jump between, and rows of 7 against rows of 66 read as broken rather than designed.
+ * The archive as a room of shelf units — **one per universe**, left to right, each filled
+ * column-major and chronological within itself.
  *
- * A column is one moment in time, so an era change sweeps past as a **vertical band**: you
- * watch clamshells give way to Amarays across the full height at once. Era boundaries stop
- * being layout and become landmarks, which is what `landmarks` is for.
+ * Each unit still ages along its own length, which is the concept in `CLAUDE.md`: the MCU
+ * unit runs DVD to Blu-ray to steelbook to nothing-physical as you travel it, and the
+ * Classic era unit is clamshells throughout. Splitting by universe changes what a shelf *is*
+ * without giving up what makes it a shelf.
  *
- * `titles` arrives in the order the run should read; this function does not sort.
+ * Runs arrive in the order they should stand and already sorted; this function does not sort.
  */
 export function buildShelfLayout(
-  titles: ShelfTitleData[],
+  runs: ShelfRun[],
   atlasCells: Record<string, CellPx>,
   cellSize: { w: number; h: number },
-  atlasSize: number,
-  /**
-   * Titles with no place on the run at all. In story order these are the 14 about unstable
-   * reality — multiverses, the TVA, a character who may be imagining everything — and they
-   * hang above the run, unanchored, rather than being assigned a year they do not have.
-   * Empty in release order, where every title has a release date.
-   */
-  floating: ShelfTitleData[] = []
+  atlasSize: number
 ): ShelfLayout {
-  const logRange = runtimeLogRange([...titles, ...floating]);
+  const allTitles = runs.flatMap((r) => [...r.titles, ...r.floating]);
+  const logRange = runtimeLogRange(allTitles);
   const blankCovers: ShelfLayout["blankCovers"] = [];
   const boardSlabMatrices: THREE.Matrix4[] = [];
   const boardLipMatrices: THREE.Matrix4[] = [];
-  const landmarks: ShelfLayout["landmarks"] = [];
+  const universes: UniverseShelf[] = [];
   const bounds = { minX: 0, maxX: 0, minY: Infinity, maxY: -Infinity };
 
-  // One bucket per medium, in first-seen order, because an InstancedMesh needs its instances
-  // grouped by the material they share. Instance order within a bucket is run order, which is
-  // what makes `slugs[instanceId]` a straight lookup when picking.
+  // One bucket per medium across the whole room, because an InstancedMesh needs its
+  // instances grouped by the material they share — a shelf unit is not a draw call.
   const buckets = new Map<Medium, ShelfLayout["media"][number]>();
   const bucketFor = (medium: Medium) => {
     let bucket = buckets.get(medium);
@@ -260,75 +299,19 @@ export function buildShelfLayout(
     return bucket;
   };
 
-  const columns: ShelfTitleData[][] = [];
-  titles.forEach((title, i) => {
-    const column = Math.floor(i / LEVELS);
-    (columns[column] ??= []).push(title);
-  });
-
-  let columnLeft = 0;
-  columns.forEach((column) => {
-    // A column is as wide as its widest member: a VHS (110mm) sharing a column with Amarays
-    // (135mm) centres within it rather than dragging the rest of the run out of alignment.
-    const columnWidth = Math.max(...column.map((t) => DIMENSIONS[t.medium].w));
-
-    column.forEach((title, level) => {
-      const dims = DIMENSIONS[title.medium];
-      const x = columnLeft + columnWidth / 2;
-      const boardTop = -level * LEVEL_PITCH;
-      const y = boardTop + dims.h / 2;
-      const ds = depthScale(title.runtimeMin, logRange);
-      const d = dims.d * ds;
-      const bucket = bucketFor(title.medium);
-
-      // Base geometry is built at the medium's nominal depth; only Z scales per instance.
-      bucket.bodyMatrices.push(matrix(x, y, 0, 1, 1, ds));
-
-      const cellPx = atlasCells[title.slug];
-      bucket.coverUvs.push(cropCellUv(cellPx ?? { x: 0, y: 0 }, cellSize, atlasSize, dims.w / dims.h));
-      bucket.coverMatrices.push(matrix(x, y, d / 2 + COVER_INSET, 1, 1, 1));
-      bucket.slugs.push(title.slug);
-
-      if (!cellPx) {
-        blankCovers.push({
-          slug: title.slug,
-          tint: title.tint,
-          position: { x, y, z: d / 2 + BLANK_COVER_INSET },
-          size: { w: dims.w - CORNER_RADIUS * 0.6, h: dims.h - CORNER_RADIUS * 0.6 },
-        });
-      }
-
-      if (!landmarks.some((l) => l.medium === title.medium)) {
-        landmarks.push({ medium: title.medium, startX: x });
-      }
-
-      bounds.maxX = Math.max(bounds.maxX, x + dims.w / 2);
-      bounds.minY = Math.min(bounds.minY, boardTop);
-      bounds.maxY = Math.max(bounds.maxY, y + dims.h / 2);
-    });
-
-    columnLeft += columnWidth + GAP_X;
-  });
-
-  // The unanchored ones. Spread along the run so they read as belonging to the whole of it
-  // rather than to one section, above the top board with nothing underneath them. The offsets
-  // are hashed from the slug rather than random: the same title hangs in the same place on
-  // every render and on every machine, and a neat row would look like a sixth shelf.
-  const runEnd = bounds.maxX;
-  floating.forEach((title, i) => {
+  /** Adds one case to its medium's bucket and returns where it went. */
+  const place = (title: ShelfTitleData, x: number, y: number, z: number): ShelfItem => {
     const dims = DIMENSIONS[title.medium];
-    const spread = floating.length > 1 ? i / (floating.length - 1) : 0.5;
-    const jitter = hashUnit(title.slug);
-    const x = 2 + spread * Math.max(runEnd - 4, 1) + (jitter - 0.5) * 1.6;
-    const y = bounds.maxY + 0.9 + jitter * 1.8;
-    const z = (hashUnit(`${title.slug}-z`) - 0.5) * 1.4;
     const ds = depthScale(title.runtimeMin, logRange);
+    const coverZ = (dims.d * ds) / 2 + COVER_INSET;
     const bucket = bucketFor(title.medium);
+    const instance = bucket.slugs.length;
 
+    // Base geometry is built at the medium's nominal depth; only Z scales per instance.
     bucket.bodyMatrices.push(matrix(x, y, z, 1, 1, ds));
     const cellPx = atlasCells[title.slug];
     bucket.coverUvs.push(cropCellUv(cellPx ?? { x: 0, y: 0 }, cellSize, atlasSize, dims.w / dims.h));
-    bucket.coverMatrices.push(matrix(x, y, z + (dims.d * ds) / 2 + COVER_INSET, 1, 1, 1));
+    bucket.coverMatrices.push(matrix(x, y, z + coverZ, 1, 1, 1));
     bucket.slugs.push(title.slug);
 
     if (!cellPx) {
@@ -339,24 +322,98 @@ export function buildShelfLayout(
         size: { w: dims.w - CORNER_RADIUS * 0.6, h: dims.h - CORNER_RADIUS * 0.6 },
       });
     }
+
+    bounds.maxX = Math.max(bounds.maxX, x + dims.w / 2);
+    bounds.minY = Math.min(bounds.minY, y - dims.h / 2);
+    bounds.maxY = Math.max(bounds.maxY, y + dims.h / 2);
+
+    return { slug: title.slug, medium: title.medium, instance, x, y, z, ds, coverZ };
+  };
+
+  let unitLeft = 0;
+  runs.forEach((run) => {
+    const items: ShelfItem[] = [];
+
+    const columns: ShelfTitleData[][] = [];
+    run.titles.forEach((title, i) => {
+      const column = Math.floor(i / LEVELS);
+      (columns[column] ??= []).push(title);
+    });
+
+    let columnLeft = unitLeft;
+    columns.forEach((column) => {
+      // A column is as wide as its widest member: a VHS (110mm) sharing a column with
+      // Amarays (135mm) centres within it rather than dragging the unit out of alignment.
+      const columnWidth = Math.max(...column.map((t) => DIMENSIONS[t.medium].w));
+      column.forEach((title, level) => {
+        const dims = DIMENSIONS[title.medium];
+        items.push(place(title, columnLeft + columnWidth / 2, -level * LEVEL_PITCH + dims.h / 2, 0));
+      });
+      columnLeft += columnWidth + GAP_X;
+    });
+
+    const unitRight = Math.max(columnLeft - GAP_X, unitLeft + DIMENSIONS.amaray.w);
+    const unitWidth = unitRight - unitLeft;
+
+    // The unanchored ones (story order's fourteen). They hang above their own universe's
+    // unit with nothing underneath, spread across its width and scattered by a hash of the
+    // slug, so the same title hangs in the same place on every render and every machine.
+    run.floating.forEach((title, i) => {
+      const spread = run.floating.length > 1 ? i / (run.floating.length - 1) : 0.5;
+      const jitter = hashUnit(title.slug);
+      const x = unitLeft + 0.7 + spread * Math.max(unitWidth - 1.4, 0.5) + (jitter - 0.5) * 0.9;
+      // Above the carcass, not just above the top row of cases: the unit now has a top board,
+      // and hanging these at case height would push them through it.
+      const y = LEVEL_PITCH + 0.8 + jitter * 1.6;
+      items.push(place(title, x, y, (hashUnit(`${title.slug}-z`) - 0.5) * 1.2));
+    });
+
+    // A carcass per unit, not just floating shelves: four boards, a top, two uprights and a
+    // back panel. Every piece is another instance of the same unit box, so a whole extra
+    // bookcase costs nothing in draw calls — and it is what makes a universe read as its own
+    // piece of furniture rather than a section of an endless wall. The back panel is
+    // docs/05-3d-shelf.md §3's one concession to building a room: real shelves have backs, it
+    // stops the floating-in-void feeling, and it gives the lamp a surface to fall on.
+    const slabWidth = unitWidth + BOARD_MARGIN * 2;
+    const centreX = unitLeft + unitWidth / 2;
+    const unitTop = LEVEL_PITCH;
+    const unitBottom = -(LEVELS - 1) * LEVEL_PITCH - BOARD_THICKNESS;
+    const unitHeight = unitTop - unitBottom;
+
+    for (let level = 0; level < LEVELS; level++) {
+      const boardTop = -level * LEVEL_PITCH;
+      boardSlabMatrices.push(matrix(centreX, boardTop - BOARD_THICKNESS / 2, 0, slabWidth, BOARD_THICKNESS, BOARD_DEPTH));
+      // The lip: a brighter trim strip along the board's front-top edge — the one surface a
+      // face-out shelf never hides behind its own cases.
+      boardLipMatrices.push(
+        matrix(centreX, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, slabWidth, BOARD_LIP_HEIGHT, 0.03)
+      );
+    }
+    boardSlabMatrices.push(matrix(centreX, unitTop - BOARD_THICKNESS / 2, 0, slabWidth, BOARD_THICKNESS, BOARD_DEPTH));
+    for (const side of [-1, 1]) {
+      boardSlabMatrices.push(
+        matrix(
+          centreX + side * (slabWidth / 2 + UPRIGHT_WIDTH / 2),
+          unitBottom + unitHeight / 2,
+          0,
+          UPRIGHT_WIDTH,
+          unitHeight,
+          BOARD_DEPTH
+        )
+      );
+    }
+    boardSlabMatrices.push(
+      matrix(centreX, unitBottom + unitHeight / 2, -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS, slabWidth, unitHeight, BACK_PANEL_THICKNESS)
+    );
+
+    universes.push({ key: run.key, label: run.label, startX: unitLeft, endX: unitRight, items });
+    unitLeft = unitRight + UNIVERSE_GAP;
   });
 
-  // One board per level, spanning the whole run: the furniture is continuous even though the
-  // objects standing on it change in steps (docs/05-3d-shelf.md §3). Boards are sized from
-  // the run itself, so the floating titles above deliberately have nothing under them.
-  const runWidth = runEnd + BOARD_MARGIN * 2;
-  const boardCenterX = runWidth / 2 - BOARD_MARGIN;
-  for (let level = 0; level < LEVELS; level++) {
-    const boardTop = -level * LEVEL_PITCH;
-    boardSlabMatrices.push(
-      matrix(boardCenterX, boardTop - BOARD_THICKNESS / 2, 0, runWidth, BOARD_THICKNESS, BOARD_DEPTH)
-    );
-    // The lip: a brighter trim strip along the board's front-top edge — the one surface a
-    // face-out run never hides behind its own cases.
-    boardLipMatrices.push(
-      matrix(boardCenterX, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, runWidth, BOARD_LIP_HEIGHT, 0.03)
-    );
-  }
+  // Frame the furniture, not just the cases: the carcass runs from its own top board down to
+  // below the bottom shelf, and a camera fitted to the cases alone crops both.
+  bounds.minY = Math.min(bounds.minY, -(LEVELS - 1) * LEVEL_PITCH - BOARD_THICKNESS);
+  bounds.maxY = Math.max(bounds.maxY, LEVEL_PITCH);
 
-  return { media: [...buckets.values()], blankCovers, landmarks, boardSlabMatrices, boardLipMatrices, bounds };
+  return { media: [...buckets.values()], universes, blankCovers, boardSlabMatrices, boardLipMatrices, bounds };
 }

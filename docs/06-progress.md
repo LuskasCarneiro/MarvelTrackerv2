@@ -245,6 +245,39 @@ much each is missed:
 
 ## Log
 
+### 2026-08-12 — a room of bookcases, one per universe, and scroll pulls a title out
+
+**Owner's direction, and it supersedes the continuous run built earlier the same day.** See
+`docs/05-3d-shelf.md` §0 for the reasoning and what survives of the old concept.
+
+- **Twelve shelf units**, one per universe, standing side by side in one room, each
+  chronological within itself. `buildShelfLayout` now takes runs rather than a flat list and
+  buckets instances by medium across the whole room, so a bookcase is not a draw call.
+- **Each unit has a carcass** — four shelves, a top, two uprights, a back panel — all extra
+  instances of the same unit box. 16 draw calls for twelve bookcases and 152 cases. The back
+  panel is what stopped a unit reading as covers floating in a void.
+- **Scroll draws a title out of the shelf and puts it back.** `sin(π · fraction)` over one
+  step, so keeping the wheel moving returns the case and brings out the next. The case turns
+  toward the camera as it comes; the cover plane and, for the three artless titles, the blank
+  plane travel with it, or a pulled case leaves its own front behind on the shelf.
+- **Arrows change universe**, keyboard left/right too, and the lamp travels with the camera.
+
+**Four framing faults, each found by looking and none by reading the code:**
+
+1. The camera followed the active case's *height*, which swung the view a whole unit as the
+   walk stepped down a column and threw the bookcase into the corner of the frame. It leans
+   20% toward the case now instead of following it.
+2. Aiming squarely at the first case on a unit points a third of the frame at empty room.
+   The aim is clamped to stay 3.2 units inside the unit's own span.
+3. The camera was fitted to the cases, not to the furniture, so the new carcass cropped top
+   and bottom. `bounds` now includes it.
+4. The floating titles hung at a height the new top board occupies, so they would have been
+   pushed through it.
+
+Verified in a browser at the production build: the pull reads, the arrows move between
+universes (MCU → Classic era → X-Men (Fox)), the page never scrolls, and a click on a pulled
+case still opens its own page (Logan). 83 tests green.
+
 ### 2026-08-12 — scroll travels, and the shelf has two orderings
 
 Steps 3 and 4 of `docs/05-3d-shelf.md` §7, in the order it sets out.

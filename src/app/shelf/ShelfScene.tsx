@@ -15,7 +15,10 @@ import {
   COVER_SHININESS,
   buildShelfLayout,
   type ShelfTitleData,
-  type EraLabel,
+  type ShelfItem,
+  type ShelfRun,
+  type UniverseData,
+  type UniverseShelf,
   type CellUv,
 } from "./instancing";
 
@@ -122,10 +125,13 @@ function BlankCover({
   position,
   tint,
   size,
+  meshRef,
 }: {
   position: readonly [number, number, number];
   tint: string;
   size: { w: number; h: number };
+  /** So the pull can carry this plane along with its case — see ShelfContent's frame loop. */
+  meshRef: (mesh: THREE.Mesh | null) => void;
 }) {
   // = CaseScene.tsx's spine colour, exactly: setHSL, never Color.setStyle() (see tint.ts --
   // three's string parser silently returns white for this project's space-separated hsl()).
@@ -135,14 +141,67 @@ function BlankCover({
   }, [tint]);
 
   return (
-    <mesh position={position}>
+    <mesh ref={meshRef} position={position}>
       <planeGeometry args={[size.w, size.h]} />
       <meshPhongMaterial color={color} shininess={4} specular="#1a1714" />
     </mesh>
   );
 }
 
-function ShelfContent({ layout, onPick }: { layout: Layout; onPick: (slug: string) => void }) {
+/** How far a title travels out of the shelf at the peak of its turn, and how far it turns. */
+const PULL_Z = 1.15;
+const PULL_LIFT = 0.05;
+const PULL_YAW = -0.5; // negative turns the face towards the camera, which stands to the left
+
+/** Head-height over the run and standing off its face, like a picture light on a wall unit.
+ * The reach is short because the falloff is the whole effect: the neighbouring universes
+ * are there, in the dark, and you travel to them rather than seeing them all at once. */
+const LAMP_HEIGHT = -1.2;
+const LAMP_Z = 4.0;
+const LAMP_INTENSITY = 95;
+const LAMP_REACH = 15;
+
+/** How close the camera may aim to the end of a unit before it stops following. */
+const EDGE_MARGIN = 3.2;
+
+const scratch = {
+  matrix: new THREE.Matrix4(),
+  quaternion: new THREE.Quaternion(),
+  euler: new THREE.Euler(),
+  position: new THREE.Vector3(),
+  scale: new THREE.Vector3(),
+  offset: new THREE.Vector3(),
+};
+
+/** Where one case sits when it is pulled `amount` (0 = on the shelf, 1 = fully out). */
+function poseCase(item: ShelfItem, amount: number, isCover: boolean): THREE.Matrix4 {
+  const { matrix, quaternion, euler, position, scale, offset } = scratch;
+  quaternion.setFromEuler(euler.set(0, PULL_YAW * amount, 0));
+  offset.set(0, 0, isCover ? item.coverZ : 0).applyQuaternion(quaternion);
+  position.set(
+    item.x + offset.x,
+    item.y + PULL_LIFT * amount + offset.y,
+    item.z + PULL_Z * amount + offset.z
+  );
+  return matrix.compose(position, quaternion, scale.set(1, 1, isCover ? 1 : item.ds));
+}
+
+function ShelfContent({
+  layout,
+  onPick,
+  universe,
+  progress,
+  centreY,
+}: {
+  layout: Layout;
+  onPick: (slug: string) => void;
+  universe: UniverseShelf;
+  /** Mid-height of a shelf unit — what the camera stays framed on while it travels. */
+  centreY: number;
+  /** Live scroll position, in titles, within this universe. A ref rather than state: it
+   * changes on every wheel event and nothing in React needs to re-render for it. */
+  progress: React.RefObject<number>;
+}) {
   const texture = useTexture(ATLAS_PATH, (t) => {
     const map = Array.isArray(t) ? t[0] : t;
     // Without this the atlas renders washed out -- three decodes to linear otherwise.
@@ -154,17 +213,99 @@ function ShelfContent({ layout, onPick }: { layout: Layout; onPick: (slug: strin
     () => layout.media.map((row) => ({ medium: row.medium, slugs: row.slugs, ...buildMediumMeshes(row, texture) })),
     [layout, texture]
   );
-
+  const meshByMedium = useMemo(() => new Map(mediumMeshes.map((m) => [m.medium, m])), [mediumMeshes]);
   const boards = useMemo(() => buildBoardMeshes(layout.boardSlabMatrices, layout.boardLipMatrices), [layout]);
+
+  // The three titles with no artwork carry their own plane (see ShelfLayout.blankCovers); it
+  // has to travel with the case, or a pulled case leaves its blank front behind on the shelf.
+  const blankRefs = useRef(new Map<string, THREE.Mesh>());
+
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
+  const lamp = useRef<THREE.PointLight>(null);
+  const posed = useRef<ShelfItem | null>(null);
+
+  /**
+   * The interaction, in one frame loop.
+   *
+   * Scrolling walks the shelf a title at a time: `sin(pi * fraction)` takes the case out of
+   * the shelf and puts it back within one step, so keeping the wheel moving returns it and
+   * brings out the next — which is the behaviour asked for, not a carousel that holds a
+   * selection. The camera follows the case being pulled, so it is always the one in the
+   * middle of the screen, and the lamp follows the camera.
+   */
+  useFrame((_, dt) => {
+    const items = universe.items;
+    if (!items.length) return;
+
+    const walk = Math.min(Math.max(progress.current, 0), items.length - 0.001);
+    const index = Math.floor(walk);
+    const item = items[index];
+    const amount = Math.sin(Math.PI * (walk - index));
+
+    // Put the previous case back before posing a new one, or a fast scroll leaves cases
+    // hanging out of the shelf behind it.
+    if (posed.current && posed.current !== item) {
+      const previous = posed.current;
+      const mesh = meshByMedium.get(previous.medium);
+      if (mesh) {
+        mesh.body.setMatrixAt(previous.instance, poseCase(previous, 0, false));
+        mesh.cover.setMatrixAt(previous.instance, poseCase(previous, 0, true));
+        mesh.body.instanceMatrix.needsUpdate = true;
+        mesh.cover.instanceMatrix.needsUpdate = true;
+      }
+      blankRefs.current.get(previous.slug)?.position.set(previous.x, previous.y, previous.z + previous.coverZ);
+    }
+
+    const mesh = meshByMedium.get(item.medium);
+    if (mesh) {
+      mesh.body.setMatrixAt(item.instance, poseCase(item, amount, false));
+      mesh.cover.setMatrixAt(item.instance, poseCase(item, amount, true));
+      mesh.body.instanceMatrix.needsUpdate = true;
+      mesh.cover.instanceMatrix.needsUpdate = true;
+    }
+    const blank = blankRefs.current.get(item.slug);
+    if (blank) {
+      const m = poseCase(item, amount, true);
+      blank.position.setFromMatrixPosition(m);
+      blank.quaternion.setFromRotationMatrix(m);
+    }
+    posed.current = item;
+
+    // Follow. Camera and orbit target move by the same delta, which keeps the viewer's angle
+    // and zoom — moving the target alone swings the camera round the shelf.
+    if (controls) {
+      const ease = Math.min(1, dt * 3.2);
+      // Horizontally the camera goes where the case is; vertically it only leans towards it.
+      // Following y outright swings the view a whole unit's height as the walk steps down a
+      // column, which throws the shelf into a corner of the frame — the case ends up centred
+      // and the furniture it belongs to ends up off screen.
+      const aimY = centreY + (item.y - centreY) * 0.2;
+      // ...and it stays inside the unit it is looking at. Aiming squarely at the first case
+      // on a shelf points a third of the frame at the empty room beside it, which is what
+      // arriving at every universe looked like; a case sitting off-centre with its own
+      // bookcase filling the frame reads far better than one centred against a void.
+      const aimX = Math.min(
+        Math.max(item.x, universe.startX + EDGE_MARGIN),
+        Math.max(universe.endX - EDGE_MARGIN, universe.startX + EDGE_MARGIN)
+      );
+      const dx = (aimX - controls.target.x) * ease;
+      const dy = (aimY - controls.target.y) * ease;
+      controls.target.x += dx;
+      controls.target.y += dy;
+      camera.position.x += dx;
+      camera.position.y += dy;
+      controls.update();
+      if (lamp.current) lamp.current.position.x = controls.target.x;
+    }
+  });
 
   return (
     <>
       {/* Instance picking. R3F raycasts an InstancedMesh for us and puts the hit index on
           the event as `instanceId`; body and cover are built from the same title order, so
-          either hit resolves through the row's slug array. stopPropagation keeps a click
-          that passes through a gap from also hitting the row behind it. Pointer events on
-          an InstancedMesh cost a raycast per move, which is why the cursor change lives on
-          the group rather than on 152 separate objects. */}
+          either hit resolves through the medium's slug array. stopPropagation keeps a click
+          that passes through a gap from also hitting the shelf behind it. */}
       {mediumMeshes.map(({ medium, slugs, body, cover }) => (
         <group
           key={medium}
@@ -189,11 +330,23 @@ function ShelfContent({ layout, onPick }: { layout: Layout; onPick: (slug: strin
       {layout.blankCovers.map((blank) => (
         <BlankCover
           key={blank.slug}
+          meshRef={(mesh) => {
+            if (mesh) blankRefs.current.set(blank.slug, mesh);
+            else blankRefs.current.delete(blank.slug);
+          }}
           position={[blank.position.x, blank.position.y, blank.position.z]}
           tint={blank.tint}
           size={blank.size}
         />
       ))}
+      <pointLight
+        ref={lamp}
+        position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
+        intensity={LAMP_INTENSITY}
+        distance={LAMP_REACH}
+        decay={1.5}
+        color="#ffd9ad"
+      />
     </>
   );
 }
@@ -212,149 +365,117 @@ function PerfLogger() {
   return null;
 }
 
-/**
- * Travel, and the lamp that travels with you.
- *
- * The run is ~50 units long and orbiting is no way to cross it, so the era buttons and the
- * arrow keys set one focus point and this eases the camera to it. It moves the camera and
- * the orbit target by the *same* delta, which preserves the framing angle and the zoom the
- * viewer chose — jumping the target alone swings the camera round the wall and loses the
- * aisle view the default framing exists to give.
- *
- * The lamp rides along at the focus. docs/05-3d-shelf.md §2: the infinite feeling comes from
- * light with real falloff, not from looping the geometry, which would lie — 1977 must not
- * follow 2026. A fixed lamp cannot do that job on a run this long; travel would simply take
- * you out of the light and leave the far end evenly dim.
- */
-function CameraRig({ focus }: { focus: { x: number; y: number } }) {
-  const camera = useThree((s) => s.camera);
-  // makeDefault on OrbitControls publishes it here; typed loosely because R3F's default
-  // controls slot is a union across every controls implementation.
-  const controls = useThree((s) => s.controls) as { target: THREE.Vector3; update: () => void } | null;
-  const delta = useRef(new THREE.Vector3());
-  const lamp = useRef<THREE.PointLight>(null);
+/** Pixels of scroll per title. One flick of a trackpad brings out about two. */
+const SCROLL_PER_TITLE = 260;
 
-  useFrame((_, dt) => {
-    if (lamp.current) {
-      // Eased on x only: the lamp is a fixture in the room, at a fixed height and a fixed
-      // distance off the shelf face, and only the section it stands over changes.
-      lamp.current.position.x += (focus.x - lamp.current.position.x) * Math.min(1, dt * 3.5);
-    }
-    if (!controls) return;
-    delta.current.set(focus.x - controls.target.x, focus.y - controls.target.y, 0);
-    if (delta.current.lengthSq() < 1e-6) return;
-    delta.current.multiplyScalar(Math.min(1, dt * 3.5));
-    controls.target.add(delta.current);
-    camera.position.add(delta.current);
-    controls.update();
-  });
-
-  return (
-    <pointLight
-      ref={lamp}
-      position={[focus.x, LAMP_HEIGHT, LAMP_Z]}
-      intensity={LAMP_INTENSITY}
-      distance={LAMP_REACH}
-      decay={1.5}
-      color="#ffd9ad"
-    />
-  );
-}
-
-/** Head-height over the run and standing off its face, like a picture light on a wall unit.
- * The reach is deliberately short — about eight columns each way — because the falloff is
- * the whole effect: travel far enough and what you came from is genuinely dark. */
-const LAMP_HEIGHT = -1.2;
-const LAMP_Z = 4.0;
-const LAMP_INTENSITY = 95;
-const LAMP_REACH = 15;
-
-const HOME_X = 9;
-const STEP_X = 2.8; // ~2 columns per arrow press
-
-export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[]; eras: EraLabel[] }) {
+export default function ShelfScene({ universes }: { universes: UniverseData[] }) {
   const [order, setOrder] = useState<"release" | "story">("release");
-
-  // The two orderings (docs/05-3d-shelf.md §4). The objects are deliberately unchanged for
-  // now — this is the reshuffle only, which is where nearly all the meaning lives: release
-  // order opens on 1970s television Spider-Man, story order on 5000 BC.
-  const { run, floating } = useMemo(() => {
-    if (order === "release") return { run: titles, floating: [] as ShelfTitleData[] };
-    const placed = titles
-      .filter((t) => t.storyYear !== null)
-      .sort((a, b) => a.storyYear! - b.storyYear! || a.releaseYear - b.releaseYear);
-    return { run: placed, floating: titles.filter((t) => t.storyYear === null) };
-  }, [titles, order]);
-
-  const layout = useMemo(
-    () => buildShelfLayout(run, atlasCells, CELL_SIZE, ATLAS_SIZE, floating),
-    [run, floating]
-  );
-  const groundWidth = Math.max(layout.bounds.maxX + 12, 20);
+  const [current, setCurrent] = useState(0);
   const router = useRouter();
+  const progress = useRef(0);
+  const surface = useRef<HTMLDivElement>(null);
 
-  // Measured off the run rather than assumed from LEVELS: the occupied volume runs from the
+  // The two orderings (docs/05-3d-shelf.md §4), applied within each universe: the objects are
+  // unchanged, the order is not. In story order the titles with no place on a timeline lift
+  // off their own unit rather than being given a year they do not have.
+  const runs = useMemo<ShelfRun[]>(
+    () =>
+      universes.map((u) => {
+        if (order === "release") return { key: u.key, label: u.label, titles: u.titles, floating: [] };
+        return {
+          key: u.key,
+          label: u.label,
+          titles: u.titles
+            .filter((t) => t.storyYear !== null)
+            .sort((a, b) => a.storyYear! - b.storyYear! || a.releaseYear - b.releaseYear),
+          floating: u.titles.filter((t) => t.storyYear === null),
+        };
+      }),
+    [universes, order]
+  );
+
+  const layout = useMemo(() => buildShelfLayout(runs, atlasCells, CELL_SIZE, ATLAS_SIZE), [runs]);
+  const shelf = layout.universes[Math.min(current, layout.universes.length - 1)];
+  const groundWidth = Math.max(layout.bounds.maxX + 12, 20);
+
+  // Measured off the room rather than assumed from LEVELS: the occupied volume runs from the
   // bottom board to the top of the tallest case standing on the top one, and the midpoint of
-  // *that* is what keeps all four levels in frame. Deriving it from the level pitch alone
-  // aims at the middle of the boards, which sits a case-height too low and crops the top row.
+  // *that* is what keeps all four levels in frame.
   const wallCentreY = (layout.bounds.minY + layout.bounds.maxY) / 2;
-  const wallHeight = layout.bounds.maxY - layout.bounds.minY;
-  // Far enough back that the full height fits at this fov, with a little air.
-  const cameraZ = (wallHeight / 2) / Math.tan((42 / 2) * (Math.PI / 180)) + 2.5;
-  const homeFocus = useMemo(() => ({ x: HOME_X, y: wallCentreY }), [wallCentreY]);
-  const [focus, setFocus] = useState(homeFocus);
+  const cameraZ = (layout.bounds.maxY - layout.bounds.minY) / 2 / Math.tan((42 / 2) * (Math.PI / 180)) + 3.4;
 
   const pick = useCallback((slug: string) => router.push(`/title/${slug}`), [router]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const dx = e.key === "ArrowRight" ? STEP_X : e.key === "ArrowLeft" ? -STEP_X : 0;
-      const dy = e.key === "ArrowUp" ? 1 : e.key === "ArrowDown" ? -1 : 0;
-      if (!dx && !dy && e.key !== "Home") return;
-      e.preventDefault();
-      setFocus((f) => {
-        if (e.key === "Home") return homeFocus;
-        if (dx) return { ...f, x: Math.min(layout.bounds.maxX, Math.max(0, f.x + dx)) };
-        return { ...f, y: Math.min(layout.bounds.maxY, Math.max(layout.bounds.minY, f.y + dy)) };
-      });
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [layout, homeFocus]);
+  const goToUniverse = useCallback(
+    (index: number) => {
+      const next = Math.min(Math.max(index, 0), layout.universes.length - 1);
+      progress.current = 0;
+      setCurrent(next);
+    },
+    [layout]
+  );
 
-  // Scroll travels along the run — the same gesture as the DOM catalogue and the same
-  // meaning, forward through time (docs/05-3d-shelf.md §6). Drag stays for looking around,
-  // never for travelling, so OrbitControls keeps its zoom off.
+  // Scroll walks this shelf; the arrow keys do the same by whole titles, and left/right
+  // change which universe you are standing in front of.
   //
   // A native listener rather than onWheel, because React registers wheel handlers passively
   // and preventDefault is a no-op inside one — without it the page scrolls behind the canvas
-  // while the run travels, which is two things moving for one gesture.
-  const surface = useRef<HTMLDivElement>(null);
+  // while the shelf moves, which is two things happening for one gesture.
   useEffect(() => {
     const el = surface.current;
     if (!el) return;
+    const walk = (delta: number) => {
+      const last = (layout.universes[current]?.items.length ?? 1) - 0.001;
+      progress.current = Math.min(Math.max(progress.current + delta, 0), last);
+    };
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      // deltaMode 1 is lines, not pixels (Firefox); treating them alike travels ~15x too far.
-      const lines = e.deltaMode === 1 ? e.deltaY : e.deltaY / 16;
-      // 0.18 per line: one flick of a trackpad moves a few columns. The first value tried was
-      // 0.55, which crossed half the catalogue in a single gesture — measured, not guessed.
-      setFocus((f) => ({ ...f, x: Math.min(layout.bounds.maxX, Math.max(0, f.x + lines * 0.18)) }));
+      // deltaMode 1 is lines, not pixels (Firefox); treating them alike scrolls ~15x too far.
+      walk((e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY) / SCROLL_PER_TITLE);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowDown") walk(0.5);
+      else if (e.key === "ArrowUp") walk(-0.5);
+      else if (e.key === "ArrowRight") goToUniverse(current + 1);
+      else if (e.key === "ArrowLeft") goToUniverse(current - 1);
+      else if (e.key === "Home") progress.current = 0;
+      else return;
+      e.preventDefault();
     }
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [layout]);
-
-  // The era's own name, from catalogue.ts, against the x where that era begins. Eras are
-  // landmarks along one run now, not rows to select, so these travel rather than jump levels.
-  const landmarks = layout.landmarks.map((l) => ({
-    ...l,
-    label: eras.find((e) => e.medium === l.medium)?.label ?? l.medium,
-  }));
+    window.addEventListener("keydown", onKey);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [layout, current, goToUniverse]);
 
   return (
     <div ref={surface} className="h-[85vh] w-full">
-      <div className="flex flex-wrap items-baseline gap-2 px-6 pb-2">
+      <div className="flex flex-wrap items-baseline gap-3 px-6 pb-3">
+        <button
+          type="button"
+          onClick={() => goToUniverse(current - 1)}
+          disabled={current === 0}
+          aria-label="Previous universe"
+          className="rounded border border-shelf-edge px-3 py-1 font-display text-sm text-label-mid enabled:hover:text-label-bright disabled:opacity-30"
+        >
+          ←
+        </button>
+        <span className="font-display text-sm uppercase tracking-[0.16em] text-label-bright">{shelf.label}</span>
+        <button
+          type="button"
+          onClick={() => goToUniverse(current + 1)}
+          disabled={current === layout.universes.length - 1}
+          aria-label="Next universe"
+          className="rounded border border-shelf-edge px-3 py-1 font-display text-sm text-label-mid enabled:hover:text-label-bright disabled:opacity-30"
+        >
+          →
+        </button>
+        <span className="text-xs text-label-dim">
+          {shelf.items.length} titles · shelf {current + 1} of {layout.universes.length}
+        </span>
+
         {(["release", "story"] as const).map((option) => (
           <button
             key={option}
@@ -375,67 +496,36 @@ export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[];
         <p className="text-xs text-label-dim">
           {order === "release"
             ? "Each release's medium is worked out from its year by a fixed rule, not verified title by title."
-            : "A conceit: nothing was recorded in 1943. Fourteen titles have no place on a timeline and hang off the run."}
+            : "A conceit: nothing was recorded in 1943. Titles with no place on a timeline hang above their shelf."}
         </p>
-      </div>
-      {/* Era landmarks only make sense in release order. In story order the media are
-          scattered along the whole run — a 1943 story on a 2011 Blu-ray — so "where Blu-ray
-          begins" is not a place any more, and a button claiming otherwise would mislead. */}
-      <div className="flex flex-wrap gap-2 px-6 pb-3">
-        {order === "release" &&
-          landmarks.map((landmark) => (
-            <button
-              key={landmark.medium}
-              type="button"
-              onClick={() => setFocus({ x: landmark.startX + 2, y: wallCentreY })}
-              className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-mid hover:text-label-bright"
-            >
-              {landmark.label}
-            </button>
-          ))}
-        <button
-          type="button"
-          onClick={() => setFocus(homeFocus)}
-          className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-dim hover:text-label-bright"
-        >
-          Reset view
-        </button>
       </div>
       <Canvas
         // ponytail: no shadow maps. A shadow-casting light doubles every case draw call
         // (a depth pass over each InstancedMesh, same cost as the colour pass) for 152
         // instanced objects on the no-discrete-GPU laptop this is designed for, and this
         // harness renders through SwiftShader (software GL) -- upgrade path is a single
-        // baked contact-shadow decal per level if the run reads as floating without one.
+        // baked contact-shadow decal per level if a unit reads as floating without one.
         dpr={[1, 1.5]}
-        // Looking down the run at an angle, not square at it.
-        //
-        // The first framing sat almost on the wall normal — about 10 degrees off — and every
-        // case read as a flat poster. That throws away the entire reason this is 3D: you
-        // could not see that a VHS clamshell is chunky and a Blu-ray case is thin, nor that
-        // thickness varies with runtime, because none of the depth faced the camera. At ~35
-        // degrees the run recedes like a video shop aisle and the objects read as objects.
-        //
-        // Far enough back to hold all four levels: the era change is a vertical band sweeping
-        // the full height, and framing one shelf at a time would hide the one thing the
-        // column-major layout exists to show.
-        camera={{ position: [HOME_X - 5.5, wallCentreY + 0.7, cameraZ], fov: 42 }}
+        // Looking along the shelf at an angle, not square at it: at ~35 degrees the cases
+        // read as objects with depth rather than as flat posters, which is the entire reason
+        // this is 3D. Far enough back to hold all four levels of a unit.
+        camera={{ position: [-4.2, wallCentreY + 0.5, cameraZ], fov: 42 }}
         gl={{ antialias: true }}
         onCreated={({ gl }) => gl.setClearColor("#14100d")}
       >
         {/* Fog in the background colour, as CaseScene.tsx does. With the lamp's falloff this
-            is the second half of "no visible end": light stops reaching, then the air closes. */}
+            is the second half of "no visible end": light stops reaching, then the air closes,
+            and the neighbouring universes wait in the dark. */}
         <fog attach="fog" args={["#14100d", 13, 38]} />
 
-        {/* A dim room, not a display case. The warm key is now the travelling lamp in
-            CameraRig; what is left here is enough ambience that an unlit cover is dark rather
-            than black, plus a cool fill for shape -- not --color-tungsten, which is the colour
-            of chrome drawn in lamplight, not the lamp itself. */}
+        {/* A dim room, not a display case. The warm key is the lamp that travels with you,
+            inside ShelfContent; what is left here is enough ambience that an unlit cover is
+            dark rather than black, plus a cool fill for shape. */}
         <ambientLight intensity={0.12} color="#f0e4d2" />
         <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.18} color="#b9c2cc" />
 
         <Suspense fallback={null}>
-          <ShelfContent layout={layout} onPick={pick} />
+          <ShelfContent layout={layout} onPick={pick} universe={shelf} progress={progress} centreY={wallCentreY} />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
               mounts (and starts its timer) once the atlas texture -- and therefore the
@@ -449,8 +539,7 @@ export default function ShelfScene({ titles, eras }: { titles: ShelfTitleData[];
           <meshPhongMaterial color="#1c1713" shininess={8} />
         </mesh>
 
-        <OrbitControls makeDefault enableZoom={false} target={[homeFocus.x, homeFocus.y, 0]} minDistance={1.5} maxDistance={40} />
-        <CameraRig focus={focus} />
+        <OrbitControls makeDefault enableZoom={false} target={[0, wallCentreY, 0]} minDistance={1.5} maxDistance={40} />
       </Canvas>
     </div>
   );
