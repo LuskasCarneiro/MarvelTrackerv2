@@ -2,7 +2,9 @@
 // that is either a TMDB CDN path or null), fetches the 149 non-null posters,
 // resizes them to cover a 256x360 cell, packs them into 4096x4096 atlases (16 cols x 11 rows,
 // 40 cells per atlas), and writes the atlases as WebP + a manifest. Writes:
-//   - public/atlas/covers-0.webp, covers-1.webp, etc.  4096x4096 WebP, quality 82
+//   - public/atlas/covers-0.<hash>.webp, etc.  4096x4096 WebP, quality 82. The hash is of
+//     the file's own bytes, so the URL changes when the pixels do and the file can be
+//     served immutable (see next.config.ts).
 //   - data/atlas.json  { atlasSize, cell, atlases, cells }
 //
 // Posters are never downloaded and cached — only the TMDB CDN paths are used. Real images
@@ -10,7 +12,7 @@
 //
 // Run: node --env-file=.env --experimental-strip-types scripts/build-atlas.ts
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
@@ -167,6 +169,13 @@ async function composeAtlas(cellBuffers: (Buffer | null)[]): Promise<Buffer> {
 async function main() {
   const artwork: Record<string, ArtworkRecord> = JSON.parse(readFileSync(ARTWORK_PATH, 'utf-8'));
 
+  // Hashed names mean a re-run writes new files rather than overwriting the old ones, so the
+  // previous run's atlases are cleared first. Nothing else lives in this directory.
+  mkdirSync(ATLAS_DIR, { recursive: true });
+  for (const stale of readdirSync(ATLAS_DIR).filter((name) => name.endsWith('.webp'))) {
+    rmSync(resolve(ATLAS_DIR, stale));
+  }
+
   // Extract slugs with posters, sort alphabetically for determinism
   const slugsWithPosters = Object.keys(artwork)
     .filter((slug) => artwork[slug].poster != null)
@@ -209,7 +218,12 @@ async function main() {
     console.log(`  composing atlas ${atlasIdx}...`);
     const atlasBuffer = await composeAtlas(atlasCells);
 
-    const atlasName = `covers-${atlasIdx}.webp`;
+    // The filename carries a hash of its own bytes so the file can be cached forever.
+    // Without it the atlas is served with max-age=0 and every visit re-downloads 3 MB —
+    // measured, not assumed. next.config.ts sets `immutable` on /atlas/*, which is only
+    // honest because this name changes whenever the pixels do.
+    const digest = createHash('sha256').update(atlasBuffer).digest('hex').slice(0, 8);
+    const atlasName = `covers-${atlasIdx}.${digest}.webp`;
     const atlasPath = resolve(ATLAS_DIR, atlasName);
     writeFileSync(atlasPath, atlasBuffer);
     atlases.push(atlasName);

@@ -238,6 +238,35 @@ does **not** do, roughly in order of how much each is missed:
 
 ## Log
 
+### 2026-08-12 — the atlas was being re-downloaded on every visit
+
+Measured first, in a browser, before touching anything:
+
+| route | transfer | largest |
+|---|---|---|
+| `/` | 1,352 KB | 254 KB JS chunk |
+| `/shelf` | 4,898 KB | **3,001 KB atlas, `Cache-Control: public, max-age=0`** |
+
+**Everything under `public/` is served `max-age=0` by default**, so the largest file in the
+project was fetched again on every visit while every JavaScript chunk beside it was
+`immutable`. That is a much better problem than the one that was on the list ("3.7 MB, where
+KTX2 would earn its place") and it cost two lines rather than a toolchain.
+
+`scripts/build-atlas.ts` now names each atlas after a hash of its own bytes
+(`covers-0.f65d2826.webp`) and `next.config.ts` serves `/atlas/*` immutable. **The hash is
+what makes the header honest** — a new atlas is a new URL, so it can never pin a stale one.
+The scene already read the name out of `data/atlas.json`, so the renderer did not change. The
+pipeline clears the directory first, or every run would leave a dead 3 MB file behind.
+
+Measured after, the same way: **first visit 3,674 KB, second visit 2 KB.**
+
+`scripts/atlas-cache.test.ts` guards the three ways this breaks silently — a manifest naming
+a missing file, a file whose bytes no longer match its name, and a previous run's atlas left
+behind — all of which produce an empty room while every other test passes.
+
+**Still open:** the cold load is unchanged, and 1.6 MB of the remaining transfer is three.js
+and R3F. KTX2 would cut the atlas itself; nothing cheap will cut the renderer.
+
 ### 2026-08-12 — a caption that failed the contrast floor, and the basics it lacked
 
 **The shelf caption shipped at 3.16:1 for an afternoon.** It is the one piece of text in this

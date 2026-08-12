@@ -29,6 +29,24 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  /*
+    Anything under public/ is served `Cache-Control: public, max-age=0` by default, and the
+    cover atlas is 3 MB of it — so every visit to /shelf re-downloaded the whole thing.
+    Measured in a browser, not guessed: `/atlas/covers-0.webp  3001 KB  [cache: max-age=0]`.
+
+    `immutable` is only honest because scripts/build-atlas.ts now names each atlas after a
+    hash of its own bytes, so a new atlas is a new URL and this header can never pin a stale
+    one. The scene reads the name out of data/atlas.json and never hardcodes it.
+  */
+  async headers() {
+    return [
+      {
+        source: "/atlas/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
