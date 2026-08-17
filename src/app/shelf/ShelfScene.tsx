@@ -9,6 +9,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { tintToHsl } from "@/lib/tint";
 import { renderBackCover } from "./backCover";
+import { buildSpineAtlas, type SpineTitle } from "./spineAtlas";
 import atlasManifest from "../../../data/atlas.json";
 import {
   DIMENSIONS,
@@ -54,8 +55,20 @@ if (atlasManifest.atlases.length > 1) {
  * own repeat/offset. Verbatim from the brief's shader recipe -- three 0.185 names the
  * varying vMapUv, not vUv, and #include <map_fragment> only exists once material.map is set.
  */
-function createCoverMaterial(map: THREE.Texture, shininess: number): THREE.MeshPhongMaterial {
-  const material = new THREE.MeshPhongMaterial({ map, shininess, specular: new THREE.Color("#6b6259") });
+function createCoverMaterial(
+  map: THREE.Texture,
+  shininess: number,
+  /** Spine labels are ink on a transparent sheet laid over the case, so they need alpha
+   * testing; covers are opaque and must not pay for it. Alpha *test* rather than blending
+   * keeps depth writes on, so a spine still occludes properly and needs no sort order. */
+  options: { alphaTest?: number } = {}
+): THREE.MeshPhongMaterial {
+  const material = new THREE.MeshPhongMaterial({
+    map,
+    shininess,
+    specular: new THREE.Color("#6b6259"),
+    ...(options.alphaTest ? { transparent: false, alphaTest: options.alphaTest } : {}),
+  });
   material.onBeforeCompile = (shader) => {
     shader.vertexShader =
       "attribute vec4 aCell;\nvarying vec4 vCell;\n" +
@@ -72,6 +85,7 @@ function createCoverMaterial(map: THREE.Texture, shininess: number): THREE.MeshP
 
 type FormRow = {
   form: Form;
+  slugs: string[];
   bodyMatrices: THREE.Matrix4[];
   coverMatrices: THREE.Matrix4[];
   coverUvs: CellUv[];
@@ -102,9 +116,56 @@ function coverGeometryFor(form: Form): THREE.BufferGeometry {
   return new THREE.PlaneGeometry(dims.w - CORNER_RADIUS * 0.6, dims.h - CORNER_RADIUS * 0.6);
 }
 
+/**
+ * Which forms carry a printed spine. A film can, a reel, a tablet and a bound volume have no
+ * spine to print — and `none` is a 3mm card standing in for a title that never had a physical
+ * release, so giving it a printed spine would assert the opposite of what it means.
+ */
+const SPINE_FORMS = new Set<Form>(["vhs", "amaray", "bluray", "steel"]);
+
+/** How far the label sheet stands off the case's own side, so it never z-fights the body. */
+const SPINE_INSET = 0.002;
+
+/**
+ * The spine face: a plane on the case's left side, which is the side a camera standing to the
+ * left of the run actually sees.
+ *
+ * Rotating -90° about Y maps the plane's local +X onto world +Z and leaves local +Y as world
+ * +Y — so the plane's width runs along the case's *depth* and its height along the case's
+ * height, which is exactly a spine. That mapping is also why the spine needs no special
+ * instance matrix: the body's per-instance `scale.z = ds` (thickness encoding runtime)
+ * stretches this plane along its own width, which is the dimension that should grow.
+ *
+ * The UVs are swapped so the atlas cell — drawn wide and short, with the title running
+ * horizontally — lands with the text running *along the spine*, as printing on a real case
+ * does. Doing it on the geometry rather than in the shader keeps the atlas module ignorant of
+ * three.js, and keeps one shader recipe shared with the covers.
+ */
+function spineGeometryFor(form: Form): THREE.BufferGeometry {
+  const dims = DIMENSIONS[form];
+  const geometry = new THREE.PlaneGeometry(dims.d, dims.h);
+  geometry.rotateY(-Math.PI / 2);
+  geometry.translate(-dims.w / 2 - SPINE_INSET, 0, 0);
+
+  const uv = geometry.attributes.uv;
+  for (let i = 0; i < uv.count; i++) {
+    const u = uv.getX(i);
+    const v = uv.getY(i);
+    // Swap, and flip the long axis, so the title reads top-to-bottom the way spine printing
+    // does on a shelf in this part of the world rather than bottom-to-top.
+    uv.setXY(i, 1 - v, u);
+  }
+  uv.needsUpdate = true;
+  return geometry;
+}
+
 /** One InstancedMesh for the body, one for the cover -- two draw calls per form,
  * regardless of how many titles that form contributes to the room. */
-function buildMediumMeshes(row: FormRow, coverTexture: THREE.Texture) {
+function buildMediumMeshes(
+  row: FormRow,
+  coverTexture: THREE.Texture,
+  spine: { texture: THREE.Texture; uvs: CellUv[] } | null
+) {
   const count = row.bodyMatrices.length;
 
   const bodyGeometry = bodyGeometryFor(row.form);
@@ -123,7 +184,22 @@ function buildMediumMeshes(row: FormRow, coverTexture: THREE.Texture) {
   row.coverMatrices.forEach((m, i) => cover.setMatrixAt(i, m));
   cover.instanceMatrix.needsUpdate = true;
 
-  return { body, cover };
+  // The spine shares the body's instance matrices exactly — same position, same thickness
+  // scale — because it is a face of the same object rather than a thing placed near it.
+  let spineMesh: THREE.InstancedMesh | null = null;
+  if (spine && SPINE_FORMS.has(row.form)) {
+    const spineGeometry = spineGeometryFor(row.form);
+    const spineCells = new Float32Array(count * 4);
+    spine.uvs.forEach((uv, i) => spineCells.set([uv.u0, uv.v0, uv.du, uv.dv], i * 4));
+    spineGeometry.setAttribute("aCell", new THREE.InstancedBufferAttribute(spineCells, 4));
+    // Duller than any cover: this is ink printed onto the case, not artwork behind a sleeve.
+    const spineMaterial = createCoverMaterial(spine.texture, 12, { alphaTest: 0.4 });
+    spineMesh = new THREE.InstancedMesh(spineGeometry, spineMaterial, count);
+    row.bodyMatrices.forEach((m, i) => spineMesh!.setMatrixAt(i, m));
+    spineMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  return { body, cover, spine: spineMesh };
 }
 
 /**
@@ -326,8 +402,11 @@ function ShelfContent({
   onActive,
   turnedItem,
   storyOrder,
+  spineTitles,
 }: {
   layout: Layout;
+  /** Every title in the catalogue, for the spine atlas. Stable across ordering and universe. */
+  spineTitles: SpineTitle[];
   onPick: (slug: string) => void;
   universe: UniverseShelf;
   /** The case being read back-first, or null when everything is facing the room. One prop
@@ -352,9 +431,47 @@ function ShelfContent({
     map.anisotropy = 8;
   });
 
+  /**
+   * The spine labels, as one alpha-tested atlas over every case.
+   *
+   * Built once from the whole catalogue rather than per universe or per ordering: the label
+   * printed on a case is the same string whichever shelf it stands on and whichever order it
+   * stands in, so rebuilding it on every reshuffle would redraw 152 strings to get the same
+   * texture back. `spineTitles` is the stable list; the per-instance windows into it are what
+   * change, and those are cheap.
+   */
+  const spineAtlas = useMemo(() => buildSpineAtlas(spineTitles), [spineTitles]);
+  const spineTexture = useMemo(() => {
+    const created = new THREE.CanvasTexture(spineAtlas.canvas);
+    created.colorSpace = THREE.SRGBColorSpace;
+    created.anisotropy = 8;
+    return created;
+  }, [spineAtlas]);
+  useEffect(() => () => spineTexture.dispose(), [spineTexture]);
+
   const mediumMeshes = useMemo(
-    () => layout.media.map((row) => ({ form: row.form, slugs: row.slugs, ...buildMediumMeshes(row, texture) })),
-    [layout, texture]
+    () =>
+      layout.media.map((row) => {
+        // A cell drawn at the spine's own aspect needs no crop — unlike the covers, whose
+        // artwork is a different shape from the face it is printed on. So this is a straight
+        // pixels-to-UV conversion, with the flip that three's default flipY upload implies.
+        const uvs = row.slugs.map((slug) => {
+          const cell = spineAtlas.cells[slug];
+          if (!cell) return { u0: 0, v0: 0, du: 0, dv: 0 };
+          return {
+            u0: cell.x / spineAtlas.width,
+            du: cell.w / spineAtlas.width,
+            v0: 1 - (cell.y + cell.h) / spineAtlas.height,
+            dv: cell.h / spineAtlas.height,
+          };
+        });
+        return {
+          form: row.form,
+          slugs: row.slugs,
+          ...buildMediumMeshes(row, texture, { texture: spineTexture, uvs }),
+        };
+      }),
+    [layout, texture, spineAtlas, spineTexture]
   );
   const meshByForm = useMemo(() => new Map(mediumMeshes.map((m) => [m.form, m])), [mediumMeshes]);
   const boards = useMemo(
@@ -467,6 +584,10 @@ function ShelfContent({
         mesh.cover.setMatrixAt(previous.instance, poseCover(previous, 0, 0));
         mesh.body.instanceMatrix.needsUpdate = true;
         mesh.cover.instanceMatrix.needsUpdate = true;
+        if (mesh.spine) {
+          mesh.spine.setMatrixAt(previous.instance, poseBody(previous, 0, 0));
+          mesh.spine.instanceMatrix.needsUpdate = true;
+        }
       }
       blankRefs.current.get(previous.slug)?.position.set(previous.x, previous.y, previous.z + previous.coverZ);
     }
@@ -477,6 +598,12 @@ function ShelfContent({
       mesh.cover.setMatrixAt(item.instance, poseCover(item, amount, turn.current));
       mesh.body.instanceMatrix.needsUpdate = true;
       mesh.cover.instanceMatrix.needsUpdate = true;
+      // The spine is a face of the body, so it takes the body's pose exactly — including the
+      // turn, which is what lets you read the spine of a case as it comes round.
+      if (mesh.spine) {
+        mesh.spine.setMatrixAt(item.instance, poseBody(item, amount, turn.current));
+        mesh.spine.instanceMatrix.needsUpdate = true;
+      }
     }
     const blank = blankRefs.current.get(item.slug);
     if (blank) {
@@ -557,7 +684,7 @@ function ShelfContent({
           the event as `instanceId`; body and cover are built from the same title order, so
           either hit resolves through the medium's slug array. stopPropagation keeps a click
           that passes through a gap from also hitting the shelf behind it. */}
-      {mediumMeshes.map(({ form, slugs, body, cover }) => (
+      {mediumMeshes.map(({ form, slugs, body, cover, spine }) => (
         <group
           key={form}
           onPointerDown={(e: ThreeEvent<PointerEvent>) => {
@@ -582,6 +709,10 @@ function ShelfContent({
         >
           <primitive object={body} />
           <primitive object={cover} />
+          {/* Inside the picking group deliberately: clicking the spine of a case is clicking
+              the case, and the spine shares the body's instance indices so it resolves through
+              the same slug array. */}
+          {spine && <primitive object={spine} />}
         </group>
       ))}
       <primitive object={boards.slab} />
@@ -747,6 +878,14 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   );
 
   const layout = useMemo(() => buildShelfLayout(runs, atlasCells, CELL_SIZE, ATLAS_SIZE), [runs]);
+
+  // Off `universes` rather than off the layout: the layout is rebuilt on every reshuffle and
+  // in story order it drops the 14 titles that have no place on a timeline, which would print
+  // a blank spine on exactly the cases that are most worth labelling.
+  const spineTitles = useMemo<SpineTitle[]>(
+    () => universes.flatMap((u) => u.titles.map((t) => ({ slug: t.slug, label: t.label }))),
+    [universes]
+  );
   const shelf = layout.universes[Math.min(current, layout.universes.length - 1)];
   const groundWidth = Math.max(layout.bounds.maxX + 12, 20);
 
@@ -943,6 +1082,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             onActive={setActive}
             turnedItem={turned ? active : null}
             storyOrder={order === "story"}
+            spineTitles={spineTitles}
           />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
