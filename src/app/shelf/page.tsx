@@ -61,9 +61,9 @@ export default function ShelfPage() {
           </Link>
         </div>
         <p className="mt-1 text-sm text-label-mid">
-          One shelf per universe, each as tall as its collection needs. Scroll or swipe to draw a title out of the
-          shelf and put it back; the arrows move to the next universe. Turn a case over to read its back, or stand back to see the whole shelf.{" "}
-          <span className="hidden sm:inline">Drag to look around, and click a case to open it.</span>
+          One shelf per universe, each as tall as its collection needs. You stand still: scroll to bring a title
+          off the shelf and put it back, and swipe sideways to move to the next universe. Turn a case over to read
+          its back, search to summon a title from anywhere in the archive, and click a case to open it.
         </p>
       </div>
       <ShelfSceneClient universes={universes} />

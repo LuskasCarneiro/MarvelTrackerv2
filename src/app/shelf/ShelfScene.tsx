@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, PerformanceMonitor, useProgress, useTexture } from "@react-three/drei";
+import { PerformanceMonitor, useProgress, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { tintToHsl } from "@/lib/tint";
@@ -12,6 +12,7 @@ import { renderBackCover } from "./backCover";
 import { buildSpineAtlas, type SpineTitle } from "./spineAtlas";
 import { buildSubstrate, SUBSTRATE_SCALE } from "./substrate";
 import { loadNotes } from "./notes";
+import { bestMatch, type SearchableTitle } from "./search";
 import { buildRoomSurface, ROOM_BUMP_SCALE } from "./roomSurfaces";
 import atlasManifest from "../../../data/atlas.json";
 import {
@@ -244,10 +245,20 @@ const SUBSTRATE_REPEAT = 4;
 /** The range AdaptiveQuality is allowed to move the device pixel ratio through. The floor used
  * to be 1; it is lower now because a machine that cannot hold 1 needs somewhere to go, and a
  * soft image that moves beats a crisp one that stutters. */
-/** Framing for the "Whole shelf" view: a little air around the unit, and a cap so a 57-title
- * bookcase does not put the camera so far away that everything turns to mush. */
-const WIDE_MARGIN = 2.2;
-const WIDE_MAX = 26;
+/** Where the viewer stands: a fixed distance from the shelf face, and a little above the
+ * bay's own mid-height, so the shot sits at standing eye level rather than looking at the
+ * middle of the furniture. `WIDE_Z` is the same shot from further back, for taking in the
+ * whole bay at once.
+ *
+ * The standing distance is a **gallery** distance, not a reading one: close enough that the
+ * artwork is legible, far enough that the bay, its neighbours and the room around them are all
+ * in shot. A locked-off camera that fills the frame with one bay edge to edge shows a wall of
+ * posters and no architecture, which is the opposite of standing in a room. The case still
+ * arrives at the same apparent size whichever distance is chosen, because the hold point is
+ * measured back from the viewer rather than forward from the shelf. */
+const STAND_Z = 12.6;
+const WIDE_Z = 19;
+const EYE_OFFSET_Y = 1.1;
 
 const DPR_MIN = 0.7;
 const DPR_MAX = 1.5;
@@ -468,14 +479,41 @@ function BlankCover({
   );
 }
 
-/** How far a title travels out of the shelf at the peak of its turn, and how far it turns. */
-const PULL_Z = 1.15;
-const PULL_LIFT = 0.05;
-const PULL_YAW = -0.5; // negative turns the face towards the camera, which stands to the left
+/**
+ * How a case presents itself to a locked-off camera.
+ *
+ * `PRESENT_YAW` is small and deliberate: square-on would read as a flat poster and lose the
+ * thing 3D is for, which is that this is an *object* with a thickness that encodes its runtime.
+ * A few degrees is enough to see the spine and the depth without it looking askew.
+ */
+const PRESENT_YAW = -0.19;
 
-/** The rest of the way round, so the back faces the room. Same sign as PULL_YAW — see
- * poseCase(). How fast it gets there, in turn-fractions per second, with reduced motion
- * arriving immediately instead. */
+/** Where the case comes to: centred in the bay, at eye level, an arm's length in front of the
+ * viewer. `HOLD_GAP` is measured back from where the camera stands. */
+const HOLD_GAP = 2.8;
+
+/**
+ * The presentation light: the one that falls on a case once it is in your hands.
+ *
+ * Needed because the hold point is *in front of* the shelf lamp, so a case travelling towards
+ * the viewer walks out of the light and arrives as a black slab — lit from behind by the very
+ * lamp that lights the shelf. This one sits between the viewer and the object, a little above,
+ * like the spot over a vitrine, and its intensity rides the pull so it never washes the shelf
+ * when nothing is being held.
+ *
+ * **It stands well back, and that is the whole trick.** The first attempt put it 1.7 units from
+ * a case 1.9 units tall, so the inverse-square falloff varied enormously across the face and
+ * burned a white hole through the middle of the artwork. Sitting roughly where the viewer is,
+ * the distance to the top of the case and to the bottom is nearly the same, and the face lights
+ * evenly. Near lights make hotspots; far lights make illumination.
+ */
+const HOLD_LIGHT_FORWARD = 3.2;
+const HOLD_LIGHT_UP = 1.5;
+const HOLD_LIGHT_INTENSITY = 18;
+const HOLD_LIGHT_REACH = 13;
+
+/** The rest of the way round, so the back faces the room. Same sign as PRESENT_YAW — the turn
+ * continues the rotation the presentation started rather than undoing it. */
 const TURN_YAW = -Math.PI;
 const TURN_SPEED = 3.4;
 /** Below this the back is edge-on or facing away, so there is nothing to draw. */
@@ -485,7 +523,16 @@ const TURN_VISIBLE = 0.02;
  * The reach is short because the falloff is the whole effect: the neighbouring universes
  * are there, in the dark, and you travel to them rather than seeing them all at once. */
 const LAMP_HEIGHT = -1.2;
-const LAMP_Z = 4.0;
+/**
+ * The shelf lamp sits close to the shelf face, and that matters more than it looks.
+ *
+ * It used to stand at z = 4.0, which — once cases started travelling forward to be presented —
+ * was almost exactly where they came to rest. A case was being held *inside the lamp*, one unit
+ * from a 95-intensity point light, and arrived blown to white with the title unreadable. It
+ * looked like a tone-mapping or an exposure problem and was neither: it was two positions
+ * chosen in different weeks that happened to collide.
+ */
+const LAMP_Z = 2.2;
 /**
  * Back to 95 from the 130 it was briefly raised to. Raising it did light the room, and it also
  * blew the nearest covers out to white — the artwork is the one thing in this scene that must
@@ -539,39 +586,6 @@ const TAP_SLOP = 8;
  * and below a unit so it does not touch the edges. */
 const FOV = 42;
 
-/**
- * How much shelf to hold in frame while browsing — about five cases across and a shelf and a
- * half tall, rather than a whole bookcase.
- *
- * **This is deliberately close, and it replaced a framing that fitted each unit's full
- * height.** Standing far enough back to hold four levels put the camera ~14 units out, and at
- * that distance a case is a thumbnail: a spine is three screen pixels, so printed spine text
- * is unreadable, and a 32mm VHS clamshell is indistinguishable from a 12mm Blu-ray. Both were
- * on the list of what the shelf still owed, and both had the same cause — not the geometry,
- * which was right, but how far away it was being viewed from. Measured, not guessed: see
- * docs/06-progress.md, 2026-08-17.
- *
- * The cost, accepted: you see a section rather than a wall, so travelling matters more. The
- * lamp falloff already means the rest is in the dark, so this is less of a change than it
- * sounds.
- */
-const VISIBLE_WIDTH = 7;
-const VISIBLE_HEIGHT = 2.8;
-
-/** How close the camera may aim to the end of a unit before it stops following. Smaller than
- * it was, because the margin is a fraction of the frame and the frame is much narrower now. */
-const EDGE_MARGIN = 1.6;
-
-/** How much taller than the case itself the frame should be when you are reading its back —
- * a little air, not a card jammed against the edges. */
-const READ_MARGIN = 1.5;
-
-/** How far back to stand to read one case's back: far enough that its whole height fits the
- * vertical field of view, and no further. */
-function readingDistance(form: Form): number {
-  return (DIMENSIONS[form].h * READ_MARGIN) / 2 / Math.tan((FOV / 2) * (Math.PI / 180));
-}
-
 /** A plane's own half-turn, so the back cover faces out of the back of the case instead of
  * into it. Constant, so it is built once rather than per frame. */
 const FLIP_Y = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
@@ -598,23 +612,36 @@ const scratch = {
  * printed front, -coverZ for the back. It is rotated with the case, so the plane stays stuck
  * to whichever face it belongs to instead of swinging through the body.
  */
-function poseCase(item: ShelfItem, amount: number, faceZ: number, turn: number, scaleZ: number): THREE.Matrix4 {
+function poseCase(
+  item: ShelfItem,
+  amount: number,
+  faceZ: number,
+  turn: number,
+  scaleZ: number,
+  hold: { x: number; y: number; z: number }
+): THREE.Matrix4 {
   const { matrix, quaternion, euler, position, scale, offset } = scratch;
-  quaternion.setFromEuler(euler.set(0, PULL_YAW * amount + TURN_YAW * turn, 0));
+  quaternion.setFromEuler(euler.set(0, PRESENT_YAW * amount + TURN_YAW * turn, 0));
   offset.set(0, 0, faceZ).applyQuaternion(quaternion);
+  // The case travels from its slot to the presentation point in front of the eye, rather than
+  // simply nosing forward out of the shelf. With a locked-off camera this is the whole
+  // interaction: the viewer does not go to the object, the object comes to the viewer.
   position.set(
-    item.x + offset.x,
-    item.y + PULL_LIFT * amount + offset.y,
-    item.z + PULL_Z * amount + offset.z
+    THREE.MathUtils.lerp(item.x, hold.x, amount) + offset.x,
+    THREE.MathUtils.lerp(item.y, hold.y, amount) + offset.y,
+    THREE.MathUtils.lerp(item.z, hold.z, amount) + offset.z
   );
   return matrix.compose(position, quaternion, scale.set(1, 1, scaleZ));
 }
 
 /** The body: no face offset, and Z-scaled to carry its runtime. */
-const poseBody = (item: ShelfItem, amount: number, turn: number) => poseCase(item, amount, 0, turn, item.ds);
+const poseBody = (item: ShelfItem, amount: number, turn: number, hold: Hold) =>
+  poseCase(item, amount, 0, turn, item.ds, hold);
 /** The printed front. */
-const poseCover = (item: ShelfItem, amount: number, turn: number) =>
-  poseCase(item, amount, item.coverZ, turn, 1);
+const poseCover = (item: ShelfItem, amount: number, turn: number, hold: Hold) =>
+  poseCase(item, amount, item.coverZ, turn, 1, hold);
+
+type Hold = { x: number; y: number; z: number };
 
 function ShelfContent({
   layout,
@@ -744,8 +771,8 @@ function ShelfContent({
   // without this guard every swipe opens a title page.
   const pressedAt = useRef<{ x: number; y: number } | null>(null);
 
-  const size = useThree((s) => s.size);
   const lamp = useRef<THREE.PointLight>(null);
+  const holdLight = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
   const backRef = useRef<THREE.Mesh>(null);
 
@@ -820,30 +847,6 @@ function ShelfContent({
    *   vertical and the frame is narrow. (Scaling the distance by the aspect ratio was the
    *   first attempt and put a phone three and a half times too far back.)
    */
-  /**
-   * How far back to stand — and there are two right answers, which is why this is a control
-   * rather than a constant.
-   *
-   * **Close** is the framing the shelf was tuned to: about five cases across, near enough that
-   * spines can be read and a 32mm clamshell is visibly fatter than a 12mm Blu-ray.
-   *
-   * **Whole shelf** is what that framing took away: standing back far enough to hold the entire
-   * unit, so you can see how much there is and where you are in it. Losing the ability to see
-   * the rest of the collection was a real cost of going close, and the fix is not to pick one
-   * but to make the pair switchable — the same measurement the far framing always used, kept.
-   */
-  const standBack = useMemo(() => {
-    const halfFov = Math.tan((FOV / 2) * (Math.PI / 180));
-    const aspect = size.width / Math.max(size.height, 1);
-    if (wide) {
-      const unitFit = universe.height / 2 / halfFov + WIDE_MARGIN;
-      const unitWidthFit = (universe.endX - universe.startX) / 2 / (halfFov * Math.max(aspect, 0.1));
-      return Math.min(Math.max(unitFit, unitWidthFit), WIDE_MAX);
-    }
-    const heightFit = VISIBLE_HEIGHT / 2 / halfFov;
-    const widthFit = VISIBLE_WIDTH / 2 / (halfFov * Math.max(aspect, 0.1));
-    return Math.max(heightFit, widthFit);
-  }, [size, wide, universe]);
 
   /**
    * The interaction, in one frame loop.
@@ -862,6 +865,17 @@ function ShelfContent({
     const index = Math.floor(walk);
     const item = items[index];
 
+    // Where the viewer stands, and where a drawn-out case comes to rest in front of them.
+    // Computed here, at the top, because the poses below need it — it used to sit down in the
+    // camera section and was read before it was initialised, which is a crash rather than a
+    // subtle fault only because `const` is honest about it.
+    const bayCentreX = (universe.startX + universe.endX) / 2;
+    const eyeY = universe.centreY + EYE_OFFSET_Y;
+    // Derived from where the viewer is standing rather than from the shelf, so it is always
+    // the same arm's length from the eye whichever bay you are at and whichever shelf the
+    // title sits on.
+    const hold: Hold = { x: bayCentreX, y: eyeY, z: (wide ? WIDE_Z : STAND_Z) - HOLD_GAP };
+
     // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
     // rather than travels, exactly as the camera does.
     turn.current += ((turnedItem ? 1 : 0) - turn.current) * (instant ? 1 : Math.min(1, dt * TURN_SPEED));
@@ -879,12 +893,12 @@ function ShelfContent({
       const previous = posed.current;
       const mesh = meshByForm.get(previous.form);
       if (mesh) {
-        mesh.body.setMatrixAt(previous.instance, poseBody(previous, 0, 0));
-        mesh.cover.setMatrixAt(previous.instance, poseCover(previous, 0, 0));
+        mesh.body.setMatrixAt(previous.instance, poseBody(previous, 0, 0, hold));
+        mesh.cover.setMatrixAt(previous.instance, poseCover(previous, 0, 0, hold));
         mesh.body.instanceMatrix.needsUpdate = true;
         mesh.cover.instanceMatrix.needsUpdate = true;
         if (mesh.spine) {
-          mesh.spine.setMatrixAt(previous.instance, poseBody(previous, 0, 0));
+          mesh.spine.setMatrixAt(previous.instance, poseBody(previous, 0, 0, hold));
           mesh.spine.instanceMatrix.needsUpdate = true;
         }
       }
@@ -893,20 +907,20 @@ function ShelfContent({
 
     const mesh = meshByForm.get(item.form);
     if (mesh) {
-      mesh.body.setMatrixAt(item.instance, poseBody(item, amount, turn.current));
-      mesh.cover.setMatrixAt(item.instance, poseCover(item, amount, turn.current));
+      mesh.body.setMatrixAt(item.instance, poseBody(item, amount, turn.current, hold));
+      mesh.cover.setMatrixAt(item.instance, poseCover(item, amount, turn.current, hold));
       mesh.body.instanceMatrix.needsUpdate = true;
       mesh.cover.instanceMatrix.needsUpdate = true;
       // The spine is a face of the body, so it takes the body's pose exactly — including the
       // turn, which is what lets you read the spine of a case as it comes round.
       if (mesh.spine) {
-        mesh.spine.setMatrixAt(item.instance, poseBody(item, amount, turn.current));
+        mesh.spine.setMatrixAt(item.instance, poseBody(item, amount, turn.current, hold));
         mesh.spine.instanceMatrix.needsUpdate = true;
       }
     }
     const blank = blankRefs.current.get(item.slug);
     if (blank) {
-      const m = poseCover(item, amount, turn.current);
+      const m = poseCover(item, amount, turn.current, hold);
       blank.position.setFromMatrixPosition(m);
       blank.quaternion.setFromRotationMatrix(m);
     }
@@ -918,7 +932,7 @@ function ShelfContent({
     if (back) {
       back.visible = turn.current > TURN_VISIBLE;
       if (back.visible) {
-        const m = poseCase(item, amount, -item.coverZ, turn.current, 1);
+        const m = poseCase(item, amount, -item.coverZ, turn.current, 1, hold);
         back.position.setFromMatrixPosition(m);
         back.quaternion.setFromRotationMatrix(m).multiply(FLIP_Y);
       }
@@ -931,61 +945,39 @@ function ShelfContent({
     // Read off the frame state rather than captured from render: these are the objects
     // three.js expects to be mutated, and a value obtained during render must not be.
     const camera = state.camera;
-    const controls = state.controls as unknown as { target: THREE.Vector3; update: () => void } | null;
+    /**
+     * The camera is **locked off**. It does not orbit, it does not pan, and it never rotates:
+     * it stands at eye level in front of one bay of the gallery, square on, like a person who
+     * has stopped walking. Everything that used to move the viewer now moves the *objects*
+     * instead — the case comes to you.
+     *
+     * This replaced an OrbitControls rig, and the rig is gone rather than disabled. Two things
+     * writing one camera is what made the old version possible to get lost in: the frame loop
+     * followed the case while a drag moved the target, and neither knew about the other.
+     *
+     * Three positions, all on rails:
+     *
+     * - **x** is the centre of the bay you are standing at, which a horizontal swipe changes.
+     * - **y** is fixed at eye level for the bay. It does *not* track the case up and down the
+     *   shelf — a locked-off shot does not bob, and the case comes to the eye rather than the
+     *   eye going to the case.
+     * - **z** is a fixed standing distance, easing only when a case is drawn out to be read.
+     */
+    const ease = instant ? 1 : Math.min(1, dt * 3.2);
 
-    if (controls) {
-      const ease = instant ? 1 : Math.min(1, dt * 3.2);
-      const reading = turn.current;
-      // Horizontally the camera goes where the case is; vertically it only leans towards it.
-      // Following y outright swings the view a whole unit's height as the walk steps down a
-      // column, which throws the shelf into a corner of the frame — the case ends up centred
-      // and the furniture it belongs to ends up off screen.
-      // Browsing, the view leans towards the case; reading, it looks straight at it. A card
-      // of small print two metres away on the top shelf is not something you can read, and
-      // "turn it over and read the back" is the whole of this interaction — the first build
-      // turned the case correctly and left it a thumbnail in the corner of the frame.
-      // The camera follows the case outright now, vertically as well as sideways. It used to
-      // only lean a fifth of the way, because from far enough back to hold a whole bookcase,
-      // following y swung the view a full unit height and threw the furniture out of frame.
-      // Standing close, the opposite is true: a fifth of the way leaves the case you are
-      // looking at off the top or bottom of the screen entirely.
-      // Close in, the camera follows the case outright. Standing back it only leans towards it,
-      // exactly as it used to: from far enough away to hold a whole bookcase, following y
-      // swings the view a full unit height and throws the furniture out of frame.
-      const aimY = wide ? universe.centreY + (item.y - universe.centreY) * 0.2 : item.y;
-      // ...and it stays inside the unit it is looking at. Aiming squarely at the first case
-      // on a shelf points a third of the frame at the empty room beside it, which is what
-      // arriving at every universe looked like; a case sitting off-centre with its own
-      // bookcase filling the frame reads far better than one centred against a void.
-      // ...and the same applies sideways: the edge margin exists so an end-of-shelf case is
-      // not centred against an empty room, which is a framing rule for browsing and exactly
-      // wrong for reading one card.
-      // Standing back, aim at the middle of the unit rather than at the case: the point of the
-      // wide view is to see the whole bookcase and where you are in it, and a view that slides
-      // along with the walk shows you no more than the close one did.
-      const unitCentreX = (universe.startX + universe.endX) / 2;
-      const aimX = wide ? unitCentreX : THREE.MathUtils.lerp(
-        Math.min(
-          Math.max(item.x, universe.startX + EDGE_MARGIN),
-          Math.max(universe.endX - EDGE_MARGIN, universe.startX + EDGE_MARGIN)
-        ),
-        item.x,
-        reading
-      );
-      const dx = (aimX - controls.target.x) * ease;
-      const dy = (aimY - controls.target.y) * ease;
-      controls.target.x += dx;
-      controls.target.y += dy;
-      camera.position.x += dx;
-      camera.position.y += dy;
-      controls.update();
-      if (lamp.current) lamp.current.position.x = controls.target.x;
-      // Dolly rather than jump: moving to a smaller unit walks the camera in towards it, and
-      // turning a case over walks it in much further still — close enough to read the card,
-      // measured off that form's own height rather than guessed, so a 197mm VHS clamshell and
-      // a 171mm Blu-ray both fill the same amount of frame.
-      const readZ = item.z + PULL_Z + readingDistance(item.form);
-      camera.position.z += (THREE.MathUtils.lerp(standBack, readZ, reading) - camera.position.z) * ease;
+    camera.position.x += (bayCentreX - camera.position.x) * ease;
+    camera.position.y += (eyeY - camera.position.y) * ease;
+    const standZ = wide ? WIDE_Z : STAND_Z;
+    camera.position.z += (standZ - camera.position.z) * ease;
+    // Square on, always. `lookAt` every frame rather than once, because the position is still
+    // easing towards the bay and a stale orientation reads as a swimming horizon.
+    camera.lookAt(bayCentreX, eyeY, 0);
+
+    // The spotlight over this bay travels with the viewer.
+    if (lamp.current) lamp.current.position.x = camera.position.x;
+    if (holdLight.current) {
+      holdLight.current.position.set(hold.x, hold.y + HOLD_LIGHT_UP, hold.z + HOLD_LIGHT_FORWARD);
+      holdLight.current.intensity = HOLD_LIGHT_INTENSITY * amount;
     }
   });
 
@@ -1066,6 +1058,14 @@ function ShelfContent({
           <meshPhongMaterial map={backTexture} shininess={6} specular="#1a1714" />
         </mesh>
       )}
+      <pointLight
+        ref={holdLight}
+        position={[0, 0, 0]}
+        intensity={0}
+        distance={HOLD_LIGHT_REACH}
+        decay={1.6}
+        color="#ffe6c4"
+      />
       <pointLight
         ref={lamp}
         position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
@@ -1260,14 +1260,14 @@ function usePrefersReducedMotion(): boolean {
   return useMediaQuery("(prefers-reduced-motion: reduce)");
 }
 
-/** Touch devices get no wheel and no hover, so one finger walks the shelf instead of
- * orbiting it — the shelf is the thing, and looking around is the desktop luxury. */
-function useCoarsePointer(): boolean {
-  return useMediaQuery("(pointer: coarse)");
-}
-
 /** Pixels of scroll per title. One flick of a trackpad brings out about two. */
 const SCROLL_PER_TITLE = 260;
+
+/** How far a drag must travel before it commits to being a walk or a bay change, and how far
+ * sideways counts as a swipe. The lock distance is small enough not to feel laggy and large
+ * enough that a straight-ish drag is never read as the wrong axis. */
+const AXIS_LOCK_SLOP = 10;
+const BAY_SWIPE_DISTANCE = 90;
 
 export default function ShelfScene({ universes }: { universes: UniverseData[] }) {
   const [order, setOrder] = useState<"release" | "story">("release");
@@ -1287,6 +1287,8 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   /** Standing back to see the whole bookcase. The close framing is better for reading one
    * case and worse for knowing where you are; this is the way back out. */
   const [wide, setWide] = useState(false);
+  const [query, setQuery] = useState("");
+  const [missed, setMissed] = useState(false);
   const router = useRouter();
   const progress = useRef(0);
   const surface = useRef<HTMLDivElement>(null);
@@ -1338,7 +1340,6 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
 
   const pick = useCallback((slug: string) => router.push(`/title/${slug}`), [router]);
   const reducedMotion = usePrefersReducedMotion();
-  const coarsePointer = useCoarsePointer();
   const { progress: loaded } = useProgress();
   const [canDraw] = useState(webglSupported);
 
@@ -1351,6 +1352,44 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       setCurrent(next);
     },
     [layout]
+  );
+
+  /**
+   * Search: type, and the best match walks itself off the shelf.
+   *
+   * With a locked-off camera and 152 titles across twelve bays, scrolling to a specific title
+   * is a long way to travel — this is the shortcut, and it is the only way to reach a title
+   * without knowing where it lives. It resolves the match to *its* bay and *its* position in
+   * that bay, then leaves the walk half a step in, which is the top of the sine that draws a
+   * case out: you arrive with the thing already in your hands.
+   */
+  const searchable = useMemo<SearchableTitle[]>(
+    () =>
+      layout.universes.flatMap((u) =>
+        u.items.map((item) => ({
+          slug: item.slug,
+          label: item.label,
+          universeLabel: u.label,
+          releaseYear: item.releaseYear,
+        }))
+      ),
+    [layout]
+  );
+
+  const jumpTo = useCallback(
+    (query: string) => {
+      const match = bestMatch(searchable, query);
+      if (!match) return false;
+      const bay = layout.universes.findIndex((u) => u.items.some((i) => i.slug === match.slug));
+      if (bay < 0) return false;
+      const index = layout.universes[bay].items.findIndex((i) => i.slug === match.slug);
+      setTurned(false);
+      setCurrent(bay);
+      // Half a step past the title's own index is the peak of the pull.
+      progress.current = index + 0.5;
+      return true;
+    },
+    [layout, searchable]
   );
 
   // Scroll walks this shelf; the arrow keys do the same by whole titles, and left/right
@@ -1379,7 +1418,11 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       walk((e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY) / SCROLL_PER_TITLE);
     }
     function onKey(e: KeyboardEvent) {
-      // Not while the viewer is typing somewhere, and not on top of a browser shortcut.
+      // Not while the viewer is typing somewhere, and not on top of a browser shortcut. The
+      // search box also stops propagation, but this guard is the one that survives someone
+      // adding another field later and not knowing they had to.
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "ArrowDown") walk(0.5);
       else if (e.key === "ArrowUp") walk(-0.5);
@@ -1391,27 +1434,80 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       else return;
       e.preventDefault();
     }
-    // Touch: a vertical drag walks the shelf, at roughly the distance the finger moved.
-    // Held in a closure variable rather than state — it changes on every touchmove and
-    // nothing renders differently for it.
-    let lastTouchY: number | null = null;
+    /**
+     * Touch and mouse-drag, sharing one rule: **vertical walks the shelf, horizontal changes
+     * the bay.** The axis is decided once per gesture, at the point the movement first becomes
+     * unambiguous, and then held — deciding it per event lets a diagonal drag flicker between
+     * the two, which feels like the app arguing with you.
+     *
+     * The horizontal swipe fires once per gesture and then locks out, so one flick moves you
+     * one bay. It is the same movement the arrows make, and it exists because with a locked-off
+     * camera there is nothing else for a drag to mean: the old build spent it on orbiting,
+     * which is exactly how the view got lost.
+     */
+    let dragFrom: { x: number; y: number } | null = null;
+    let dragAxis: "walk" | "bay" | null = null;
+    let baySwiped = false;
+
+    const dragStart = (x: number, y: number) => {
+      dragFrom = { x, y };
+      dragAxis = null;
+      baySwiped = false;
+    };
+
+    const dragMove = (x: number, y: number, preventDefault: () => void) => {
+      if (!dragFrom) return;
+      const dx = x - dragFrom.x;
+      const dy = y - dragFrom.y;
+      if (dragAxis === null) {
+        if (Math.hypot(dx, dy) < AXIS_LOCK_SLOP) return;
+        dragAxis = Math.abs(dx) > Math.abs(dy) ? "bay" : "walk";
+      }
+      preventDefault();
+      if (dragAxis === "bay") {
+        if (!baySwiped && Math.abs(dx) > BAY_SWIPE_DISTANCE) {
+          baySwiped = true;
+          goToUniverse(current + (dx < 0 ? 1 : -1));
+        }
+        return;
+      }
+      walk((dragFrom.y - y) / SCROLL_PER_TITLE);
+      dragFrom = { x, y };
+    };
+
     function onTouchStart(e: TouchEvent) {
-      lastTouchY = e.touches[0]?.clientY ?? null;
+      const t = e.touches[0];
+      if (t) dragStart(t.clientX, t.clientY);
     }
     function onTouchMove(e: TouchEvent) {
-      const y = e.touches[0]?.clientY;
-      if (y === undefined || lastTouchY === null) return;
-      e.preventDefault();
-      walk((lastTouchY - y) / SCROLL_PER_TITLE);
-      lastTouchY = y;
+      const t = e.touches[0];
+      if (t) dragMove(t.clientX, t.clientY, () => e.preventDefault());
+    }
+    function onPointerDown(e: PointerEvent) {
+      if (e.pointerType === "touch" || e.button !== 0) return;
+      dragStart(e.clientX, e.clientY);
+    }
+    function onPointerMove(e: PointerEvent) {
+      if (!dragFrom || e.buttons === 0) return;
+      dragMove(e.clientX, e.clientY, () => e.preventDefault());
+    }
+    function onPointerUp() {
+      dragFrom = null;
+      dragAxis = null;
     }
 
     el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
     el.addEventListener("touchstart", onTouchStart, { passive: true });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("keydown", onKey);
     return () => {
       el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("keydown", onKey);
@@ -1459,6 +1555,45 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         <span className="text-xs text-label-dim">
           {shelf.items.length} titles · shelf {current + 1} of {layout.universes.length}
         </span>
+
+        {/* A real form, so Enter submits it and a screen reader announces it as search. The
+            input stops key events reaching the shelf: without that, typing "t" in the box
+            turns the case over and the arrows walk the shelf while you are trying to edit. */}
+        <form
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setMissed(!jumpTo(query));
+          }}
+          className="flex items-center gap-2"
+        >
+          <label className="sr-only" htmlFor="shelf-search">
+            Search the archive
+          </label>
+          <input
+            id="shelf-search"
+            type="search"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setMissed(false);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            placeholder="Find a title"
+            className="w-44 rounded border border-shelf-edge bg-transparent px-3 py-1 text-sm text-label-bright placeholder:text-label-dim"
+          />
+          <button
+            type="submit"
+            className="rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-dim hover:text-label-mid"
+          >
+            Find
+          </button>
+          {missed && (
+            <span role="status" className="text-xs text-label-dim">
+              Nothing matches that.
+            </span>
+          )}
+        </form>
 
         <button
           type="button"
@@ -1510,7 +1645,18 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         // read as objects with depth rather than as flat posters, which is the entire reason
         // this is 3D. Far enough back to hold all four levels of a unit.
         camera={{ position: [-4.2, wallCentreY + 0.5, cameraZ], fov: FOV }}
-        gl={{ antialias: true }}
+        // **Tone mapping, and it is the difference between "lit" and "blown out".** With none,
+        // radiance above 1 is clipped flat, so a bright cover under a warm lamp turns into a
+        // white hole with no detail — which is what an arc reactor, a foil title and a museum
+        // spotlight all reliably produce. ACES rolls the highlights off instead of cutting
+        // them, which is what makes a photograph of a bright object still look like an object.
+        // The exposure is slightly under 1 because the scene is deliberately dim and the eye
+        // reads a dark room with intact highlights as richer than a bright one without.
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.05,
+        }}
         onCreated={({ gl }) => gl.setClearColor("#14100d")}
       >
         {/* Fog in the background colour, as CaseScene.tsx does. With the lamp's falloff this
@@ -1549,30 +1695,10 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         {/* Replaces the bare ground plane that used to stand in for a floor. */}
         <Room bounds={layout.bounds} />
 
-        {/* Look around, but do not get lost.
-         *
-         * **Pan is off.** It moved the orbit target anywhere it liked while the frame loop was
-         * also moving it to follow the case — two things writing the same value, which is how
-         * you end up staring at an empty room with no way back. Rotation is bounded now too:
-         * without limits you could swing behind the bookcases, inside them, or under the
-         * floor, all of which look like the app has broken.
-         *
-         * Zoom stays off because the wheel already means "walk the shelf" and one gesture
-         * cannot mean two things. The way to see more is the *Whole shelf* control in the
-         * header, which is a named, reversible, keyboard-reachable version of the same wish. */}
-        <OrbitControls
-          makeDefault
-          enableZoom={false}
-          enablePan={false}
-          enableRotate={!coarsePointer}
-          target={[0, wallCentreY, 0]}
-          minDistance={1.5}
-          maxDistance={40}
-          minPolarAngle={Math.PI * 0.22}
-          maxPolarAngle={Math.PI * 0.62}
-          minAzimuthAngle={-Math.PI * 0.42}
-          maxAzimuthAngle={Math.PI * 0.42}
-        />
+        {/* No controls. The camera is locked off and driven entirely by the frame loop
+            above — see the comment there. An OrbitControls rig used to live here; it is
+            deleted rather than disabled, because leaving it configured-off is how the next
+            person re-enables it and reintroduces two things writing one camera. */}
       </Canvas>
       {/* What you have just drawn off the shelf. The cover art alone does not say which
           season of Daredevil this is, nor what the object is — and 19 titles repeat. The note
