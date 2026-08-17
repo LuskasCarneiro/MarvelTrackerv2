@@ -14,6 +14,8 @@ import { buildSubstrate, SUBSTRATE_SCALE } from "./substrate";
 import { loadNotes } from "./notes";
 import { bestMatch, type SearchableTitle } from "./search";
 import { buildRoomSurface, ROOM_BUMP_SCALE } from "./roomSurfaces";
+import { buildGallerySurface, GALLERY_COLOUR_MIX } from "./galleryMaterials";
+import { buildPlaqueAtlas, type PlaqueAtlas } from "./plaques";
 import atlasManifest from "../../../data/atlas.json";
 import {
   DIMENSIONS,
@@ -414,10 +416,112 @@ function buildMediumMeshes(
  * morphing into a 2020s one would be a costume change and would look like one
  * (docs/05-3d-shelf.md §3).
  */
-const WOOD_FRESH = new THREE.Color("#241d16");
-const WOOD_WORN = new THREE.Color("#140f0b");
-const LIP_FRESH = new THREE.Color("#33291f");
-const LIP_WORN = new THREE.Color("#221b14");
+const WOOD_FRESH = new THREE.Color("#3a2418");
+const WOOD_WORN = new THREE.Color("#1d1109");
+
+/**
+ * The trim is **brass** now rather than a lighter wood, and it is the cheapest single thing
+ * that makes a cabinet read as bespoke instead of flat-packed. It is also already the right
+ * geometry: the lip is a separate instanced strip along the front edge of every shelf, so
+ * making it metal costs a material and nothing else.
+ *
+ * Brass ages the way the wood does — a worn bay's trim has dulled and darkened where hands have
+ * been, which is the same wear signal the boards carry, told in a different material.
+ */
+const LIP_FRESH = new THREE.Color("#6b5127");
+const LIP_WORN = new THREE.Color("#2e2314");
+
+/** How many world units one tile of grain covers. Mahogany is coarse enough to read across a
+ * whole shelf board; brass brushing is fine and tight, as machined metal is. */
+/** The nameplate over each bay: wide, short, and mounted a little above the cabinet's top so
+ * it reads as fixed to the woodwork rather than resting on it. */
+const PLAQUE_WIDTH = 2.6;
+const PLAQUE_HEIGHT = 0.65;
+const PLAQUE_RISE = 0.62;
+const PLAQUE_Z = 0.26;
+
+const MAHOGANY_SCALE = 0.22;
+const BRASS_SCALE = 1.4;
+
+/**
+ * Wood and metal on the bookcases, mapped in **world space** rather than by the geometry's own
+ * UVs — and that is the whole reason this shader exists.
+ *
+ * Every board, upright and trim strip in the room is the same unit box scaled per instance: a
+ * shelf slab is twenty units wide and four hundredths tall, a brass lip is thinner still. Their
+ * UVs are therefore stretched by wildly different amounts, so a grain drawn through them would
+ * be pin-fine on one piece and smeared to mud on the next — the same texture reading as a
+ * different material on every part of the same cabinet.
+ *
+ * Projecting from world position fixes it: the grain has one physical size everywhere, exactly
+ * as it would if the whole room had been cut from one tree. The projection picks its plane from
+ * the dominant axis of the world normal, which for axis-aligned boxes is exact — a scaled box's
+ * normals stay on their axes, so `abs()` still names the right face.
+ *
+ * Colour, not just relief. Real mahogany is dark *lines* in lighter wood, and a bump-only grain
+ * on a flat brown reads as textured plastic. The sampled value drives a multiply around 1.0, so
+ * the per-instance wear colour that `tintByWear` writes survives underneath it: the cabinet is
+ * still aged by what stands on it, and now it is also made of something.
+ */
+function createGalleryMaterial(
+  map: THREE.Texture,
+  options: { colour: string; shininess: number; specular: string; scale: number; mix: number }
+): THREE.MeshPhongMaterial {
+  const material = new THREE.MeshPhongMaterial({
+    color: options.colour,
+    shininess: options.shininess,
+    specular: new THREE.Color(options.specular),
+  });
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uGrain = { value: map };
+    shader.uniforms.uGrainScale = { value: options.scale };
+    shader.uniforms.uGrainMix = { value: options.mix };
+
+    shader.vertexShader =
+      "varying vec3 vWorldPos;\nvarying vec3 vWorldNormal;\n" +
+      shader.vertexShader
+        .replace(
+          "#include <beginnormal_vertex>",
+          `#include <beginnormal_vertex>
+	#ifdef USE_INSTANCING
+		vWorldNormal = mat3( modelMatrix ) * mat3( instanceMatrix ) * objectNormal;
+	#else
+		vWorldNormal = mat3( modelMatrix ) * objectNormal;
+	#endif`
+        )
+        .replace(
+          "#include <project_vertex>",
+          `#include <project_vertex>
+	#ifdef USE_INSTANCING
+		vWorldPos = ( modelMatrix * instanceMatrix * vec4( transformed, 1.0 ) ).xyz;
+	#else
+		vWorldPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+	#endif`
+        );
+
+    shader.fragmentShader =
+      "varying vec3 vWorldPos;\nvarying vec3 vWorldNormal;\nuniform sampler2D uGrain;\nuniform float uGrainScale;\nuniform float uGrainMix;\n" +
+      shader.fragmentShader.replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+	vec3 gn = abs( normalize( vWorldNormal ) );
+	vec2 grainUv = ( gn.y > gn.x && gn.y > gn.z )
+		? vWorldPos.xz
+		: ( gn.x > gn.z ? vWorldPos.zy : vWorldPos.xy );
+	float grain = texture2D( uGrain, grainUv * uGrainScale ).r;
+	diffuseColor.rgb *= mix( 1.0 - uGrainMix, 1.0 + uGrainMix, grain );`
+      )
+      // `specularStrength` is declared by the specular chunk, which three includes *after*
+      // <color_fragment> — so this has to be a second, later injection rather than one block.
+      // `grain` is still in scope: both land inside main().
+      .replace(
+        "#include <specularmap_fragment>",
+        `#include <specularmap_fragment>
+	specularStrength *= mix( 0.75, 1.35, grain );`
+      );
+  };
+  return material;
+}
 
 function tintByWear(mesh: THREE.InstancedMesh, wear: number[], fresh: THREE.Color, worn: THREE.Color) {
   const colour = new THREE.Color();
@@ -429,11 +533,21 @@ function buildBoardMeshes(
   slabMatrices: THREE.Matrix4[],
   lipMatrices: THREE.Matrix4[],
   slabWear: number[],
-  lipWear: number[]
+  lipWear: number[],
+  mahogany: THREE.Texture,
+  brass: THREE.Texture
 ) {
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
 
-  const slabMaterial = new THREE.MeshPhongMaterial({ color: "#ffffff", shininess: 8, specular: "#1a140f" });
+  // White base colour on purpose: the per-instance wear colour *is* the wood colour, and a
+  // tinted material would multiply against it a second time.
+  const slabMaterial = createGalleryMaterial(mahogany, {
+    colour: "#ffffff",
+    shininess: 26,
+    specular: "#4a3a28",
+    scale: MAHOGANY_SCALE,
+    mix: GALLERY_COLOUR_MIX.mahogany,
+  });
   const slab = new THREE.InstancedMesh(unitBox, slabMaterial, slabMatrices.length);
   slabMatrices.forEach((m, i) => slab.setMatrixAt(i, m));
   slab.instanceMatrix.needsUpdate = true;
@@ -441,7 +555,16 @@ function buildBoardMeshes(
 
   // A worn unit's lip has lost its sheen as well as its colour: the front edge is the one
   // surface a hand actually touches.
-  const lipMaterial = new THREE.MeshPhongMaterial({ color: "#ffffff", shininess: 20, specular: "#3a2f22" });
+  const lipMaterial = createGalleryMaterial(brass, {
+    colour: "#ffffff",
+    // The highlight, not the paint, is what makes brass read as metal — but a flat strip facing
+    // the lamp lights along its whole length, so a bright specular turns the trim into a gold
+    // bar rather than an edge. Dark warm specular, still tight.
+    shininess: 96,
+    specular: "#7d6134",
+    scale: BRASS_SCALE,
+    mix: GALLERY_COLOUR_MIX.brass,
+  });
   const lip = new THREE.InstancedMesh(unitBox, lipMaterial, lipMatrices.length);
   lipMatrices.forEach((m, i) => lip.setMatrixAt(i, m));
   lip.instanceMatrix.needsUpdate = true;
@@ -549,6 +672,10 @@ const LAMP_INTENSITY = 95;
  * units below the lamp and the ceiling 5.2 above it.
  */
 const LAMP_REACH = 24;
+
+/** The neighbouring bays' lights, relative to the one you are standing at. Dimmer, so the eye
+ * still knows where it is meant to be looking. */
+const NEIGHBOUR_LAMP_FALLOFF = 0.55;
 
 /**
  * What to call each object. Release order's five are the media as the design system names
@@ -757,9 +884,46 @@ function ShelfContent({
     [layout, texture, spineAtlas, spineTexture, substrates]
   );
   const meshByForm = useMemo(() => new Map(mediumMeshes.map((m) => [m.form, m])), [mediumMeshes]);
+  /**
+   * The cabinetry's two materials, built once for the whole room. They are world-projected, so
+   * one tile serves every board, upright and trim strip regardless of how each is scaled — see
+   * createGalleryMaterial.
+   */
+  const cabinetry = useMemo(() => {
+    const make = (surface: "mahogany" | "brass") => {
+      const created = new THREE.CanvasTexture(buildGallerySurface(surface));
+      created.wrapS = THREE.RepeatWrapping;
+      created.wrapT = THREE.RepeatWrapping;
+      created.anisotropy = 8;
+      return created;
+    };
+    return { mahogany: make("mahogany"), brass: make("brass") };
+  }, []);
+  useEffect(() => {
+    const built = [cabinetry.mahogany, cabinetry.brass];
+    return () => built.forEach((t) => t.dispose());
+  }, [cabinetry]);
+
+  const plaques = useMemo(() => buildPlaqueAtlas(layout.universes.map((u) => ({ key: u.key, label: u.label }))), [layout]);
+  const plaqueTexture = useMemo(() => {
+    const created = new THREE.CanvasTexture(plaques.canvas);
+    created.colorSpace = THREE.SRGBColorSpace;
+    created.anisotropy = 8;
+    return created;
+  }, [plaques]);
+  useEffect(() => () => plaqueTexture.dispose(), [plaqueTexture]);
+
   const boards = useMemo(
-    () => buildBoardMeshes(layout.boardSlabMatrices, layout.boardLipMatrices, layout.boardSlabWear, layout.boardLipWear),
-    [layout]
+    () =>
+      buildBoardMeshes(
+        layout.boardSlabMatrices,
+        layout.boardLipMatrices,
+        layout.boardSlabWear,
+        layout.boardLipWear,
+        cabinetry.mahogany,
+        cabinetry.brass
+      ),
+    [layout, cabinetry]
   );
 
   // The three titles with no artwork carry their own plane (see ShelfLayout.blankCovers); it
@@ -773,6 +937,8 @@ function ShelfContent({
 
   const lamp = useRef<THREE.PointLight>(null);
   const holdLight = useRef<THREE.PointLight>(null);
+  const lampLeft = useRef<THREE.PointLight>(null);
+  const lampRight = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
   const backRef = useRef<THREE.Mesh>(null);
 
@@ -975,6 +1141,18 @@ function ShelfContent({
 
     // The spotlight over this bay travels with the viewer.
     if (lamp.current) lamp.current.position.x = camera.position.x;
+    // The neighbours' lights sit over the neighbouring bays, so the sections either side stay
+    // lit as you move. Falls back to a bay-width offset at the ends of the run, where there is
+    // no neighbour to centre on and an unlit void would otherwise open up beside you.
+    const bays = layout.universes;
+    const here = bays.indexOf(universe);
+    const centreOf = (i: number, fallback: number) => {
+      const b = bays[i];
+      return b ? (b.startX + b.endX) / 2 : fallback;
+    };
+    const bayWidth = universe.endX - universe.startX;
+    if (lampLeft.current) lampLeft.current.position.x = centreOf(here - 1, bayCentreX - bayWidth);
+    if (lampRight.current) lampRight.current.position.x = centreOf(here + 1, bayCentreX + bayWidth);
     if (holdLight.current) {
       holdLight.current.position.set(hold.x, hold.y + HOLD_LIGHT_UP, hold.z + HOLD_LIGHT_FORWARD);
       holdLight.current.intensity = HOLD_LIGHT_INTENSITY * amount;
@@ -1018,6 +1196,7 @@ function ShelfContent({
           {spine && <primitive object={spine} />}
         </group>
       ))}
+      <Plaques bays={layout.universes} atlas={plaques} texture={plaqueTexture} />
       <primitive object={boards.slab} />
       <primitive object={boards.lip} />
       {layout.blankCovers.map((blank) => (
@@ -1074,8 +1253,83 @@ function ShelfContent({
         decay={1.5}
         color="#ffd9ad"
       />
+      {/* The neighbouring bays get their own picture lights, dimmer than the one you are
+          standing at. This is what turns a lit shelf in a dark room into a *gallery*: sections
+          receding either side, each under its own warm pool, which is the thing you cannot get
+          from one travelling lamp however far its reach. Two extra lights rather than twelve —
+          every light in a Phong scene costs every fragment, and you can only see three bays. */}
+      <pointLight
+        ref={lampLeft}
+        position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
+        intensity={LAMP_INTENSITY * NEIGHBOUR_LAMP_FALLOFF}
+        distance={LAMP_REACH}
+        decay={1.5}
+        color="#f4c88f"
+      />
+      <pointLight
+        ref={lampRight}
+        position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
+        intensity={LAMP_INTENSITY * NEIGHBOUR_LAMP_FALLOFF}
+        distance={LAMP_REACH}
+        decay={1.5}
+        color="#f4c88f"
+      />
     </>
   );
+}
+
+/**
+ * The engraved brass nameplate over each bay.
+ *
+ * This is the piece that turns twelve bookcases standing in a row into *dedicated sections* —
+ * the brief's word, and the right one. Without them the room reads as one long shelf that
+ * happens to change contents; with them it reads as a gallery laid out by somebody.
+ *
+ * One `InstancedMesh` and one draw call for all twelve, using the same per-instance atlas
+ * window (`aCell`) the covers and spines use. Mounted on the face of the cabinet rather than
+ * floating: `z` is the front of the boards, so a plate sits proud of the woodwork the way a
+ * screwed-on plaque does.
+ */
+function Plaques({ bays, atlas, texture }: { bays: UniverseShelf[]; atlas: PlaqueAtlas; texture: THREE.Texture }) {
+  const mesh = useMemo(() => {
+    const geometry = new THREE.PlaneGeometry(PLAQUE_WIDTH, PLAQUE_HEIGHT);
+    const cells = new Float32Array(bays.length * 4);
+    bays.forEach((bay, i) => {
+      const cell = atlas.cells[bay.key];
+      if (!cell) return;
+      cells.set(
+        [
+          cell.x / atlas.width,
+          1 - (cell.y + cell.h) / atlas.height,
+          cell.w / atlas.width,
+          cell.h / atlas.height,
+        ],
+        i * 4
+      );
+    });
+    geometry.setAttribute("aCell", new THREE.InstancedBufferAttribute(cells, 4));
+
+    // Brass: hard, warm specular and very little diffuse spread, so the plate catches the bay's
+    // light as a highlight rather than glowing evenly like paper.
+    const material = createCoverMaterial(texture, 55, null, {});
+    const instanced = new THREE.InstancedMesh(geometry, material, bays.length);
+    const matrix = new THREE.Matrix4();
+    bays.forEach((bay, i) => {
+      matrix.makeTranslation((bay.startX + bay.endX) / 2, bay.centreY + bay.height / 2 + PLAQUE_RISE, PLAQUE_Z);
+      instanced.setMatrixAt(i, matrix);
+    });
+    instanced.instanceMatrix.needsUpdate = true;
+    return instanced;
+  }, [bays, atlas, texture]);
+
+  useEffect(() => {
+    return () => {
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    };
+  }, [mesh]);
+
+  return <primitive object={mesh} />;
 }
 
 /**
@@ -1667,7 +1921,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         {/* A dim room, not a display case. The warm key is the lamp that travels with you,
             inside ShelfContent; what is left here is enough ambience that an unlit cover is
             dark rather than black, plus a cool fill for shape. */}
-        <ambientLight intensity={0.2} color="#f0e4d2" />
+        <ambientLight intensity={0.13} color="#f0e4d2" />
         <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.18} color="#b9c2cc" />
 
         <Suspense fallback={null}>

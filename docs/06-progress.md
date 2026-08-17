@@ -359,6 +359,51 @@ cost time and neither of which is a code fault:
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
 
+### 2026-08-17 — The gallery gets its finish: mahogany, brass and named sections
+
+The visual half of the locked-off gallery brief, to a first version.
+
+**Mahogany and brass are world-projected, and that is the load-bearing decision.** Every board,
+upright and trim strip in the room is *the same unit box scaled per instance* — a shelf slab is
+twenty units wide and four hundredths tall. Their own UVs are therefore stretched by wildly
+different amounts, so one grain texture through them would be pin-fine on one piece and smeared
+on the next: the same material reading as a different one on every part of the same cabinet.
+Projecting from world position gives the grain one physical size everywhere, as if the room had
+been cut from a single tree. The plane is chosen by the dominant axis of the world normal, which
+is exact for axis-aligned boxes — a scaled box keeps its normals on their axes.
+
+**Grain is colour, not only relief.** Mahogany is dark lines *in* lighter wood; a bump-only grain
+over flat brown reads as textured plastic. The sampled value drives a multiply around 1.0, so the
+per-instance wear tint survives underneath — a bay is still aged by what stands on it, and is now
+also made of something.
+
+**`galleryMaterials.ts`** generates both surfaces procedurally: mahogany with domain-warped grain
+plus a low-frequency ribbon figure (the thing that separates mahogany from generic brown wood)
+and mineral streaks; brass with fine linear brushing. **`plaques.ts`** draws an engraved brass
+nameplate per bay into one atlas, mounted above each cabinet as a single instanced mesh — this is
+what turns twelve bookcases in a row into *dedicated sections*, which is the brief's word and the
+right one.
+
+**Lighting is three travelling lights, not one.** The bay you stand at plus its two neighbours,
+dimmer. Twelve fixed lights would be truer and unaffordable — every light in a Phong scene costs
+every fragment — and you can only ever see three bays. That is what makes the room read as a
+gallery with sections receding either side rather than one lit shelf in a void.
+
+**One tuning lesson worth keeping: metal reads through specular, and a flat strip facing the lamp
+lights along its whole length.** The first brass trim was a bright warm diffuse, and it turned
+every shelf edge into a gold bar dominating the composition. Darker diffuse with a tight, *dark*
+warm specular is what reads as brass. Ambient came back down to 0.13 at the same time — three
+lights plus a bright ambient had flattened the pools the falloff exists to create.
+
+**A test failure that was not a test failure:** the swipe spec passed alone and failed in the full
+suite, which looks exactly like a flaky drag. It was Playwright's 30-second default: the scene
+needs several seconds of software-GL warm-up before it is interactive, and under suite load that
+overran. `test.slow()`, not a retry.
+
+**Still v1, and honestly so:** no cornice or pilaster detailing, the mahogany is mostly hidden
+behind the cases it holds, and it remains a richly-lit stylised gallery rather than photoreal —
+which is the deliberate `MeshPhongMaterial` trade for running on the target laptop.
+
 ### 2026-08-17 — A locked-off gallery: the camera stops moving and the objects come to you
 
 **Owner's direction, and it replaces the navigation model rather than adjusting it:** a fixed

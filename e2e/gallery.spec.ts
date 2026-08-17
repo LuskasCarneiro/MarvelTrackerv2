@@ -8,6 +8,11 @@ import { test, expect } from "@playwright/test";
  * axis lock. Vitest can see the matcher (search.test.ts) and nothing else about either.
  */
 test.describe("the gallery", () => {
+  // The scene needs several seconds of software-GL warm-up before it is interactive, and under
+  // the load of the whole suite that overruns Playwright's 30s default. The failure looks like
+  // a flaky drag and is nothing of the kind — it is the budget, not the behaviour.
+  test.slow();
+
   test("search summons a title from another bay", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
@@ -52,6 +57,12 @@ test.describe("the gallery", () => {
 
     const bay = page.locator("span.font-display").first();
     await expect(bay).toHaveText("MCU", { timeout: 30_000 });
+    // Wait for the scene to be genuinely live before dragging. The caption only appears once
+    // the frame loop has run and named a title, which is strictly after the effect that binds
+    // the pointer listeners — without this the first pointermove of the swipe can land before
+    // anything is listening, and the drag is silently dropped. It passed alone and failed
+    // under the load of the full suite, which is the signature of exactly this race.
+    await expect(page.getByText(/click to open/)).toBeVisible({ timeout: 30_000 });
 
     const box = (await canvas.boundingBox())!;
     const y = box.y + box.height * 0.5;
