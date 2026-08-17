@@ -123,7 +123,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
-| 3 — The shelf (three.js, material system) | **in progress** — twelve per-universe bookcases, scroll pulls a title out, pull-and-turn with a readable back, click-through, two orderings with the objects changing, touch and reduced-motion paths, browser smoke tests in CI; no spine text, no bump or foil maps |
+| 3 — The shelf (three.js, material system) | **complete** — twelve per-universe bookcases, scroll pulls a title out, pull-and-turn with a readable back carrying the curated note, printed spines, click-through, two orderings with the objects changing, both bump layers and foil, touch and reduced-motion paths, browser smoke tests in CI. Four items closed as decisions, not built — see below |
 | 4 — Polish (a11y, perf, SEO) | **begun** — metadata, sitemap, robots and structured data done; a11y audit and perf not started |
 
 ### Phase 3's direction — read `docs/05-3d-shelf.md` §0 first
@@ -152,32 +152,46 @@ Two findings worth not re-deriving:
   titles literally *about* unstable reality. In story order they hang above their own unit
   rather than being assigned a year. **Do not "fix" them.**
 
-### What Phase 3 still owes
+### Phase 3 is complete — and four things were closed by deciding, not building
 
 `/shelf` is a room of **twelve bookcases, one per universe**, each as tall as its collection
-needs and bottom-aligned to one floor, at **20 draw calls**. Scrolling draws a title out of
-the shelf and puts it back; arrows move between universes; a click opens the title's page;
-release and story orders both work; **pull-and-turn is complete** — a case comes out, turns,
-and the camera walks in far enough to read its back; **spines are printed**; touch,
-reduced-motion and no-WebGL paths exist. What it does **not** do, roughly in order of how much
-each is missed:
+needs and bottom-aligned to one floor, at **20 draw calls**. Scrolling draws a title out of the
+shelf and puts it back; arrows move between universes; a click opens the title's page; release
+and story orders both work and change the object as well as the order; pull-and-turn is
+complete, and the back of the case carries the owner's curated note; spines are printed; both of
+`PLAN.md` §1's bump layers and its foil are applied; touch, reduced-motion and no-WebGL paths
+exist; four browser smoke tests run in CI.
 
-1. **The per-item bump and the foil map are not applied.** The *shared substrate* half of
-   `PLAN.md` §1's two bump layers is in — steel reads as brushed metal, VHS as litho card —
-   but the per-item layer and foil stamping both need per-title authored art we do not have,
-   and §6 rules out generating it. Deriving a per-item bump from each cover's own luminance
-   is the honest route if it is ever wanted.
-2. **The back of a case carries facts, not the note.** Format, year, runtime, universe, and a
-   barcode — see below for why the 152 curated notes stay out of it.
-3. **`/shelf` transfers 3.7 MB**, almost all atlas — where KTX2 would earn its place. There is
-   a loading state now, which is the cheap half of this problem.
-4. **No LOD and no adaptive quality**, beyond a DPR clamp of `[1, 1.5]`. Deliberate: not
-   needed until measured on real hardware.
-5. **The room has no floor detail and no walls**, and `docs/05-3d-shelf.md` §3 is explicit
-   that a half-built room is worse than honest darkness. The back panel per unit is in.
-6. **Cases are still face-out**, so the spine-out question in `docs/05-3d-shelf.md` remains
-   open. It is much less pressing now that the shelf is browsed close: thick media show their
-   spines from here without it.
+**Four remaining items were closed as decisions rather than work.** Recording them here so
+nobody re-opens them by reflex — each has a trigger that would justify revisiting it.
+
+1. **KTX2/Basis for the atlas — deferred, and the reason changed after measuring.** The atlas is
+   **3,073,036 bytes** of WebP, served `cache-control: public, max-age=31536000, immutable`, and
+   not additionally compressed (WebP already is; gzipping it would buy nothing). So the wire
+   cost is *one* cold load per user per year, not a repeat cost — that was already fixed by the
+   caching work. What KTX2 would still buy is decode time and **VRAM**: a 4096² RGBA texture is
+   ~64 MB resident, which is a real concern on the integrated-graphics laptop this is designed
+   for. But that is a hypothesis, not a measurement, and buying it costs an encoder dependency
+   plus a ~250 KB Basis transcoder shipped to every client. **Trigger:** measure resident
+   texture memory and first-frame time on the actual laptop. If VRAM is the constraint, KTX2 is
+   the answer and `scripts/build-atlas.ts` is one run away from it.
+2. **LOD and adaptive quality — deferred, unchanged.** Same standard as above and the same
+   reason it was deferred originally: not needed until measured on real hardware.
+3. **The room gets no floor detail and no walls — decided, not deferred.**
+   `docs/05-3d-shelf.md` §3 is explicit that a half-built room is worse than honest darkness,
+   and the lamp falloff plus the per-unit back panel already do the job the room would have
+   done. Building it would be work spent making the thing look *less* deliberate.
+4. **Cases stay face-out — the spine-out question is closed.** It was raised because a face-out
+   shelf never shows you a spine. That premise stopped being true when the shelf moved to a
+   close browsing framing: thick media show their printed spines from here, and thin ones do
+   not, which encodes the medium. Spine-out plus a lamp reveal was always the expensive option,
+   and it would hide the artwork Phase 1 spent real effort on.
+
+**Still genuinely absent, and honestly so:** the per-item bump and foil are *derived from each
+cover's own artwork* rather than from authored per-title maps. That is the right trade here —
+§6 rules out generating art and there is none to license — but it is not the same thing Stripe
+does, and a real foil mask would land only on the title treatment where ours lands on whatever
+is brightest.
 
 ### Corrections to earlier handovers — read these before trusting an old note
 
@@ -344,6 +358,40 @@ cost time and neither of which is a code fault:
   in the root layout and takes every page down with it. Four failing tests where one was
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
+
+### 2026-08-17 — Phase 3 finished: the last two bits built, the last four decided
+
+**The per-item bump and the foil map were recorded as blocked on per-title art. They were not.**
+Both are derivable from the artwork already packed in the atlas:
+
+- **Deboss follows the printing.** A cover's own luminance gradient *is* its relief, so two extra
+  texture taps and a central difference give a per-item bump with no authored maps at all. The
+  normal is nudged rather than replaced, so the shared substrate still reads underneath it — the
+  teardown's two layers, both present, as intended.
+- **A foil stamp lands on the title treatment, which is the brightest thing on almost every one
+  of these covers.** So the mask is a `smoothstep` on luminance driving `specularStrength`.
+  Steelbook takes the most (its face is metal and its title genuinely is foil-stamped), an
+  Amaray insert under a clear sleeve the least.
+
+**Be honest about what that is:** it is *derived* foil, not authored foil. Where Stripe's mask
+hits only the title, ours hits whatever is brightest — on *Iron Man 3* that is the armour and the
+water, not the logotype. The right trade given §6 rules out generating art, but not the same
+thing, and the difference is worth knowing before anyone "fixes" it.
+
+**The back of the case now carries the owner's curated note**, and the way it gets there is the
+point: `/shelf/notes` is a statically prerendered route handler, fetched **once** the first time
+anybody turns a case and memoised after. Verified: four turns, one request. Nobody who only
+browses ever pays for it, and the 152 notes stay out of the route's bundle — checked by grepping
+`.next/static` for a note's text and finding nothing. `loadNotes()` resolves to an empty map
+rather than rejecting, because a back missing its blurb is a small loss and a throw inside a
+WebGL frame loop takes down the whole scene, which has happened here before.
+
+**Four items were closed by deciding rather than building** — KTX2, LOD, the room, and spine-out.
+The reasoning is above under "Phase 3 is complete". The one worth re-reading is KTX2: measuring
+changed the argument rather than settling it. The atlas is 3.07 MB served `immutable`, so the
+wire cost is one cold load a year per user; what is left is VRAM and decode, which is a real
+worry on the target laptop and an unmeasured one. Deferred with a named trigger rather than
+either shipping a transcoder speculatively or pretending the concern does not exist.
 
 ### 2026-08-17 — The materials get a surface
 

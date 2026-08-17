@@ -11,6 +11,7 @@ import { tintToHsl } from "@/lib/tint";
 import { renderBackCover } from "./backCover";
 import { buildSpineAtlas, type SpineTitle } from "./spineAtlas";
 import { buildSubstrate, SUBSTRATE_SCALE } from "./substrate";
+import { loadNotes } from "./notes";
 import atlasManifest from "../../../data/atlas.json";
 import {
   DIMENSIONS,
@@ -76,7 +77,7 @@ function createCoverMaterial(
   /** Spine labels are ink on a transparent sheet laid over the case, so they need alpha
    * testing; covers are opaque and must not pay for it. Alpha *test* rather than blending
    * keeps depth writes on, so a spine still occludes properly and needs no sort order. */
-  options: { alphaTest?: number; bumpScale?: number } = {}
+  options: { alphaTest?: number; bumpScale?: number; itemBump?: number; foil?: number } = {}
 ): THREE.MeshPhongMaterial {
   const material = new THREE.MeshPhongMaterial({
     map,
@@ -85,16 +86,68 @@ function createCoverMaterial(
     ...(substrate ? { bumpMap: substrate, bumpScale: options.bumpScale ?? 0.02 } : {}),
     ...(options.alphaTest ? { transparent: false, alphaTest: options.alphaTest } : {}),
   });
+  const itemBump = options.itemBump ?? 0;
+  const foil = options.foil ?? 0;
+
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.uItemBump = { value: itemBump };
+    shader.uniforms.uFoil = { value: foil };
+    // One texel of the atlas, for the gradient below. A constant rather than textureSize(),
+    // which needs GLSL3 and would tie this shader to the WebGL2 path for no gain.
+    shader.uniforms.uTexel = { value: 1 / ATLAS_SIZE };
+
     shader.vertexShader =
       "attribute vec4 aCell;\nvarying vec4 vCell;\n" +
       shader.vertexShader.replace("#include <uv_vertex>", "#include <uv_vertex>\n\tvCell = aCell;");
+
     shader.fragmentShader =
-      "varying vec4 vCell;\n" +
-      shader.fragmentShader.replace(
-        "#include <map_fragment>",
-        "diffuseColor *= texture2D( map, vCell.xy + vMapUv * vCell.zw );"
-      );
+      "varying vec4 vCell;\nuniform float uItemBump;\nuniform float uFoil;\nuniform float uTexel;\n" +
+      shader.fragmentShader
+        // Sample once, and keep the artwork's luminance — the two effects below are both
+        // functions of it, and sampling a 4096² atlas three more times per fragment for
+        // something already in a register is the kind of cost that never shows up in review.
+        .replace(
+          "#include <map_fragment>",
+          `vec2 cellUv = vCell.xy + vMapUv * vCell.zw;
+	vec4 artwork = texture2D( map, cellUv );
+	diffuseColor *= artwork;
+	float itemLum = dot( artwork.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );`
+        )
+        /**
+         * Foil. PLAN.md §1's third finding is that Stripe models foil stamping as its own map
+         * with its own specular, because the real books are foil-stamped — the material is
+         * true to the physical object rather than decorative.
+         *
+         * We have no per-title foil masks and §6 rules out generating art. But a foil stamp is
+         * not arbitrary: it lands on the title treatment, which is the brightest thing on
+         * almost every one of these covers. So the mask is derivable from the artwork already
+         * in the atlas — bright pixels take the extra specular, everything else is untouched.
+         * smoothstep rather than a hard cut, or the foil gets a visible outline.
+         */
+        .replace(
+          "#include <specularmap_fragment>",
+          `#include <specularmap_fragment>
+	specularStrength *= 1.0 + uFoil * smoothstep( 0.62, 0.96, itemLum );`
+        )
+        /**
+         * The per-item bump — the second half of the teardown's two bump layers, which was
+         * recorded as blocked on per-title art. It is not: debossing follows the printing, so
+         * the cover's own luminance gradient *is* the relief. Two extra taps give a central
+         * difference; the normal is nudged, never replaced, so the substrate underneath still
+         * reads through it.
+         *
+         * Guarded on uItemBump so the forms that opt out pay nothing — a branch on a uniform
+         * is coherent across the whole draw and costs nothing on any GPU this targets.
+         */
+        .replace(
+          "#include <normal_fragment_maps>",
+          `#include <normal_fragment_maps>
+	if ( uItemBump > 0.0 ) {
+		float lx = dot( texture2D( map, cellUv + vec2( uTexel, 0.0 ) ).rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+		float ly = dot( texture2D( map, cellUv + vec2( 0.0, uTexel ) ).rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+		normal = normalize( normal + vec3( ( itemLum - lx ) * uItemBump, ( itemLum - ly ) * uItemBump, 0.0 ) );
+	}`
+        );
   };
   return material;
 }
@@ -175,6 +228,19 @@ const SPINE_INSET = 0.002;
 const SUBSTRATE_REPEAT = 4;
 
 /**
+ * How strongly each form's printing is debossed, and how much of its title treatment is foil.
+ *
+ * Both are read off the real object rather than tuned to taste. **Foil**: a steelbook's title
+ * is genuinely foil-stamped and its whole face is metal, so it takes the most; VHS sleeves of
+ * the era were routinely foil-blocked, which is why they still catch a lamp; a DVD Amaray's
+ * printed insert under a clear sleeve is the least foiled thing on the shelf. **Deboss**: card
+ * takes an impression and holds it, polypropylene barely does, and `none` — a title with no
+ * physical release — gets neither, because there is no object to have been stamped.
+ */
+const ITEM_BUMP: Partial<Record<Form, number>> = { vhs: 0.5, amaray: 0.2, bluray: 0.22, steel: 0.42 };
+const FOIL: Partial<Record<Form, number>> = { vhs: 0.5, amaray: 0.15, bluray: 0.3, steel: 0.9, can: 0.25 };
+
+/**
  * The spine face: a plane on the case's left side, which is the side a camera standing to the
  * left of the run actually sees.
  *
@@ -240,6 +306,8 @@ function buildMediumMeshes(
   coverGeometry.setAttribute("aCell", new THREE.InstancedBufferAttribute(cellData, 4));
   const coverMaterial = createCoverMaterial(coverTexture, COVER_SHININESS[row.form], substrate, {
     bumpScale: SUBSTRATE_SCALE[row.form],
+    itemBump: ITEM_BUMP[row.form],
+    foil: FOIL[row.form],
   });
   const cover = new THREE.InstancedMesh(coverGeometry, coverMaterial, count);
   row.coverMatrices.forEach((m, i) => cover.setMatrixAt(i, m));
@@ -601,6 +669,31 @@ function ShelfContent({
   const lamp = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
   const backRef = useRef<THREE.Mesh>(null);
+
+  /**
+   * The owner's curated note for the back of the case, fetched rather than imported.
+   *
+   * The 152 notes are the best writing in this project and the back of a case is where a
+   * synopsis belongs — but importing them here would put all 152 in this route's bundle, which
+   * is the trap `docs/06-progress.md` records as "Prop or import, it still ships". So they come
+   * from `/shelf/notes`, a statically prerendered route, fetched **once** the first time anyone
+   * turns a case and memoised from then on. Nobody who only browses the shelf ever pays for it.
+   *
+   * `loadNotes` resolves to an empty map rather than rejecting if the fetch fails: a back
+   * without its blurb is a small loss, and a throw inside a WebGL frame loop takes down the
+   * whole scene — which has happened on this project before, from a module in the masthead.
+   */
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!turnedItem) return;
+    let live = true;
+    loadNotes().then((loaded) => {
+      if (live) setNotes(loaded);
+    });
+    return () => {
+      live = false;
+    };
+  }, [turnedItem]);
   /** Live turn, 0..1. A ref for the same reason `progress` is one: it changes every frame
    * while the case swings round, and nothing in React renders differently for it. */
   const turn = useRef(0);
@@ -621,6 +714,7 @@ function ShelfContent({
   const backTexture = useMemo(() => {
     if (!turnedItem) return null;
     const canvas = renderBackCover({
+      note: notes[turnedItem.slug],
       label: turnedItem.label,
       formName: FORM_NAMES[turnedItem.form],
       yearLabel: storyOrder ? storyYearLabel(turnedItem.storyYear) : String(turnedItem.releaseYear),
@@ -632,7 +726,7 @@ function ShelfContent({
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
     return texture;
-  }, [turnedItem, storyOrder, universe.label]);
+  }, [turnedItem, storyOrder, universe.label, notes]);
 
   // A CanvasTexture holds a GPU upload; React will not free it for us when the memo
   // recomputes, and walking a long shelf with a case turned would leak one per title.
