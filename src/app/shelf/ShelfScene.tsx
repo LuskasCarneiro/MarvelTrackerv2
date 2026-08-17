@@ -83,6 +83,34 @@ function createCoverMaterial(
   return material;
 }
 
+/**
+ * Spine ink, and the one place in this scene that is deliberately unlit.
+ *
+ * A spine faces sideways while the lamp stands in front of the shelf, so a lit surface there
+ * sits at about ninety degrees to its only light source and renders black — the labels were
+ * being drawn correctly and lit into invisibility, which reads exactly like a bug in the UVs
+ * and is not one. Printing is not a surface that reflects the room anyway; it is ink, and it
+ * should read from any angle you can see it from, which is what an unlit material gives.
+ *
+ * The colour is `--color-label-mid` rather than white so it sits in the design system's
+ * ordinary text range instead of glowing off a dark case.
+ */
+function createSpineMaterial(map: THREE.Texture): THREE.MeshBasicMaterial {
+  const material = new THREE.MeshBasicMaterial({ map, color: "#c8bcac", alphaTest: 0.4 });
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader =
+      "attribute vec4 aCell;\nvarying vec4 vCell;\n" +
+      shader.vertexShader.replace("#include <uv_vertex>", "#include <uv_vertex>\n\tvCell = aCell;");
+    shader.fragmentShader =
+      "varying vec4 vCell;\n" +
+      shader.fragmentShader.replace(
+        "#include <map_fragment>",
+        "diffuseColor *= texture2D( map, vCell.xy + vMapUv * vCell.zw );"
+      );
+  };
+  return material;
+}
+
 type FormRow = {
   form: Form;
   slugs: string[];
@@ -193,7 +221,7 @@ function buildMediumMeshes(
     spine.uvs.forEach((uv, i) => spineCells.set([uv.u0, uv.v0, uv.du, uv.dv], i * 4));
     spineGeometry.setAttribute("aCell", new THREE.InstancedBufferAttribute(spineCells, 4));
     // Duller than any cover: this is ink printed onto the case, not artwork behind a sleeve.
-    const spineMaterial = createCoverMaterial(spine.texture, 12, { alphaTest: 0.4 });
+    const spineMaterial = createSpineMaterial(spine.texture);
     spineMesh = new THREE.InstancedMesh(spineGeometry, spineMaterial, count);
     row.bodyMatrices.forEach((m, i) => spineMesh!.setMatrixAt(i, m));
     spineMesh.instanceMatrix.needsUpdate = true;
@@ -333,11 +361,29 @@ const TAP_SLOP = 8;
  * minimum — about four cases, which is what keeps a phone usable — and the air left above
  * and below a unit so it does not touch the edges. */
 const FOV = 42;
-const VISIBLE_WIDTH = 6;
-const HEIGHT_MARGIN = 3.4;
 
-/** How close the camera may aim to the end of a unit before it stops following. */
-const EDGE_MARGIN = 3.2;
+/**
+ * How much shelf to hold in frame while browsing — about five cases across and a shelf and a
+ * half tall, rather than a whole bookcase.
+ *
+ * **This is deliberately close, and it replaced a framing that fitted each unit's full
+ * height.** Standing far enough back to hold four levels put the camera ~14 units out, and at
+ * that distance a case is a thumbnail: a spine is three screen pixels, so printed spine text
+ * is unreadable, and a 32mm VHS clamshell is indistinguishable from a 12mm Blu-ray. Both were
+ * on the list of what the shelf still owed, and both had the same cause — not the geometry,
+ * which was right, but how far away it was being viewed from. Measured, not guessed: see
+ * docs/06-progress.md, 2026-08-17.
+ *
+ * The cost, accepted: you see a section rather than a wall, so travelling matters more. The
+ * lamp falloff already means the rest is in the dark, so this is less of a change than it
+ * sounds.
+ */
+const VISIBLE_WIDTH = 7;
+const VISIBLE_HEIGHT = 2.8;
+
+/** How close the camera may aim to the end of a unit before it stops following. Smaller than
+ * it was, because the margin is a fraction of the frame and the frame is much narrower now. */
+const EDGE_MARGIN = 1.6;
 
 /** How much taller than the case itself the frame should be when you are reading its back —
  * a little air, not a card jammed against the edges. */
@@ -541,10 +587,10 @@ function ShelfContent({
   const standBack = useMemo(() => {
     const halfFov = Math.tan((FOV / 2) * (Math.PI / 180));
     const aspect = size.width / Math.max(size.height, 1);
-    const heightFit = universe.height / 2 / halfFov + HEIGHT_MARGIN;
+    const heightFit = VISIBLE_HEIGHT / 2 / halfFov;
     const widthFit = VISIBLE_WIDTH / 2 / (halfFov * Math.max(aspect, 0.1));
     return Math.max(heightFit, widthFit);
-  }, [universe, size]);
+  }, [size]);
 
   /**
    * The interaction, in one frame loop.
@@ -645,7 +691,12 @@ function ShelfContent({
       // of small print two metres away on the top shelf is not something you can read, and
       // "turn it over and read the back" is the whole of this interaction — the first build
       // turned the case correctly and left it a thumbnail in the corner of the frame.
-      const aimY = THREE.MathUtils.lerp(universe.centreY + (item.y - universe.centreY) * 0.2, item.y, reading);
+      // The camera follows the case outright now, vertically as well as sideways. It used to
+      // only lean a fifth of the way, because from far enough back to hold a whole bookcase,
+      // following y swung the view a full unit height and threw the furniture out of frame.
+      // Standing close, the opposite is true: a fifth of the way leaves the case you are
+      // looking at off the top or bottom of the screen entirely.
+      const aimY = item.y;
       // ...and it stays inside the unit it is looking at. Aiming squarely at the first case
       // on a shelf points a third of the frame at the empty room beside it, which is what
       // arriving at every universe looked like; a case sitting off-centre with its own
@@ -893,7 +944,11 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   // bottom board to the top of the tallest case standing on the top one, and the midpoint of
   // *that* is what keeps all four levels in frame.
   const wallCentreY = (layout.bounds.minY + layout.bounds.maxY) / 2;
-  const cameraZ = (layout.bounds.maxY - layout.bounds.minY) / 2 / Math.tan((FOV / 2) * (Math.PI / 180)) + 3.4;
+  // Where the camera starts, before the frame loop eases it to `standBack`. It used to be
+  // derived from the height of the whole wall; the shelf is browsed close now (see
+  // VISIBLE_WIDTH), so a constant in the same neighbourhood is both simpler and avoids
+  // opening on a long dolly in from the far side of the room.
+  const cameraZ = 6.5;
 
   const pick = useCallback((slug: string) => router.push(`/title/${slug}`), [router]);
   const reducedMotion = usePrefersReducedMotion();

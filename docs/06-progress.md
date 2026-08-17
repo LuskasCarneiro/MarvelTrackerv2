@@ -155,25 +155,26 @@ Two findings worth not re-deriving:
 ### What Phase 3 still owes
 
 `/shelf` is a room of **twelve bookcases, one per universe**, each as tall as its collection
-needs and bottom-aligned to one floor, at **16 draw calls**. Scrolling draws a title out of
+needs and bottom-aligned to one floor, at **20 draw calls**. Scrolling draws a title out of
 the shelf and puts it back; arrows move between universes; a click opens the title's page;
 release and story orders both work; **pull-and-turn is complete** — a case comes out, turns,
-and the camera walks in far enough to read its back; touch, reduced-motion and no-WebGL paths
-exist. What it does **not** do, roughly in order of how much each is missed:
+and the camera walks in far enough to read its back; **spines are printed**; touch,
+reduced-motion and no-WebGL paths exist. What it does **not** do, roughly in order of how much
+each is missed:
 
-1. **No spine text**, so a case seen edge-on is blank — the one thing every real shelf has.
-2. **Thickness is encoded but not legible.** A VHS clamshell is 32 mm and a Blu-ray 12 mm; at
-   this framing you cannot tell.
-3. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
+1. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
    applied, so steelbook does not read as metal and VHS does not read as card.
-4. **The back of a case carries facts, not the note.** Format, year, runtime, universe, and a
+2. **The back of a case carries facts, not the note.** Format, year, runtime, universe, and a
    barcode — see below for why the 152 curated notes stay out of it.
-5. **`/shelf` transfers 3.7 MB**, almost all atlas — where KTX2 would earn its place. There is
+3. **`/shelf` transfers 3.7 MB**, almost all atlas — where KTX2 would earn its place. There is
    a loading state now, which is the cheap half of this problem.
-6. **No LOD and no adaptive quality**, beyond a DPR clamp of `[1, 1.5]`. Deliberate: not
+4. **No LOD and no adaptive quality**, beyond a DPR clamp of `[1, 1.5]`. Deliberate: not
    needed until measured on real hardware.
-7. **The room has no floor detail and no walls**, and `docs/05-3d-shelf.md` §3 is explicit
+5. **The room has no floor detail and no walls**, and `docs/05-3d-shelf.md` §3 is explicit
    that a half-built room is worse than honest darkness. The back panel per unit is in.
+6. **Cases are still face-out**, so the spine-out question in `docs/05-3d-shelf.md` remains
+   open. It is much less pressing now that the shelf is browsed close: thick media show their
+   spines from here without it.
 
 ### Corrections to earlier handovers — read these before trusting an old note
 
@@ -340,6 +341,49 @@ cost time and neither of which is a code fault:
   in the root layout and takes every page down with it. Four failing tests where one was
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
+
+### 2026-08-17 — Printed spines, and standing close enough to read them
+
+Two more items off the owed list, and they turned out to be **one item**.
+
+**Spine labels** for all 152 titles are one alpha-tested atlas (`spineAtlas.ts`), drawn as a
+third `InstancedMesh` per form that shares the covers' `aCell` shader recipe and the body's own
+instance matrices — so a spine is a face of the case rather than a thing placed near it, and it
+pulls, turns and picks with it for free. Four extra draw calls, 16 → 20.
+
+**Then it was invisible, and the reason was not what it looked like.** Two wrong diagnoses were
+eliminated by measurement rather than argued about:
+
+1. *Is the atlas wrong?* Mapped it onto a debug plane in the scene: all 152 labels present and
+   correct. Not the atlas.
+2. *Are the planes misplaced or facing away?* Gave them a flat red material and no texture: thin
+   red strips exactly where intended, on each case's left face. Not the placement.
+
+What was left was the two real causes. **A spine faces sideways while the lamp stands in front
+of the shelf**, so a lit material there sits at ninety degrees to its only light source and
+renders black — the ink was being drawn correctly and *lit into invisibility*. Spine ink is
+`MeshBasicMaterial` now, deliberately the one unlit thing in the scene, because printing is ink
+rather than a surface that reflects the room. And **the camera stood too far back**: framing a
+whole four-level bookcase put it ~14 units out, where a spine is three screen pixels.
+
+**So the framing changed, and it fixed the other owed item too.** The shelf is browsed close
+now — about five cases across and a shelf and a half tall, a constant rather than a per-unit fit.
+That single change is what makes *both* "no spine text" and "thickness is encoded but not
+legible" go away, because neither was ever a geometry fault. Requires following the case
+vertically in full: the old camera leaned only a fifth of the way towards it, which was right
+from far back and leaves the case off-screen from here.
+
+**The payoff is better than uniform legibility would have been.** A VHS clamshell is 32 mm and a
+Blu-ray 12 mm, so on the Classic era unit the spines read — *The Punisher* is plainly legible
+down the side of its case — while modern Blu-rays stay too thin to print on. That is the medium
+encoding itself, exactly as `PLAN.md` intends, rather than a uniform label on everything.
+
+**Recorded because the first conclusion was wrong and got committed:** the initial spine commit
+concluded, in its message, that spine text could not work with face-out cases at any framing.
+That was measured honestly and was still wrong — it had tested the browse framing, the pulled
+framing and the reading framing, but all three on the **MCU** unit, which holds no VHS at all.
+A conclusion about a range of media drawn entirely from the thin end of it. The cheap check that
+would have caught it immediately was one click of "next universe".
 
 ### 2026-08-12 — Phase 4 begun: findable, shareable, and claiming nothing
 
