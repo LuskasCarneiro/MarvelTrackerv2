@@ -10,6 +10,7 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { tintToHsl } from "@/lib/tint";
 import { renderBackCover } from "./backCover";
 import { buildSpineAtlas, type SpineTitle } from "./spineAtlas";
+import { buildSubstrate, SUBSTRATE_SCALE } from "./substrate";
 import atlasManifest from "../../../data/atlas.json";
 import {
   DIMENSIONS,
@@ -58,15 +59,30 @@ if (atlasManifest.atlases.length > 1) {
 function createCoverMaterial(
   map: THREE.Texture,
   shininess: number,
+  /**
+   * The printed face carries the substrate too, and this is the half that actually shows.
+   *
+   * A bump on the case *body* is almost entirely hidden: the front of every case is covered
+   * by its artwork plane, so the body's own surface survives only on the thin edges. Which
+   * gets the material exactly backwards for the form it was built for — a steelbook's artwork
+   * is printed **onto** the metal, so the metal has to modulate the artwork, not sit behind
+   * it. Same for VHS: the litho card is the thing the picture is printed on.
+   *
+   * It samples through `vBumpMapUv`, three's own uv for the bump slot, so it tiles across the
+   * face at the texture's repeat and is untouched by the atlas-cell window the shader below
+   * applies to `map`. The two maps want different UVs, and that is exactly what they get.
+   */
+  substrate: THREE.Texture | null,
   /** Spine labels are ink on a transparent sheet laid over the case, so they need alpha
    * testing; covers are opaque and must not pay for it. Alpha *test* rather than blending
    * keeps depth writes on, so a spine still occludes properly and needs no sort order. */
-  options: { alphaTest?: number } = {}
+  options: { alphaTest?: number; bumpScale?: number } = {}
 ): THREE.MeshPhongMaterial {
   const material = new THREE.MeshPhongMaterial({
     map,
     shininess,
     specular: new THREE.Color("#6b6259"),
+    ...(substrate ? { bumpMap: substrate, bumpScale: options.bumpScale ?? 0.02 } : {}),
     ...(options.alphaTest ? { transparent: false, alphaTest: options.alphaTest } : {}),
   });
   material.onBeforeCompile = (shader) => {
@@ -154,6 +170,10 @@ const SPINE_FORMS = new Set<Form>(["vhs", "amaray", "bluray", "steel"]);
 /** How far the label sheet stands off the case's own side, so it never z-fights the body. */
 const SPINE_INSET = 0.002;
 
+/** How many times the substrate tile repeats across a case face. Grain, not pattern: high
+ * enough that no one reads it as a texture, low enough to survive minification. */
+const SUBSTRATE_REPEAT = 4;
+
 /**
  * The spine face: a plane on the case's left side, which is the side a camera standing to the
  * left of the run actually sees.
@@ -192,13 +212,24 @@ function spineGeometryFor(form: Form): THREE.BufferGeometry {
 function buildMediumMeshes(
   row: FormRow,
   coverTexture: THREE.Texture,
-  spine: { texture: THREE.Texture; uvs: CellUv[] } | null
+  spine: { texture: THREE.Texture; uvs: CellUv[] } | null,
+  substrate: THREE.Texture | null
 ) {
   const count = row.bodyMatrices.length;
 
   const bodyGeometry = bodyGeometryFor(row.form);
   const bm = BODY_MATERIAL[row.form];
-  const bodyMaterial = new THREE.MeshPhongMaterial({ color: bm.color, shininess: bm.shininess, specular: bm.specular });
+  // The shared substrate bump — PLAN.md §1's second finding, and the one it rates as the
+  // trick worth stealing: a bump layer belonging to the *material* rather than to the item
+  // is what makes many objects feel individually made without many bespoke assets. Until
+  // now every case was shininess-only, so a steelbook and a DVD differed by a number and
+  // by nothing you could see.
+  const bodyMaterial = new THREE.MeshPhongMaterial({
+    color: bm.color,
+    shininess: bm.shininess,
+    specular: bm.specular,
+    ...(substrate ? { bumpMap: substrate, bumpScale: SUBSTRATE_SCALE[row.form] } : {}),
+  });
   const body = new THREE.InstancedMesh(bodyGeometry, bodyMaterial, count);
   row.bodyMatrices.forEach((m, i) => body.setMatrixAt(i, m));
   body.instanceMatrix.needsUpdate = true;
@@ -207,7 +238,9 @@ function buildMediumMeshes(
   const cellData = new Float32Array(count * 4);
   row.coverUvs.forEach((uv, i) => cellData.set([uv.u0, uv.v0, uv.du, uv.dv], i * 4));
   coverGeometry.setAttribute("aCell", new THREE.InstancedBufferAttribute(cellData, 4));
-  const coverMaterial = createCoverMaterial(coverTexture, COVER_SHININESS[row.form]);
+  const coverMaterial = createCoverMaterial(coverTexture, COVER_SHININESS[row.form], substrate, {
+    bumpScale: SUBSTRATE_SCALE[row.form],
+  });
   const cover = new THREE.InstancedMesh(coverGeometry, coverMaterial, count);
   row.coverMatrices.forEach((m, i) => cover.setMatrixAt(i, m));
   cover.instanceMatrix.needsUpdate = true;
@@ -486,6 +519,36 @@ function ShelfContent({
    * texture back. `spineTitles` is the stable list; the per-instance windows into it are what
    * change, and those are cheap.
    */
+  /**
+   * One substrate bump texture per form, built once for the whole room.
+   *
+   * Keyed off the forms actually present rather than every form there is: story order draws
+   * clay tablets and film cans and release order never does, so building all nine would spend
+   * time on surfaces nobody is looking at.
+   *
+   * `RepeatWrapping` with a repeat count is what turns a 256px tile into grain at a physical
+   * size — the tile is seamless, so the count is free to set by eye. Grain that scales with
+   * the case would make a VHS clamshell's card coarser than a Blu-ray's simply for being
+   * bigger, which is backwards: card grain is a property of the card.
+   */
+  const substrates = useMemo(() => {
+    const byForm = new Map<Form, THREE.Texture>();
+    for (const row of layout.media) {
+      if (byForm.has(row.form)) continue;
+      const created = new THREE.CanvasTexture(buildSubstrate(row.form));
+      created.wrapS = THREE.RepeatWrapping;
+      created.wrapT = THREE.RepeatWrapping;
+      created.repeat.set(SUBSTRATE_REPEAT, SUBSTRATE_REPEAT);
+      created.anisotropy = 4;
+      byForm.set(row.form, created);
+    }
+    return byForm;
+  }, [layout]);
+  useEffect(() => {
+    const built = [...substrates.values()];
+    return () => built.forEach((t) => t.dispose());
+  }, [substrates]);
+
   const spineAtlas = useMemo(() => buildSpineAtlas(spineTitles), [spineTitles]);
   const spineTexture = useMemo(() => {
     const created = new THREE.CanvasTexture(spineAtlas.canvas);
@@ -514,10 +577,10 @@ function ShelfContent({
         return {
           form: row.form,
           slugs: row.slugs,
-          ...buildMediumMeshes(row, texture, { texture: spineTexture, uvs }),
+          ...buildMediumMeshes(row, texture, { texture: spineTexture, uvs }, substrates.get(row.form) ?? null),
         };
       }),
-    [layout, texture, spineAtlas, spineTexture]
+    [layout, texture, spineAtlas, spineTexture, substrates]
   );
   const meshByForm = useMemo(() => new Map(mediumMeshes.map((m) => [m.form, m])), [mediumMeshes]);
   const boards = useMemo(

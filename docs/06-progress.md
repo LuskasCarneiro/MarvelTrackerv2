@@ -162,8 +162,11 @@ and the camera walks in far enough to read its back; **spines are printed**; tou
 reduced-motion and no-WebGL paths exist. What it does **not** do, roughly in order of how much
 each is missed:
 
-1. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
-   applied, so steelbook does not read as metal and VHS does not read as card.
+1. **The per-item bump and the foil map are not applied.** The *shared substrate* half of
+   `PLAN.md` §1's two bump layers is in — steel reads as brushed metal, VHS as litho card —
+   but the per-item layer and foil stamping both need per-title authored art we do not have,
+   and §6 rules out generating it. Deriving a per-item bump from each cover's own luminance
+   is the honest route if it is ever wanted.
 2. **The back of a case carries facts, not the note.** Format, year, runtime, universe, and a
    barcode — see below for why the 152 curated notes stay out of it.
 3. **`/shelf` transfers 3.7 MB**, almost all atlas — where KTX2 would earn its place. There is
@@ -341,6 +344,35 @@ cost time and neither of which is a code fault:
   in the root layout and takes every page down with it. Four failing tests where one was
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
+
+### 2026-08-17 — The materials get a surface
+
+`PLAN.md` §1's second finding, applied: a **shared substrate bump per material**, which the
+teardown rates as the trick worth stealing — a bump belonging to the *material* rather than to
+the item is what makes many objects feel individually made without many bespoke assets.
+
+`substrate.ts` generates one small, seamlessly tileable bump per form from a single parametrised
+noise: litho card for VHS, fine polypropylene for Amaray, finer for Blu-ray, brushed metal for
+steel and the film can, buckram for the bound volume, pitted clay for the tablet. Procedural, so
+there are no new committed assets and nothing to fetch — and it is not the generative-AI route
+`PLAN.md` §6 rules out.
+
+**The first wiring put the bump only on the case body, where it barely shows.** Every case's
+front is covered by its artwork plane, so a body bump survives only on the thin edges — which is
+backwards for the form it was built for: **a steelbook's artwork is printed onto the metal**, so
+the metal has to modulate the artwork rather than sit behind it. The substrate is on the cover
+material too now. It samples through `vBumpMapUv`, three's own uv slot for the bump, so it tiles
+across the face at the texture's repeat and is untouched by the atlas-cell window the shader
+applies to `map` — two maps on one material wanting different UVs, which is exactly what they get.
+
+**Both ends of the range were checked this time**, which is the lesson from earlier the same day:
+Iron Man 3's steelbook shows a brushed sheen across its artwork, and Howard the Duck's VHS
+clamshell reads as thick card with a legible spine.
+
+**Not done, and it needs assets rather than effort:** the *per-item* bump layer and the foil map.
+Both are per-title authored art in the Stripe original; we have none, and generating it is out.
+The honest route, if wanted, is to derive a per-item bump from each cover's own luminance — the
+pixels are already packed in the atlas.
 
 ### 2026-08-17 — Printed spines, and standing close enough to read them
 
