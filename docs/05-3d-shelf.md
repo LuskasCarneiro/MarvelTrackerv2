@@ -172,7 +172,7 @@ are the only colour in the scene.** 152 pieces of artwork already compete with e
 furniture with character joins that fight and the whole thing turns to noise. The wood's job
 is to be warm and shut up.
 
-### Do not build a room
+### Do not build a room — **overruled by the owner, 2026-08-17. See §11.**
 
 Walls, windows and props are a great deal of work to end up looking like a bad game level. A
 half-built room is worse than honest darkness. What is worth adding is **a back panel**
@@ -381,6 +381,43 @@ note said they were blocked on assets; they were blocked on an assumption.
 **What this is not:** authored foil. Stripe's mask hits only the title; ours hits whatever is
 brightest, which on *Iron Man 3* is the armour rather than the logotype. The right trade when §6
 rules out generating art — but know the difference before "fixing" it.
+
+---
+
+## 11. The room — §3 overruled, and what "restraint" turned out to mean
+
+**The owner asked for a room. §3's conclusion is reversed; its reasoning is not.** The danger it
+named — that walls, windows and props are a great deal of work ending in a bad game level — is
+real, and it is what shaped this. A room reads as a room because **the lamp falls on real
+surfaces**, not because things are standing about in it. So there are no windows, no props, and
+no furniture beyond the bookcases.
+
+**Three draw calls for the whole thing** (20 → 22 in the room, since the old ground plane went):
+
+- **One inverted box** for walls and ceiling. `BackSide` means you are inside it, so a single
+  mesh does four walls and a lid; its own floor face is hidden under the real floor, which is
+  why it can afford to be plaster all over.
+- **One floor plane** with procedural boards. This is the piece that does the work — boards are
+  what turn a void containing objects into a place.
+- **One skirting board** along the back wall. The cheapest domestic cue there is, and the
+  bookcases stand proud of it exactly as real furniture does.
+
+`roomSurfaces.ts` generates the floor and plaster the same way `substrate.ts` generates case
+materials: one parametrised, seamlessly tiling noise, procedural, no committed assets.
+
+### Two things had to change for the room to be *visible*, and both were measured
+
+1. **The lamp did not reach it.** `LAMP_REACH` was 15, tuned when there was nothing to light but
+   the cases. A lamp whose pool dies before it meets the floor leaves the shelf standing in a
+   void — which was the original complaint. Measured against the real geometry (floor at
+   y = -6.60, lamp at -1.20, ceiling at 3.96) and raised to 24, with ambient 0.12 → 0.20.
+2. **The floor was too dark to show its own boards.** At `#241a12` the plank seams were present
+   and invisible: a bump map modulates light, so on a surface with no light left there is
+   nothing to modulate. `#35271b` now — still far below the artwork, which remains the only real
+   colour in the scene.
+
+Headroom went from 1.8 to 3.6 units, so there is wall above the bookcases for the lamp to graze.
+A ceiling sitting directly on the furniture reads as a box, not a room.
 
 ---
 

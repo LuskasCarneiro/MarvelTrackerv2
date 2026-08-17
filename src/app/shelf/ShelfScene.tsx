@@ -12,6 +12,7 @@ import { renderBackCover } from "./backCover";
 import { buildSpineAtlas, type SpineTitle } from "./spineAtlas";
 import { buildSubstrate, SUBSTRATE_SCALE } from "./substrate";
 import { loadNotes } from "./notes";
+import { buildRoomSurface, ROOM_BUMP_SCALE } from "./roomSurfaces";
 import atlasManifest from "../../../data/atlas.json";
 import {
   DIMENSIONS,
@@ -228,6 +229,36 @@ const SPINE_INSET = 0.002;
 const SUBSTRATE_REPEAT = 4;
 
 /**
+ * The room's dimensions, all measured off the bookcases rather than fixed, so it stays a room
+ * around the shelf whatever the catalogue does.
+ *
+ * `ROOM_BACK_Z` sits just behind the units' own back panels (which end near z = -0.235), so the
+ * bookcases stand *against* the wall rather than floating in front of one. The front is far
+ * enough forward that the floor runs out underneath the camera — a floor that stops before the
+ * viewer does is the single most obvious way to look like a set rather than a room.
+ */
+const ROOM_BACK_Z = -0.3;
+const ROOM_FRONT = 15;
+const ROOM_MARGIN_X = 4;
+/** Air above the tallest unit. Enough that the ceiling is not sitting on the shelf, low enough
+ * that it stays a room rather than a hall — and it is in darkness either way. */
+const ROOM_HEADROOM = 3.6;
+const SKIRTING_HEIGHT = 0.22;
+const SKIRTING_DEPTH = 0.05;
+
+/**
+ * The room's colours. Deliberately duller and darker than `--color-shelf-raised`, which is the
+ * furniture: the covers are the only colour in this scene (`docs/05-3d-shelf.md` §3), and a
+ * room with opinions joins the fight the artwork is already having. Warm, because the lamp is.
+ */
+const ROOM_WALL = "#171310";
+/** Lighter than the first attempt (#241a12), which was so dark that the boards were present
+ * and invisible — a bump map reveals nothing on a surface with no light left to modulate. It
+ * stays well below the case artwork, which is still the only real colour in the scene. */
+const ROOM_FLOOR = "#35271b";
+const ROOM_SKIRTING = "#1e1813";
+
+/**
  * How strongly each form's printing is debossed, and how much of its title treatment is foil.
  *
  * Both are read off the real object rather than tuned to taste. **Foil**: a steelbook's title
@@ -424,8 +455,15 @@ const TURN_VISIBLE = 0.02;
  * are there, in the dark, and you travel to them rather than seeing them all at once. */
 const LAMP_HEIGHT = -1.2;
 const LAMP_Z = 4.0;
-const LAMP_INTENSITY = 95;
-const LAMP_REACH = 15;
+const LAMP_INTENSITY = 130;
+/**
+ * Raised from 15 once there was actually a room to light. With no floor and no walls the reach
+ * only had to cover the cases; now it has to *land* on something — a lamp whose pool dies
+ * before it reaches the floor leaves the shelf standing in a void, which was the whole
+ * complaint about there being no room. Measured against the real geometry: the floor sits 5.4
+ * units below the lamp and the ceiling 5.2 above it.
+ */
+const LAMP_REACH = 24;
 
 /**
  * What to call each object. Release order's five are the media as the design system names
@@ -975,6 +1013,98 @@ function ShelfContent({
   );
 }
 
+/**
+ * The room.
+ *
+ * `docs/05-3d-shelf.md` §3 said not to build one, and was right about the danger: walls,
+ * windows and props are a great deal of work to end up looking like a bad game level. The
+ * owner has overruled the conclusion, so what survives is the *reasoning* — restraint. There
+ * are no windows, no props, no furniture beyond the bookcases themselves. A room reads as a
+ * room because the lamp falls on real surfaces, not because things are standing about in it.
+ *
+ * Three draw calls for the whole thing:
+ *
+ * - **one inverted box** for the walls and ceiling. `BackSide` means you are inside it, so a
+ *   single mesh does four walls and a lid — and its own floor face is hidden under the real
+ *   floor below, which is why it can afford to be plaster all over.
+ * - **one floor plane**, which is the piece doing the actual work. Boards, running the length
+ *   of the gallery, are what turn a void with objects in it into a place.
+ * - **one skirting board** along the back wall. The cheapest domestic cue there is: a room
+ *   without one reads as a rendering, and the bookcases stand proud of it exactly as real
+ *   furniture does.
+ *
+ * The far end of all of it is eaten by the lamp's falloff and then by fog, so most of this is
+ * never seen at full brightness — which is the point. It is there to be *fallen on*.
+ */
+function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; maxY: number } }) {
+  const floorY = bounds.minY - 0.08;
+  const ceilingY = bounds.maxY + ROOM_HEADROOM;
+  const startX = -ROOM_MARGIN_X;
+  const endX = bounds.maxX + ROOM_MARGIN_X;
+  const width = endX - startX;
+  const height = ceilingY - floorY;
+  const depth = ROOM_FRONT - ROOM_BACK_Z;
+
+  const floorTexture = useMemo(() => {
+    const created = new THREE.CanvasTexture(buildRoomSurface("floor"));
+    created.wrapS = THREE.RepeatWrapping;
+    created.wrapT = THREE.RepeatWrapping;
+    // Boards run along the gallery, so the tile repeats far more often across its length than
+    // across its depth — repeating equally would give square planks, which are not floorboards.
+    created.repeat.set(width / 7, depth / 7);
+    created.anisotropy = 8;
+    return created;
+  }, [width, depth]);
+
+  const plasterTexture = useMemo(() => {
+    const created = new THREE.CanvasTexture(buildRoomSurface("plaster"));
+    created.wrapS = THREE.RepeatWrapping;
+    created.wrapT = THREE.RepeatWrapping;
+    created.repeat.set(width / 10, height / 10);
+    return created;
+  }, [width, height]);
+
+  useEffect(() => {
+    const built = [floorTexture, plasterTexture];
+    return () => built.forEach((t) => t.dispose());
+  }, [floorTexture, plasterTexture]);
+
+  return (
+    <group>
+      <mesh position={[(startX + endX) / 2, floorY + height / 2, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
+        <boxGeometry args={[width, height, depth]} />
+        <meshPhongMaterial
+          side={THREE.BackSide}
+          color={ROOM_WALL}
+          shininess={2}
+          specular="#171310"
+          bumpMap={plasterTexture}
+          bumpScale={ROOM_BUMP_SCALE.plaster}
+        />
+      </mesh>
+
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(startX + endX) / 2, floorY, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
+        <planeGeometry args={[width, depth]} />
+        {/* Boards have a low sheen along the grain — enough that the lamp draws a soft pool on
+            the floor as it travels, which is most of what sells the room. Not a gloss: a
+            polished floor under one warm lamp reads as a shop, not a front room. */}
+        <meshPhongMaterial
+          color={ROOM_FLOOR}
+          shininess={14}
+          specular="#3a2f24"
+          bumpMap={floorTexture}
+          bumpScale={ROOM_BUMP_SCALE.floor}
+        />
+      </mesh>
+
+      <mesh position={[(startX + endX) / 2, floorY + SKIRTING_HEIGHT / 2, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
+        <boxGeometry args={[width, SKIRTING_HEIGHT, SKIRTING_DEPTH]} />
+        <meshPhongMaterial color={ROOM_SKIRTING} shininess={22} specular="#332a20" />
+      </mesh>
+    </group>
+  );
+}
+
 /** Prints what the brief asks to be reported: real draw calls and triangles, read from the
  * renderer after a frame has actually happened (a bare rAF can fire before the first R3F
  * render updates gl.info for this frame; a short delay is simpler than racing it). */
@@ -1095,7 +1225,6 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
     [universes]
   );
   const shelf = layout.universes[Math.min(current, layout.universes.length - 1)];
-  const groundWidth = Math.max(layout.bounds.maxX + 12, 20);
 
   // Measured off the room rather than assumed from LEVELS: the occupied volume runs from the
   // bottom board to the top of the tallest case standing on the top one, and the midpoint of
@@ -1281,7 +1410,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         {/* A dim room, not a display case. The warm key is the lamp that travels with you,
             inside ShelfContent; what is left here is enough ambience that an unlit cover is
             dark rather than black, plus a cool fill for shape. */}
-        <ambientLight intensity={0.12} color="#f0e4d2" />
+        <ambientLight intensity={0.2} color="#f0e4d2" />
         <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.18} color="#b9c2cc" />
 
         <Suspense fallback={null}>
@@ -1304,10 +1433,8 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           <PerfLogger />
         </Suspense>
 
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[groundWidth / 2 - 6, layout.bounds.minY - 0.08, 0]}>
-          <planeGeometry args={[groundWidth, 20]} />
-          <meshPhongMaterial color="#1c1713" shininess={8} />
-        </mesh>
+        {/* Replaces the bare ground plane that used to stand in for a floor. */}
+        <Room bounds={layout.bounds} />
 
         <OrbitControls
           makeDefault

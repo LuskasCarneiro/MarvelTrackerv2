@@ -123,7 +123,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
-| 3 — The shelf (three.js, material system) | **complete** — twelve per-universe bookcases, scroll pulls a title out, pull-and-turn with a readable back carrying the curated note, printed spines, click-through, two orderings with the objects changing, both bump layers and foil, touch and reduced-motion paths, browser smoke tests in CI. Four items closed as decisions, not built — see below |
+| 3 — The shelf (three.js, material system) | **complete** — a room with a floor, walls and skirting; twelve per-universe bookcases, scroll pulls a title out, pull-and-turn with a readable back carrying the curated note, printed spines, click-through, two orderings with the objects changing, both bump layers and foil, touch and reduced-motion paths, browser smoke tests in CI. Three items closed as decisions, not built — see below |
 | 4 — Polish (a11y, perf, SEO) | **begun** — metadata, sitemap, robots and structured data done; a11y audit and perf not started |
 
 ### Phase 3's direction — read `docs/05-3d-shelf.md` §0 first
@@ -152,7 +152,7 @@ Two findings worth not re-deriving:
   titles literally *about* unstable reality. In story order they hang above their own unit
   rather than being assigned a year. **Do not "fix" them.**
 
-### Phase 3 is complete — and four things were closed by deciding, not building
+### Phase 3 is complete — and three things were closed by deciding, not building
 
 `/shelf` is a room of **twelve bookcases, one per universe**, each as tall as its collection
 needs and bottom-aligned to one floor, at **20 draw calls**. Scrolling draws a title out of the
@@ -162,7 +162,7 @@ complete, and the back of the case carries the owner's curated note; spines are 
 `PLAN.md` §1's bump layers and its foil are applied; touch, reduced-motion and no-WebGL paths
 exist; four browser smoke tests run in CI.
 
-**Four remaining items were closed as decisions rather than work.** Recording them here so
+**Three remaining items were closed as decisions rather than work; a fourth, the room, was closed and then reopened by the owner and built.** Recording them here so
 nobody re-opens them by reflex — each has a trigger that would justify revisiting it.
 
 1. **KTX2/Basis for the atlas — deferred, and the reason changed after measuring.** The atlas is
@@ -177,10 +177,10 @@ nobody re-opens them by reflex — each has a trigger that would justify revisit
    the answer and `scripts/build-atlas.ts` is one run away from it.
 2. **LOD and adaptive quality — deferred, unchanged.** Same standard as above and the same
    reason it was deferred originally: not needed until measured on real hardware.
-3. **The room gets no floor detail and no walls — decided, not deferred.**
-   `docs/05-3d-shelf.md` §3 is explicit that a half-built room is worse than honest darkness,
-   and the lamp falloff plus the per-unit back panel already do the job the room would have
-   done. Building it would be work spent making the thing look *less* deliberate.
+3. **~~The room gets no floor detail and no walls~~ — REVERSED by the owner, 2026-08-17.**
+   I closed this on `docs/05-3d-shelf.md` §3's reasoning; the owner wanted a room and that is
+   their call to make. **Built** — see the log entry below and §11. §3's *reasoning* survived
+   into the build: no windows, no props, nothing standing about. Its conclusion did not.
 4. **Cases stay face-out — the spine-out question is closed.** It was raised because a face-out
    shelf never shows you a spine. That premise stopped being true when the shelf moved to a
    close browsing framing: thick media show their printed spines from here, and thin ones do
@@ -358,6 +358,39 @@ cost time and neither of which is a code fault:
   in the root layout and takes every page down with it. Four failing tests where one was
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
+
+### 2026-08-17 — The room, after I had closed it
+
+**I closed "no floor detail and no walls" as a decision. The owner wanted a room, and that was
+their call, not mine.** Worth recording as a process note rather than a technical one: design
+authority is delegated to me *until the owner uses it*, and a decision I reason my way to from a
+doc I also wrote is the easiest kind to be wrong about.
+
+§3's *reasoning* survived even though its conclusion did not — it warns that walls, windows and
+props end up looking like a bad game level, and that a half-built room is worse than honest
+darkness. So: no windows, no props, no furniture beyond the bookcases. **A room reads as a room
+because the lamp falls on real surfaces, not because things are standing about in it.**
+
+Three draw calls, 20 → 22 (the old ground plane went): one **inverted box** doing all four walls
+and the ceiling at once (`BackSide`, and its own floor face hides under the real floor, so it can
+be plaster all over), one **floor plane** with procedural boards, one **skirting board**.
+`roomSurfaces.ts` generates both surfaces the way `substrate.ts` generates case materials — one
+parametrised seamless noise, no committed assets.
+
+**Then it was invisible, and both causes were measured rather than guessed.**
+
+1. **The lamp did not reach the room.** `LAMP_REACH` was 15, tuned when there was nothing to
+   light but the cases. Measured the real geometry — floor at y = -6.60, lamp at -1.20, ceiling
+   at 3.96 — and raised it to 24, ambient 0.12 → 0.20. A lamp whose pool dies before it meets
+   the floor leaves the shelf in a void, which is the thing the room was meant to fix.
+2. **The floor was too dark to show its own boards.** At `#241a12` the plank seams were there
+   and could not be seen: **a bump map modulates light, so on a surface with no light left there
+   is nothing to modulate.** Lightened to `#35271b`.
+
+That second one is the same lesson as the bump-on-the-hidden-body earlier today, in a new
+costume: the texture existed, and it did not arrive. Also raised the headroom from 1.8 to 3.6
+units, so there is wall above the bookcases for the lamp to graze — a ceiling resting on the
+furniture reads as a box.
 
 ### 2026-08-17 — Phase 3 finished: the last two bits built, the last four decided
 
