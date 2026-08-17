@@ -61,6 +61,33 @@ test.describe("the shelf", () => {
     await expect(page.getByRole("button", { name: "Story order" })).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("turns a case over to show its back, and puts it back", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(String(error)));
+
+    await page.goto("/shelf", { waitUntil: "load" });
+    await expect(page.locator("canvas")).toBeVisible({ timeout: 60_000 });
+
+    // The caption names whatever is out of the shelf, and carries the turn control.
+    const turn = page.getByRole("button", { name: "Turn it over" });
+    await expect(turn).toBeVisible({ timeout: 30_000 });
+    await expect(turn).toHaveAttribute("aria-pressed", "false");
+
+    await turn.click();
+    const back = page.getByRole("button", { name: "Turn it back" });
+    await expect(back).toBeVisible();
+    await expect(back).toHaveAttribute("aria-pressed", "true");
+
+    // Drawing the back is where a canvas texture is built from the title's own data — the one
+    // step in this interaction that can throw on a real page and cannot throw in vitest.
+    expect(errors, "the page threw while printing the back of the case").toEqual([]);
+
+    // Walking away puts it back rather than dragging a turned case along the shelf.
+    await page.mouse.move(400, 400);
+    await page.mouse.wheel(0, 300);
+    await expect(page.getByRole("button", { name: "Turn it over" })).toBeVisible({ timeout: 10_000 });
+  });
+
   test("says so when it cannot draw, rather than showing a black rectangle", async ({ browser }) => {
     const context = await browser.newContext();
     // Deny WebGL the way a locked-down browser does: before any app code runs.
