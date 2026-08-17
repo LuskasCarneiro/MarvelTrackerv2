@@ -359,6 +359,54 @@ cost time and neither of which is a code fault:
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
 
+### 2026-08-17 — A locked-off gallery: the camera stops moving and the objects come to you
+
+**Owner's direction, and it replaces the navigation model rather than adjusting it:** a fixed
+eye-level shot inside a collector's gallery. The viewer stands still; a case slides off its
+shelf into their hands, turns to show its back, and slides home.
+
+- **The OrbitControls rig is deleted, not disabled.** Leaving it configured-off is how the next
+  person re-enables it and reintroduces two things writing one camera, which is what made the
+  previous build possible to get lost in.
+- **The camera is on rails**: x is the centre of the bay, y is fixed eye level, z is a standing
+  distance. It never rotates, and it does not track a case up and down the shelf — a locked-off
+  shot does not bob.
+- **Gestures, one meaning each.** Scroll walks the titles; a horizontal drag changes bay; search
+  summons a title from anywhere; click opens; `T` turns. The drag locks its axis once per
+  gesture rather than per event, or a diagonal flickers between the two and feels like an
+  argument.
+- **`search.ts`** ranks by exact → prefix → word-prefix → substring → all-words → universe, with
+  punctuation stripped rather than spaced so `"shield"` finds *Agents of S.H.I.E.L.D. III*. No
+  match returns nothing at all: the damaging failure here is a plausible wrong match silently
+  presenting the wrong case.
+
+**Two lighting faults, and the second is the one worth remembering.**
+
+The case arrived black, then blew out to white. Neither was a tone-mapping problem, though it
+looked exactly like one, and ACES was added chasing it (kept — it is right anyway).
+
+**The real cause was that the hold point sat on top of the lamp.** `LAMP_Z` was 4.0 and the case
+came to rest at z 3.4 — six tenths of a unit from a light of intensity 95. Two numbers, set in
+different sessions for different reasons, colliding in space. Isolating it took one run with the
+new light switched off, which proved the light I had just added was not the culprit. The lamp
+now sits back at the shelf it lights, and the hold point is forward of it.
+
+Also learned properly: **near lights make hotspots, far lights make illumination.** The
+presentation light was first placed 1.7 units from a case 1.9 units tall, so falloff varied
+enormously across the face and burned a hole through the middle of the artwork.
+
+**Framing:** the first locked shot filled the frame with one bay edge to edge, which is a wall of
+posters and no architecture. The standing distance is a *gallery* distance now — the bay, its
+neighbours and the room all in shot. The case still arrives at the same apparent size either
+way, because the hold point is measured back from the viewer rather than forward from the shelf.
+
+**Not built, and the honest half of the brief that remains:** the mahogany and brass materials,
+per-section museum spotlighting, and the architectural detailing that would make this read as a
+*luxurious* gallery rather than a well-composed one. The interaction is there; the finish is not.
+Hands were ruled out — photoreal hands need modelled, rigged assets and §6 rules out generating
+them — and "photorealistic" is not reachable with MeshPhong and procedural textures, which is a
+deliberate trade for running on the target laptop.
+
 ### 2026-08-17 — Getting lost on the shelf, and the second half of the stutter
 
 The owner's follow-up: *"it's stuttering, and because you can move around the shelf and the zoom
