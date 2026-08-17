@@ -253,6 +253,11 @@ export type ShelfItem = {
   form: Form;
   /** Index of this case within its medium's InstancedMesh — what a raycast hit returns. */
   instance: number;
+  /** Carried through only so a case that is turned over can print its own back (see
+   * backCover.ts). Both are already on the client — ShelfTitleData holds them — so this
+   * costs nothing extra in the bundle, which the note text emphatically would. */
+  runtimeMin: number | null;
+  tint: string;
   x: number;
   y: number;
   z: number;
@@ -468,6 +473,8 @@ export function buildShelfLayout(
       storyYear: title.storyYear,
       form,
       instance,
+      runtimeMin: title.runtimeMin,
+      tint: title.tint,
       x,
       y,
       z,

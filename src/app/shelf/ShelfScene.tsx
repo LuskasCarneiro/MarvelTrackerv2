@@ -8,6 +8,7 @@ import { OrbitControls, useProgress, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { tintToHsl } from "@/lib/tint";
+import { renderBackCover } from "./backCover";
 import atlasManifest from "../../../data/atlas.json";
 import {
   DIMENSIONS,
@@ -205,6 +206,14 @@ const PULL_Z = 1.15;
 const PULL_LIFT = 0.05;
 const PULL_YAW = -0.5; // negative turns the face towards the camera, which stands to the left
 
+/** The rest of the way round, so the back faces the room. Same sign as PULL_YAW — see
+ * poseCase(). How fast it gets there, in turn-fractions per second, with reduced motion
+ * arriving immediately instead. */
+const TURN_YAW = -Math.PI;
+const TURN_SPEED = 3.4;
+/** Below this the back is edge-on or facing away, so there is nothing to draw. */
+const TURN_VISIBLE = 0.02;
+
 /** Head-height over the run and standing off its face, like a picture light on a wall unit.
  * The reach is short because the falloff is the whole effect: the neighbouring universes
  * are there, in the dark, and you travel to them rather than seeing them all at once. */
@@ -254,6 +263,20 @@ const HEIGHT_MARGIN = 3.4;
 /** How close the camera may aim to the end of a unit before it stops following. */
 const EDGE_MARGIN = 3.2;
 
+/** How much taller than the case itself the frame should be when you are reading its back —
+ * a little air, not a card jammed against the edges. */
+const READ_MARGIN = 1.5;
+
+/** How far back to stand to read one case's back: far enough that its whole height fits the
+ * vertical field of view, and no further. */
+function readingDistance(form: Form): number {
+  return (DIMENSIONS[form].h * READ_MARGIN) / 2 / Math.tan((FOV / 2) * (Math.PI / 180));
+}
+
+/** A plane's own half-turn, so the back cover faces out of the back of the case instead of
+ * into it. Constant, so it is built once rather than per frame. */
+const FLIP_Y = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
+
 const scratch = {
   matrix: new THREE.Matrix4(),
   quaternion: new THREE.Quaternion(),
@@ -263,18 +286,36 @@ const scratch = {
   offset: new THREE.Vector3(),
 };
 
-/** Where one case sits when it is pulled `amount` (0 = on the shelf, 1 = fully out). */
-function poseCase(item: ShelfItem, amount: number, isCover: boolean): THREE.Matrix4 {
+/**
+ * Where one case sits when it is pulled `amount` (0 = on the shelf, 1 = fully out) and turned
+ * `turn` (0 = front to the room, 1 = back to the room).
+ *
+ * The turn *continues* the yaw the pull already started rather than starting a new rotation:
+ * PULL_YAW is negative, so a further -PI carries the case round the same way your wrist would.
+ * Turning back the other way looks like the case undoing itself, which is the one thing a
+ * physical object never does.
+ *
+ * `faceZ` is how far in front of the case's own centre this plane sits — +coverZ for the
+ * printed front, -coverZ for the back. It is rotated with the case, so the plane stays stuck
+ * to whichever face it belongs to instead of swinging through the body.
+ */
+function poseCase(item: ShelfItem, amount: number, faceZ: number, turn: number, scaleZ: number): THREE.Matrix4 {
   const { matrix, quaternion, euler, position, scale, offset } = scratch;
-  quaternion.setFromEuler(euler.set(0, PULL_YAW * amount, 0));
-  offset.set(0, 0, isCover ? item.coverZ : 0).applyQuaternion(quaternion);
+  quaternion.setFromEuler(euler.set(0, PULL_YAW * amount + TURN_YAW * turn, 0));
+  offset.set(0, 0, faceZ).applyQuaternion(quaternion);
   position.set(
     item.x + offset.x,
     item.y + PULL_LIFT * amount + offset.y,
     item.z + PULL_Z * amount + offset.z
   );
-  return matrix.compose(position, quaternion, scale.set(1, 1, isCover ? 1 : item.ds));
+  return matrix.compose(position, quaternion, scale.set(1, 1, scaleZ));
 }
+
+/** The body: no face offset, and Z-scaled to carry its runtime. */
+const poseBody = (item: ShelfItem, amount: number, turn: number) => poseCase(item, amount, 0, turn, item.ds);
+/** The printed front. */
+const poseCover = (item: ShelfItem, amount: number, turn: number) =>
+  poseCase(item, amount, item.coverZ, turn, 1);
 
 function ShelfContent({
   layout,
@@ -283,10 +324,18 @@ function ShelfContent({
   progress,
   instant,
   onActive,
+  turnedItem,
+  storyOrder,
 }: {
   layout: Layout;
   onPick: (slug: string) => void;
   universe: UniverseShelf;
+  /** The case being read back-first, or null when everything is facing the room. One prop
+   * rather than a boolean plus the item: they can only ever be true together, and two props
+   * that must agree is a state you can get wrong. */
+  turnedItem: ShelfItem | null;
+  /** Which ordering is on, so the back prints the same year the caption does. */
+  storyOrder: boolean;
   /** With reduced motion set, the camera arrives instead of gliding. */
   instant: boolean;
   /** Called when the walk reaches a different title, so the DOM can name it. Once per title,
@@ -325,6 +374,43 @@ function ShelfContent({
   const size = useThree((s) => s.size);
   const lamp = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
+  const backRef = useRef<THREE.Mesh>(null);
+  /** Live turn, 0..1. A ref for the same reason `progress` is one: it changes every frame
+   * while the case swings round, and nothing in React renders differently for it. */
+  const turn = useRef(0);
+
+  /**
+   * The back of the case that is out, drawn to a canvas on demand.
+   *
+   * One title at a time, not an atlas of 152: only one case is ever turned, the card is pure
+   * text over a flat ground, and it costs a few milliseconds to draw. Keyed on the slug so
+   * walking the shelf with a case turned re-prints it for whatever you are now holding.
+   *
+   * ponytail: facts only, no synopsis. The 152 curated notes stay out of this route's bundle
+   * (see the caption below, and "Prop or import, it still ships" in docs/06-progress.md) —
+   * the prose is one click away on the title page, which is itself the back of the case. If
+   * the back ever wants the note, lazily fetch that one title's rather than importing all of
+   * them.
+   */
+  const backTexture = useMemo(() => {
+    if (!turnedItem) return null;
+    const canvas = renderBackCover({
+      label: turnedItem.label,
+      formName: FORM_NAMES[turnedItem.form],
+      yearLabel: storyOrder ? storyYearLabel(turnedItem.storyYear) : String(turnedItem.releaseYear),
+      runtimeMin: turnedItem.runtimeMin,
+      universeLabel: universe.label,
+      tint: turnedItem.tint,
+    });
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+    return texture;
+  }, [turnedItem, storyOrder, universe.label]);
+
+  // A CanvasTexture holds a GPU upload; React will not free it for us when the memo
+  // recomputes, and walking a long shelf with a case turned would leak one per title.
+  useEffect(() => () => backTexture?.dispose(), [backTexture]);
 
   /**
    * How far back to stand at this unit. Two constraints, and the further wins:
@@ -359,7 +445,17 @@ function ShelfContent({
     const walk = Math.min(Math.max(progress.current, 0), items.length - 0.001);
     const index = Math.floor(walk);
     const item = items[index];
-    const amount = Math.sin(Math.PI * (walk - index));
+
+    // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
+    // rather than travels, exactly as the camera does.
+    turn.current += ((turnedItem ? 1 : 0) - turn.current) * (instant ? 1 : Math.min(1, dt * TURN_SPEED));
+    if (turn.current < 0.001) turn.current = 0;
+
+    // A turned case is held fully out. Without the max() the walk's own sine would keep
+    // running underneath and the case you are reading would sink back into the shelf while
+    // still facing you — the scroll listener freezes the walk, but the pull is a function of
+    // where the walk stopped, which can be mid-step.
+    const amount = Math.max(Math.sin(Math.PI * (walk - index)), turn.current);
 
     // Put the previous case back before posing a new one, or a fast scroll leaves cases
     // hanging out of the shelf behind it.
@@ -367,8 +463,8 @@ function ShelfContent({
       const previous = posed.current;
       const mesh = meshByForm.get(previous.form);
       if (mesh) {
-        mesh.body.setMatrixAt(previous.instance, poseCase(previous, 0, false));
-        mesh.cover.setMatrixAt(previous.instance, poseCase(previous, 0, true));
+        mesh.body.setMatrixAt(previous.instance, poseBody(previous, 0, 0));
+        mesh.cover.setMatrixAt(previous.instance, poseCover(previous, 0, 0));
         mesh.body.instanceMatrix.needsUpdate = true;
         mesh.cover.instanceMatrix.needsUpdate = true;
       }
@@ -377,16 +473,29 @@ function ShelfContent({
 
     const mesh = meshByForm.get(item.form);
     if (mesh) {
-      mesh.body.setMatrixAt(item.instance, poseCase(item, amount, false));
-      mesh.cover.setMatrixAt(item.instance, poseCase(item, amount, true));
+      mesh.body.setMatrixAt(item.instance, poseBody(item, amount, turn.current));
+      mesh.cover.setMatrixAt(item.instance, poseCover(item, amount, turn.current));
       mesh.body.instanceMatrix.needsUpdate = true;
       mesh.cover.instanceMatrix.needsUpdate = true;
     }
     const blank = blankRefs.current.get(item.slug);
     if (blank) {
-      const m = poseCase(item, amount, true);
+      const m = poseCover(item, amount, turn.current);
       blank.position.setFromMatrixPosition(m);
       blank.quaternion.setFromRotationMatrix(m);
+    }
+
+    // The back is one plane, mounted only while a case is actually turned, stuck to the far
+    // face. It carries an extra PI of yaw of its own so it looks outwards rather than into
+    // the case it is glued to.
+    const back = backRef.current;
+    if (back) {
+      back.visible = turn.current > TURN_VISIBLE;
+      if (back.visible) {
+        const m = poseCase(item, amount, -item.coverZ, turn.current, 1);
+        back.position.setFromMatrixPosition(m);
+        back.quaternion.setFromRotationMatrix(m).multiply(FLIP_Y);
+      }
     }
     if (posed.current !== item) onActive(item);
     posed.current = item;
@@ -400,18 +509,30 @@ function ShelfContent({
 
     if (controls) {
       const ease = instant ? 1 : Math.min(1, dt * 3.2);
+      const reading = turn.current;
       // Horizontally the camera goes where the case is; vertically it only leans towards it.
       // Following y outright swings the view a whole unit's height as the walk steps down a
       // column, which throws the shelf into a corner of the frame — the case ends up centred
       // and the furniture it belongs to ends up off screen.
-      const aimY = universe.centreY + (item.y - universe.centreY) * 0.2;
+      // Browsing, the view leans towards the case; reading, it looks straight at it. A card
+      // of small print two metres away on the top shelf is not something you can read, and
+      // "turn it over and read the back" is the whole of this interaction — the first build
+      // turned the case correctly and left it a thumbnail in the corner of the frame.
+      const aimY = THREE.MathUtils.lerp(universe.centreY + (item.y - universe.centreY) * 0.2, item.y, reading);
       // ...and it stays inside the unit it is looking at. Aiming squarely at the first case
       // on a shelf points a third of the frame at the empty room beside it, which is what
       // arriving at every universe looked like; a case sitting off-centre with its own
       // bookcase filling the frame reads far better than one centred against a void.
-      const aimX = Math.min(
-        Math.max(item.x, universe.startX + EDGE_MARGIN),
-        Math.max(universe.endX - EDGE_MARGIN, universe.startX + EDGE_MARGIN)
+      // ...and the same applies sideways: the edge margin exists so an end-of-shelf case is
+      // not centred against an empty room, which is a framing rule for browsing and exactly
+      // wrong for reading one card.
+      const aimX = THREE.MathUtils.lerp(
+        Math.min(
+          Math.max(item.x, universe.startX + EDGE_MARGIN),
+          Math.max(universe.endX - EDGE_MARGIN, universe.startX + EDGE_MARGIN)
+        ),
+        item.x,
+        reading
       );
       const dx = (aimX - controls.target.x) * ease;
       const dy = (aimY - controls.target.y) * ease;
@@ -421,8 +542,12 @@ function ShelfContent({
       camera.position.y += dy;
       controls.update();
       if (lamp.current) lamp.current.position.x = controls.target.x;
-      // Dolly rather than jump: moving to a smaller unit walks the camera in towards it.
-      camera.position.z += (standBack - camera.position.z) * ease;
+      // Dolly rather than jump: moving to a smaller unit walks the camera in towards it, and
+      // turning a case over walks it in much further still — close enough to read the card,
+      // measured off that form's own height rather than guessed, so a 197mm VHS clamshell and
+      // a 171mm Blu-ray both fill the same amount of frame.
+      const readZ = item.z + PULL_Z + readingDistance(item.form);
+      camera.position.z += (THREE.MathUtils.lerp(standBack, readZ, reading) - camera.position.z) * ease;
     }
   });
 
@@ -473,6 +598,32 @@ function ShelfContent({
           size={blank.size}
         />
       ))}
+      {/* The back of the case being read. One plane, one draw call, and only while something
+          is actually turned — the room is back to its 16 calls the moment you turn it back.
+          It is not part of the picking group above: a click on the back should still open the
+          title page, and it inherits nothing, so it carries its own handler.
+          `depthWrite` stays on and there is no transparency, so it occludes the case body
+          behind it rather than blending into it. */}
+      {turnedItem && backTexture && (
+        <mesh
+          ref={backRef}
+          visible={false}
+          onClick={(e: ThreeEvent<MouseEvent>) => {
+            e.stopPropagation();
+            onPick(turnedItem.slug);
+          }}
+        >
+          <planeGeometry
+            args={[
+              DIMENSIONS[turnedItem.form].w - CORNER_RADIUS * 0.6,
+              DIMENSIONS[turnedItem.form].h - CORNER_RADIUS * 0.6,
+            ]}
+          />
+          {/* Matte: a case back is printed card under a matte laminate, not the glossy sleeve
+              the front sits behind, so this is deliberately duller than any COVER_SHININESS. */}
+          <meshPhongMaterial map={backTexture} shininess={6} specular="#1a1714" />
+        </mesh>
+      )}
       <pointLight
         ref={lamp}
         position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
@@ -556,6 +707,17 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   const [order, setOrder] = useState<"release" | "story">("release");
   const [current, setCurrent] = useState(0);
   const [active, setActive] = useState<ShelfItem | null>(null);
+  /**
+   * Whether the case that is out is showing its back — PLAN.md's "draw a case out, turn it,
+   * read the back".
+   *
+   * A deliberate button (and a key) rather than a gesture. Scroll already means "walk the
+   * shelf" and a click already means "open this title"; giving the turn a third gesture would
+   * have to take one of those away, and the two it would take are the ones that make the
+   * shelf navigable. A button also costs nothing to make keyboard-operable and announceable,
+   * which a drag never is.
+   */
+  const [turned, setTurned] = useState(false);
   const router = useRouter();
   const progress = useRef(0);
   const surface = useRef<HTMLDivElement>(null);
@@ -604,6 +766,8 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
     (index: number) => {
       const next = Math.min(Math.max(index, 0), layout.universes.length - 1);
       progress.current = 0;
+      // You cannot carry a case you were reading to another bookcase.
+      setTurned(false);
       setCurrent(next);
     },
     [layout]
@@ -619,6 +783,13 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
     const el = surface.current;
     if (!el) return;
     const walk = (delta: number) => {
+      // Walking away from a case you are reading turns it back first, and that gesture is
+      // spent doing so. Otherwise the shelf moves under a card you are still reading, which
+      // is the same complaint as a page that scrolls while a dialog is open.
+      if (turned) {
+        setTurned(false);
+        return;
+      }
       const last = (layout.universes[current]?.items.length ?? 1) - 0.001;
       progress.current = Math.min(Math.max(progress.current + delta, 0), last);
     };
@@ -628,11 +799,15 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       walk((e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY) / SCROLL_PER_TITLE);
     }
     function onKey(e: KeyboardEvent) {
+      // Not while the viewer is typing somewhere, and not on top of a browser shortcut.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "ArrowDown") walk(0.5);
       else if (e.key === "ArrowUp") walk(-0.5);
       else if (e.key === "ArrowRight") goToUniverse(current + 1);
       else if (e.key === "ArrowLeft") goToUniverse(current - 1);
       else if (e.key === "Home") progress.current = 0;
+      else if (e.key === "t" || e.key === "T") setTurned((was) => !was);
+      else if (e.key === "Escape") setTurned(false);
       else return;
       e.preventDefault();
     }
@@ -661,7 +836,10 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       el.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("keydown", onKey);
     };
-  }, [layout, current, goToUniverse]);
+    // `turned` is a dependency because the wheel and touch handlers branch on it. Re-binding
+    // three listeners when it flips is nothing, and it is the honest version of the ref this
+    // used to keep in sync during render — which React's lint rules reject, correctly.
+  }, [layout, current, goToUniverse, turned]);
 
   if (!canDraw) {
     return (
@@ -706,7 +884,12 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           <button
             key={option}
             type="button"
-            onClick={() => setOrder(option)}
+            onClick={() => {
+              // The reshuffle replaces the object in your hand — in story order a 1943 title
+              // is a film can, not the Blu-ray you were just holding — so put it back first.
+              setTurned(false);
+              setOrder(option);
+            }}
             aria-pressed={order === option}
             className={`rounded border px-3 py-1 font-display text-xs uppercase tracking-[0.12em] ${
               order === option
@@ -758,6 +941,8 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             progress={progress}
             instant={reducedMotion}
             onActive={setActive}
+            turnedItem={turned ? active : null}
+            storyOrder={order === "story"}
           />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
@@ -792,12 +977,23 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
               artwork happens to be behind it, and at 85% over a bright cover the dim second
               line measured 3.16:1 — under the 4.5 floor. Measured, not eyeballed; the guard
               is in scripts/contrast.test.ts. */}
-          <div className="flex flex-col items-center gap-1 rounded bg-shelf-dark px-5 py-2 text-center">
+          {/* The scrim is pointer-events-none so it never eats a click meant for the shelf
+              behind it; the one control inside it opts back in. */}
+          <div className="pointer-events-auto flex flex-col items-center gap-1 rounded bg-shelf-dark px-5 py-2 text-center">
           <p className="font-display text-sm uppercase tracking-[0.16em] text-label-bright">{active.label}</p>
           <p className="text-xs text-label-dim">
             {order === "release" ? active.releaseYear : storyYearLabel(active.storyYear)} · {FORM_NAMES[active.form]} ·
             click to open
           </p>
+          <button
+            type="button"
+            onClick={() => setTurned((was) => !was)}
+            aria-pressed={turned}
+            className="mt-1 rounded border border-shelf-edge px-3 py-1 font-display text-xs uppercase tracking-[0.12em] text-label-mid hover:text-label-bright"
+          >
+            {turned ? "Turn it back" : "Turn it over"}
+            <span className="ml-2 text-label-dim">T</span>
+          </button>
           </div>
         </div>
       )}

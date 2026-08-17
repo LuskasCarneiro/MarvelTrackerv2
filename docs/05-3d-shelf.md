@@ -25,8 +25,11 @@ them. Story order opens on Eternals at 5000 BC and puts Captain America and Agen
 the 1940s. The era buttons hide in story order: a medium is scattered along the whole run
 there, so "where Blu-ray begins" is not a place and a button claiming it is would mislead.
 
-Not built: pull-and-turn, the historical objects (step 6 — the film can, the clay tablet),
-the wear gradient and back panel, spine text, era materials.
+**Pull-and-turn is built (2026-08-17)**, and the historical objects with it. A case comes off
+the shelf on the scroll, a control turns it the rest of the way round, and the camera walks in
+close enough to read the printed back — see §8.
+
+Not built: spine text, era materials (the bump layers and the foil map), LOD, KTX2.
 
 ### Measured once it existed: the eras are not evenly spaced, and landmarks are cheap
 
@@ -280,6 +283,36 @@ year.
 
 Steps 4 and 6 are deliberately split. The expensive half of the ordering idea is the new
 object forms, and it should be funded only after the reshuffle has been seen to work.
+
+---
+
+## 8. Pull-and-turn, as built
+
+Steps 1–6 above are done. This is what the last of them settled, so it is not re-argued.
+
+**Turning is a control, not a gesture.** The shelf has two gestures and both are load-bearing:
+scroll walks it, click opens a title. A turn gesture has to be carved out of one of those, and
+losing either costs more than the turn gains. So the caption that names the case you have out
+carries a **Turn it over** button — `aria-pressed`, `T` to toggle, Escape to put it back — and
+walking the shelf, changing universe or changing ordering all put the case back first. A
+button is keyboard-operable and announceable at no cost, which no drag ever is.
+
+**The camera has two jobs and they conflict.** Browsing wants the case leaned towards rather
+than centred, and kept clear of the shelf end so an end-of-run title is not framed against an
+empty room. Reading wants the exact opposite: dead centre, square on, close. Both framings are
+correct and neither works for the other job, so the aim and the dolly are lerped between them
+by the turn amount. The first build skipped this, and produced a case that turned perfectly
+and could not be read — see `docs/06-progress.md`, 2026-08-17.
+
+**The back carries facts, not the note.** Format, year, runtime, universe, a line of honest
+small print and a barcode, drawn to a canvas at the moment you turn the case (one title at a
+time — never an atlas of 152). The 152 curated notes stay out of this route's bundle; the
+prose lives on the title page, which is already the back of the case in the DOM. The
+consequence to know about: a real case back is mostly synopsis, so with the prose gone the
+facts have to be spread to fill the card or it reads as empty.
+
+**In story order the back prints the story year**, not the release year — printing 2011 beside
+a 35 mm film can invites exactly the wrong reading, and titles outside time say so.
 
 ---
 

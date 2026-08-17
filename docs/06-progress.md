@@ -123,7 +123,7 @@ read at module scope, which prerenders automatically as a "predictable value".
 | 0 — Foundations (repo, scaffold, memory, deploy) | **complete** |
 | 1 — Catalogue (TMDB pipeline, 152 titles, DOM design, artwork) | **complete** |
 | 2 — Accounts (Supabase auth, RLS, ratings) | **built and unblocked** — never run end to end by a human |
-| 3 — The shelf (three.js, material system) | **in progress** — twelve per-universe bookcases, scroll pulls a title out, click-through, two orderings with the objects changing, touch and reduced-motion paths, browser smoke tests in CI; no spine text, no bump or foil maps |
+| 3 — The shelf (three.js, material system) | **in progress** — twelve per-universe bookcases, scroll pulls a title out, pull-and-turn with a readable back, click-through, two orderings with the objects changing, touch and reduced-motion paths, browser smoke tests in CI; no spine text, no bump or foil maps |
 | 4 — Polish (a11y, perf, SEO) | **begun** — metadata, sitemap, robots and structured data done; a11y audit and perf not started |
 
 ### Phase 3's direction — read `docs/05-3d-shelf.md` §0 first
@@ -137,8 +137,9 @@ holds per shelf, and the archive gains a way to be browsed by universe.
 Still settled from the 2026-08-11 design session: the furniture ages as a slow gradient while
 the objects change in steps, the infinite feeling comes from lamp falloff rather than looping
 the data, and there is a switch between release order and story chronology in which the object
-itself changes — Captain America is a Blu-ray by release and a film can by story. The object
-half of that switch is **not built**; the reshuffle is.
+itself changes — Captain America is a Blu-ray by release and a film can by story. **Both
+halves of that switch are now built** (an earlier revision of this paragraph said the object
+half was not; it was already in `formForStoryYear`, and the paragraph had gone stale).
 
 Two findings worth not re-deriving:
 
@@ -156,16 +157,17 @@ Two findings worth not re-deriving:
 `/shelf` is a room of **twelve bookcases, one per universe**, each as tall as its collection
 needs and bottom-aligned to one floor, at **16 draw calls**. Scrolling draws a title out of
 the shelf and puts it back; arrows move between universes; a click opens the title's page;
-release and story orders both work; touch, reduced-motion and no-WebGL paths exist. What it
-does **not** do, roughly in order of how much each is missed:
+release and story orders both work; **pull-and-turn is complete** — a case comes out, turns,
+and the camera walks in far enough to read its back; touch, reduced-motion and no-WebGL paths
+exist. What it does **not** do, roughly in order of how much each is missed:
 
-1. **Pull-and-turn is half built.** The case comes out and turns, but you cannot read the back
-   of it, which is what `PLAN.md` describes.
-2. **No spine text**, so a case seen edge-on is blank — the one thing every real shelf has.
-3. **Thickness is encoded but not legible.** A VHS clamshell is 32 mm and a Blu-ray 12 mm; at
+1. **No spine text**, so a case seen edge-on is blank — the one thing every real shelf has.
+2. **Thickness is encoded but not legible.** A VHS clamshell is 32 mm and a Blu-ray 12 mm; at
    this framing you cannot tell.
-4. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
+3. **Materials are shininess-only.** The teardown's two bump layers and the foil map are not
    applied, so steelbook does not read as metal and VHS does not read as card.
+4. **The back of a case carries facts, not the note.** Format, year, runtime, universe, and a
+   barcode — see below for why the 152 curated notes stay out of it.
 5. **`/shelf` transfers 3.7 MB**, almost all atlas — where KTX2 would earn its place. There is
    a loading state now, which is the cheap half of this problem.
 6. **No LOD and no adaptive quality**, beyond a DPR clamp of `[1, 1.5]`. Deliberate: not
@@ -285,6 +287,59 @@ masthead's auth link, and `/shelf` starts at a canvas that swallows the arrow ke
 **link from the shelf to the catalogue** — the honest accessible equivalent of a WebGL room
 is not an `aria-label`, it is the same 152 titles as text, and that page already existed with
 nothing pointing at it from here.
+
+### 2026-08-17 — Pull-and-turn finished: a case you can take out, turn over and read
+
+The top item on "What Phase 3 still owes" is done. A case comes out of the shelf, turns the
+rest of the way round, and the camera walks in to it; the back is a printed card built at the
+moment you turn it. `PLAN.md`'s signature interaction now exists end to end.
+
+**The turn is a button, not a gesture, and that was the decision worth arguing about.** Scroll
+already means "walk the shelf" and a click already means "open this title" — a third gesture
+has to be taken from one of those two, and those two are what make the shelf navigable. A
+button is also keyboard-operable and announceable for free, which a drag never is. It carries
+`aria-pressed`, `T` toggles it, and Escape puts the case back.
+
+**The back carries facts, not the note, and that is a bundle decision rather than an editorial
+one.** Texturing one card from the 152 curated notes would ship all 152 into this route —
+exactly the trap recorded under "Prop or import, it still ships". The card prints format,
+year, runtime, universe, a line of honest small print and a barcode; the prose stays one click
+away on the title page, which *is* the back of the case in the DOM. If the back ever wants the
+note, fetch that one title's rather than importing the lot. `runtimeMin` and `tint` were added
+to `ShelfItem` for this and cost nothing — both were already on the client.
+
+**Two faults that only a render could have shown, in the exact shape v1 warned about.**
+
+1. **The case turned correctly and was unreadable.** Geometrically perfect: right axis, right
+   direction, right distance out of the shelf. It was also a thumbnail in the top-left corner
+   of a 57-title wall, so the thing the interaction exists to let you read could not be read.
+   The camera now lerps its aim and its dolly by the turn amount — the browsing framing rules
+   (lean towards the case, keep clear of the shelf end) are correct for browsing and precisely
+   wrong for reading one card, so they are blended out rather than kept. **An interaction can
+   be geometrically correct and functionally useless**, and no unit test has an opinion on it.
+2. **The card's own layout finished a quarter of the way down** and left the rest empty, because
+   the rows were set at a fixed height. They are spread across the space they have now. The
+   emptiness was a direct consequence of the no-synopsis decision above — a real case back
+   fills that area with prose — so the facts had to grow to fill it instead.
+
+**The turn is under CI**, in `e2e/shelf.spec.ts`: turn it, assert the control's state flips,
+assert the page did not throw while printing the card (building a canvas texture from title
+data is the one step here that can throw in a browser and structurally cannot in vitest), and
+assert that walking away puts the case back rather than dragging it along the shelf.
+
+**Two environment traps for anyone working in a git worktree on this repo**, both of which
+cost time and neither of which is a code fault:
+
+- **`next build` fails in a worktree with no `node_modules`.** Node resolves upward to the
+  main checkout, so `eslint` and `vitest` both run happily and only Turbopack objects — it
+  pins the workspace root at the nearest lockfile. A symlink does not fix it either
+  (*"Symlink [project]/node_modules is invalid, it points out of the filesystem root"*). A
+  hardlink copy, `cp -al ../../../node_modules node_modules`, is instant and costs no disk.
+- **Every Playwright test fails in a worktree**, including ones that predate your change,
+  because `.env` is gitignored and therefore absent, and the Supabase browser client throws
+  in the root layout and takes every page down with it. Four failing tests where one was
+  expected is an environment signal, not four regressions. Copy `.env` across; it stays
+  ignored.
 
 ### 2026-08-12 — Phase 4 begun: findable, shareable, and claiming nothing
 
