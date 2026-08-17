@@ -221,6 +221,19 @@ function coverGeometryFor(form: Form): THREE.BufferGeometry {
  */
 const SPINE_FORMS = new Set<Form>(["vhs", "amaray", "bluray", "steel"]);
 
+/**
+ * Which forms carry the substrate bump on their printed face.
+ *
+ * Not all of them, and this is a performance decision with a straight face: three's bump chunk
+ * costs two extra texture fetches and a derivative *per fragment*, and the covers fill most of
+ * the screen. Steel earns it — a steelbook's artwork is printed onto brushed metal and that is
+ * the whole point of the materials work — and VHS earns it, being litho card. Amaray and
+ * Blu-ray do not: `substrate.ts` describes their surface as "very fine, even micro-texture, low
+ * amplitude" and "finer and smoother still", so they were paying the full price for something
+ * at the edge of visibility, on the two forms that make up most of the catalogue.
+ */
+const COVER_SUBSTRATE_FORMS = new Set<Form>(["vhs", "steel"]);
+
 /** How far the label sheet stands off the case's own side, so it never z-fights the body. */
 const SPINE_INSET = 0.002;
 
@@ -231,6 +244,11 @@ const SUBSTRATE_REPEAT = 4;
 /** The range AdaptiveQuality is allowed to move the device pixel ratio through. The floor used
  * to be 1; it is lower now because a machine that cannot hold 1 needs somewhere to go, and a
  * soft image that moves beats a crisp one that stutters. */
+/** Framing for the "Whole shelf" view: a little air around the unit, and a cap so a 57-title
+ * bookcase does not put the camera so far away that everything turns to mush. */
+const WIDE_MARGIN = 2.2;
+const WIDE_MAX = 26;
+
 const DPR_MIN = 0.7;
 const DPR_MAX = 1.5;
 
@@ -348,7 +366,7 @@ function buildMediumMeshes(
   const cellData = new Float32Array(count * 4);
   row.coverUvs.forEach((uv, i) => cellData.set([uv.u0, uv.v0, uv.du, uv.dv], i * 4));
   coverGeometry.setAttribute("aCell", new THREE.InstancedBufferAttribute(cellData, 4));
-  const coverMaterial = createCoverMaterial(coverTexture, COVER_SHININESS[row.form], substrate, {
+  const coverMaterial = createCoverMaterial(coverTexture, COVER_SHININESS[row.form], COVER_SUBSTRATE_FORMS.has(row.form) ? substrate : null, {
     bumpScale: SUBSTRATE_SCALE[row.form],
     itemBump: ITEM_BUMP[row.form],
     foil: FOIL[row.form],
@@ -608,7 +626,10 @@ function ShelfContent({
   turnedItem,
   storyOrder,
   spineTitles,
+  wide,
 }: {
+  /** Standing back to see the whole unit, rather than close in on one case. */
+  wide: boolean;
   layout: Layout;
   /** Every title in the catalogue, for the spine atlas. Stable across ordering and universe. */
   spineTitles: SpineTitle[];
@@ -799,13 +820,30 @@ function ShelfContent({
    *   vertical and the frame is narrow. (Scaling the distance by the aspect ratio was the
    *   first attempt and put a phone three and a half times too far back.)
    */
+  /**
+   * How far back to stand — and there are two right answers, which is why this is a control
+   * rather than a constant.
+   *
+   * **Close** is the framing the shelf was tuned to: about five cases across, near enough that
+   * spines can be read and a 32mm clamshell is visibly fatter than a 12mm Blu-ray.
+   *
+   * **Whole shelf** is what that framing took away: standing back far enough to hold the entire
+   * unit, so you can see how much there is and where you are in it. Losing the ability to see
+   * the rest of the collection was a real cost of going close, and the fix is not to pick one
+   * but to make the pair switchable — the same measurement the far framing always used, kept.
+   */
   const standBack = useMemo(() => {
     const halfFov = Math.tan((FOV / 2) * (Math.PI / 180));
     const aspect = size.width / Math.max(size.height, 1);
+    if (wide) {
+      const unitFit = universe.height / 2 / halfFov + WIDE_MARGIN;
+      const unitWidthFit = (universe.endX - universe.startX) / 2 / (halfFov * Math.max(aspect, 0.1));
+      return Math.min(Math.max(unitFit, unitWidthFit), WIDE_MAX);
+    }
     const heightFit = VISIBLE_HEIGHT / 2 / halfFov;
     const widthFit = VISIBLE_WIDTH / 2 / (halfFov * Math.max(aspect, 0.1));
     return Math.max(heightFit, widthFit);
-  }, [size]);
+  }, [size, wide, universe]);
 
   /**
    * The interaction, in one frame loop.
@@ -911,7 +949,10 @@ function ShelfContent({
       // following y swung the view a full unit height and threw the furniture out of frame.
       // Standing close, the opposite is true: a fifth of the way leaves the case you are
       // looking at off the top or bottom of the screen entirely.
-      const aimY = item.y;
+      // Close in, the camera follows the case outright. Standing back it only leans towards it,
+      // exactly as it used to: from far enough away to hold a whole bookcase, following y
+      // swings the view a full unit height and throws the furniture out of frame.
+      const aimY = wide ? universe.centreY + (item.y - universe.centreY) * 0.2 : item.y;
       // ...and it stays inside the unit it is looking at. Aiming squarely at the first case
       // on a shelf points a third of the frame at the empty room beside it, which is what
       // arriving at every universe looked like; a case sitting off-centre with its own
@@ -919,7 +960,11 @@ function ShelfContent({
       // ...and the same applies sideways: the edge margin exists so an end-of-shelf case is
       // not centred against an empty room, which is a framing rule for browsing and exactly
       // wrong for reading one card.
-      const aimX = THREE.MathUtils.lerp(
+      // Standing back, aim at the middle of the unit rather than at the case: the point of the
+      // wide view is to see the whole bookcase and where you are in it, and a view that slides
+      // along with the walk shows you no more than the close one did.
+      const unitCentreX = (universe.startX + universe.endX) / 2;
+      const aimX = wide ? unitCentreX : THREE.MathUtils.lerp(
         Math.min(
           Math.max(item.x, universe.startX + EDGE_MARGIN),
           Math.max(universe.endX - EDGE_MARGIN, universe.startX + EDGE_MARGIN)
@@ -1239,6 +1284,9 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
    * which a drag never is.
    */
   const [turned, setTurned] = useState(false);
+  /** Standing back to see the whole bookcase. The close framing is better for reading one
+   * case and worse for knowing where you are; this is the way back out. */
+  const [wide, setWide] = useState(false);
   const router = useRouter();
   const progress = useRef(0);
   const surface = useRef<HTMLDivElement>(null);
@@ -1412,6 +1460,17 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           {shelf.items.length} titles · shelf {current + 1} of {layout.universes.length}
         </span>
 
+        <button
+          type="button"
+          onClick={() => setWide((was) => !was)}
+          aria-pressed={wide}
+          className={`rounded border px-3 py-1 font-display text-xs uppercase tracking-[0.12em] ${
+            wide ? "border-label-mid text-label-bright" : "border-shelf-edge text-label-dim hover:text-label-mid"
+          }`}
+        >
+          {wide ? "Close up" : "Whole shelf"}
+        </button>
+
         {(["release", "story"] as const).map((option) => (
           <button
             key={option}
@@ -1476,6 +1535,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             turnedItem={turned ? active : null}
             storyOrder={order === "story"}
             spineTitles={spineTitles}
+            wide={wide}
           />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
@@ -1489,14 +1549,29 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         {/* Replaces the bare ground plane that used to stand in for a floor. */}
         <Room bounds={layout.bounds} />
 
+        {/* Look around, but do not get lost.
+         *
+         * **Pan is off.** It moved the orbit target anywhere it liked while the frame loop was
+         * also moving it to follow the case — two things writing the same value, which is how
+         * you end up staring at an empty room with no way back. Rotation is bounded now too:
+         * without limits you could swing behind the bookcases, inside them, or under the
+         * floor, all of which look like the app has broken.
+         *
+         * Zoom stays off because the wheel already means "walk the shelf" and one gesture
+         * cannot mean two things. The way to see more is the *Whole shelf* control in the
+         * header, which is a named, reversible, keyboard-reachable version of the same wish. */}
         <OrbitControls
           makeDefault
           enableZoom={false}
+          enablePan={false}
           enableRotate={!coarsePointer}
-          enablePan={!coarsePointer}
           target={[0, wallCentreY, 0]}
           minDistance={1.5}
           maxDistance={40}
+          minPolarAngle={Math.PI * 0.22}
+          maxPolarAngle={Math.PI * 0.62}
+          minAzimuthAngle={-Math.PI * 0.42}
+          maxAzimuthAngle={Math.PI * 0.42}
         />
       </Canvas>
       {/* What you have just drawn off the shelf. The cover art alone does not say which
