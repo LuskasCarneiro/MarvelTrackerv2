@@ -29,7 +29,9 @@ there, so "where Blu-ray begins" is not a place and a button claiming it is woul
 the shelf on the scroll, a control turns it the rest of the way round, and the camera walks in
 close enough to read the printed back — see §8.
 
-Not built: spine text, era materials (the bump layers and the foil map), LOD, KTX2.
+**Spine text is built (2026-08-17)**, and the shelf is browsed close now — see §9.
+
+Not built: era materials (the bump layers and the foil map), LOD, KTX2.
 
 ### Measured once it existed: the eras are not evenly spaced, and landmarks are cheap
 
@@ -313,6 +315,34 @@ facts have to be spread to fill the card or it reads as empty.
 
 **In story order the back prints the story year**, not the release year — printing 2011 beside
 a 35 mm film can invites exactly the wrong reading, and titles outside time say so.
+
+---
+
+## 9. Standing close, and printed spines
+
+**The shelf is browsed from about five cases across**, not a whole bookcase. The old framing
+fitted each unit's full height, which put the camera ~14 units out; from there a spine is three
+screen pixels and a 32 mm VHS clamshell looks identical to a 12 mm Blu-ray. Both of those were
+on the owed list as separate items and both were the same thing: **not a fault in the geometry,
+a fault in how far away it was being viewed from.**
+
+The trade, accepted: you see a section of a unit rather than all of it. The lamp falloff already
+put the rest in the dark, so less was lost than it sounds. It does require the camera to follow
+the case vertically in full, where it used to lean a fifth of the way — correct from far back,
+wrong from here.
+
+**Spine ink is the one unlit material in the scene.** A spine faces sideways while the lamp
+stands in front of the shelf, so a lit surface there renders black. Ink is not a surface that
+reflects the room; it should read from any angle you can see it from.
+
+**Spines are legible on thick media and not on thin, which is the point.** VHS and Amaray carry
+readable titles; Blu-ray and steelbook are too thin to print much on. The medium encodes itself
+rather than every case wearing the same label. `none` — a 3 mm card standing for a title that
+never had a physical release — gets no spine at all, because giving it one would assert the
+opposite of what it means. Nor do the round story-order forms: a film can has no spine.
+
+**This makes the spine-out question much less pressing.** It stays open, but the reason it was
+raised — that a face-out shelf never shows you a spine — is no longer true from this distance.
 
 ---
 
