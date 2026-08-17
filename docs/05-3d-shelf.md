@@ -29,9 +29,11 @@ there, so "where Blu-ray begins" is not a place and a button claiming it is woul
 the shelf on the scroll, a control turns it the rest of the way round, and the camera walks in
 close enough to read the printed back — see §8.
 
-**Spine text is built (2026-08-17)**, and the shelf is browsed close now — see §9.
+**Spine text is built (2026-08-17)**, and the shelf is browsed close now — see §9. **The shared
+substrate bump is built** too, so steel reads as brushed metal and VHS as litho card — see §10.
 
-Not built: era materials (the bump layers and the foil map), LOD, KTX2.
+Not built: the per-item bump layer and the foil map (both need per-title authored art we do not
+have), LOD, KTX2.
 
 ### Measured once it existed: the eras are not evenly spaced, and landmarks are cheap
 
@@ -343,6 +345,30 @@ opposite of what it means. Nor do the round story-order forms: a film can has no
 
 **This makes the spine-out question much less pressing.** It stays open, but the reason it was
 raised — that a face-out shelf never shows you a spine — is no longer true from this distance.
+
+---
+
+## 10. The substrate — half of the teardown's two bump layers
+
+`PLAN.md` §1 finds two bump layers on the Stripe books: a **shared** one belonging to the
+material (buckram, paper) and a **per-item** one that is that cover's own debossing. It rates
+the shared layer as the trick: it is what makes many objects feel individually made without
+many bespoke assets.
+
+The shared layer is built. `substrate.ts` generates one seamlessly tileable bump per form from a
+single parametrised noise — anisotropic frequencies are what turn the same function into brushed
+metal for steel, woven cloth for the bound volume, and even grain for card. Procedural on a
+canvas, so no new committed assets, nothing fetched, and not the generative-AI route §6 rules out.
+
+**It goes on the cover as well as the body, and the cover is the half that shows.** A case's
+front is hidden behind its artwork plane, so a body-only bump lives on the thin edges. A
+steelbook's artwork is printed *onto* the metal — the metal must modulate the artwork. The two
+maps take different UVs on the same material: `map` is windowed to an atlas cell by the injected
+shader, `bumpMap` tiles across the face through three's own `vBumpMapUv`.
+
+**Not built, and blocked on assets rather than effort:** the per-item bump and the foil map. Both
+are authored per title in the original. If wanted, derive the per-item bump from each cover's own
+luminance — those pixels are already in the atlas — rather than commissioning 152 maps.
 
 ---
 
