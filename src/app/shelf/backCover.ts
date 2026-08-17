@@ -38,7 +38,7 @@ function tintToCanvasColor(tint: string): string {
 }
 
 /** Truncates a string to fit `maxWidth` on `ctx`, appending an ellipsis if it had to cut. */
-function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+export function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
   if (ctx.measureText(text).width <= maxWidth) return text;
   let lo = 0;
   let hi = text.length;
