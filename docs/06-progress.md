@@ -359,6 +359,47 @@ cost time and neither of which is a code fault:
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
 
+### 2026-08-17 — Getting lost on the shelf, and the second half of the stutter
+
+The owner's follow-up: *"it's stuttering, and because you can move around the shelf and the zoom
+level it becomes impossible to see the rest."* Two faults, and the second one was a design error
+of mine that the first was hiding.
+
+**You could not see the rest of the collection, and there was no way to ask.** `enableZoom` was
+`false` — so the close framing was not a default, it was a cage. Worse, `enablePan` was on with
+no angle limits: panning moved the orbit target while the frame loop was *also* moving it to
+follow the case, two things writing one value, which is how you end up staring at an empty room
+with no way back.
+
+- **Pan is off**, and rotation is bounded in both axes. Without limits you could swing behind
+  the bookcases, inside them, or under the floor — all of which read as the app breaking.
+- **"Whole shelf" is a control now.** Zoom stays off the wheel, because the wheel already means
+  "walk the shelf" and one gesture cannot mean two things; the way to see more is a named,
+  reversible, keyboard-reachable button. It restores exactly the framing the close view
+  replaced — the per-unit fit measurement was kept, not deleted — and aims at the middle of the
+  unit rather than sliding along with the walk, since an overview that tracks the walk shows you
+  nothing the close view did not.
+
+**The close framing was the right call and an incomplete one.** Standing close is what made
+spines readable and thickness legible; it also took away any sense of where you are in 57
+titles. The fix was never to choose — it was to make the pair switchable, which is what should
+have shipped in the first place.
+
+**More of the stutter, from the same principle as before: stop paying for what cannot be seen.**
+The substrate bump now applies only to the covers that earn it — steel, whose artwork is printed
+onto brushed metal, and VHS, which is litho card. `substrate.ts` describes Amaray and Blu-ray as
+"very fine, even micro-texture, low amplitude" and "finer and smoother still": they were paying
+two extra texture fetches per fragment for something at the edge of visibility, on the two forms
+that make up most of the catalogue.
+
+**Measured, same harness throughout:** 1.8 fps when the owner reported it → 2.6 after removing
+the hidden-body and plaster bumps → **2.9 close, and the wide view is no worse**. Against a 4.6
+baseline that predates the room and the materials.
+
+**Still honest about it:** this harness is software GL and none of these numbers is the owner's
+machine. If it still stutters there, the next lever is `frameloop="demand"` — the scene is
+completely static whenever nobody is scrolling, and it currently redraws anyway.
+
 ### 2026-08-17 — "It is very buggy": a framerate regression I shipped, measured and mostly undone
 
 The owner reported the shelf as buggy. It was not a logic fault and there were no errors in the
