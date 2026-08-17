@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, useProgress, useTexture } from "@react-three/drei";
+import { OrbitControls, PerformanceMonitor, useProgress, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { tintToHsl } from "@/lib/tint";
@@ -228,6 +228,12 @@ const SPINE_INSET = 0.002;
  * enough that no one reads it as a texture, low enough to survive minification. */
 const SUBSTRATE_REPEAT = 4;
 
+/** The range AdaptiveQuality is allowed to move the device pixel ratio through. The floor used
+ * to be 1; it is lower now because a machine that cannot hold 1 needs somewhere to go, and a
+ * soft image that moves beats a crisp one that stutters. */
+const DPR_MIN = 0.7;
+const DPR_MAX = 1.5;
+
 /**
  * The room's dimensions, all measured off the bookcases rather than fixed, so it stays a room
  * around the shelf whatever the catalogue does.
@@ -321,11 +327,18 @@ function buildMediumMeshes(
   // is what makes many objects feel individually made without many bespoke assets. Until
   // now every case was shininess-only, so a steelbook and a DVD differed by a number and
   // by nothing you could see.
+  //
+  // **No bump map on the body, deliberately, and it is a performance fix rather than a taste
+  // one.** The body's front is covered by its artwork plane, so its own surface survives only
+  // on the thin edges — which is exactly why the substrate was moved onto the cover material.
+  // Leaving it on the body as well meant paying for it twice: three's bump chunk costs two
+  // extra texture fetches and a derivative per fragment, and the bodies cover most of the
+  // screen. Measured, on the same headless harness, at the moment the substrate landed: 4.4
+  // fps to 2.6. Removing it here costs nothing anybody can see.
   const bodyMaterial = new THREE.MeshPhongMaterial({
     color: bm.color,
     shininess: bm.shininess,
     specular: bm.specular,
-    ...(substrate ? { bumpMap: substrate, bumpScale: SUBSTRATE_SCALE[row.form] } : {}),
   });
   const body = new THREE.InstancedMesh(bodyGeometry, bodyMaterial, count);
   row.bodyMatrices.forEach((m, i) => body.setMatrixAt(i, m));
@@ -455,7 +468,14 @@ const TURN_VISIBLE = 0.02;
  * are there, in the dark, and you travel to them rather than seeing them all at once. */
 const LAMP_HEIGHT = -1.2;
 const LAMP_Z = 4.0;
-const LAMP_INTENSITY = 130;
+/**
+ * Back to 95 from the 130 it was briefly raised to. Raising it did light the room, and it also
+ * blew the nearest covers out to white — the artwork is the one thing in this scene that must
+ * survive, and a lamp bright enough to reach the floor is a lamp bright enough to destroy the
+ * case standing next to it. The room is lit by `LAMP_REACH` and the ambient term instead, which
+ * change how far the light carries rather than how hard it hits what is closest.
+ */
+const LAMP_INTENSITY = 95;
 /**
  * Raised from 15 once there was actually a room to light. With no floor and no walls the reach
  * only had to cover the cases; now it has to *land* on something — a lamp whose pool dies
@@ -1073,14 +1093,11 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
     <group>
       <mesh position={[(startX + endX) / 2, floorY + height / 2, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
         <boxGeometry args={[width, height, depth]} />
-        <meshPhongMaterial
-          side={THREE.BackSide}
-          color={ROOM_WALL}
-          shininess={2}
-          specular="#171310"
-          bumpMap={plasterTexture}
-          bumpScale={ROOM_BUMP_SCALE.plaster}
-        />
+        {/* No bump on the plaster. Its own module describes it as "almost unfelt" and sets a
+            bumpScale of 0.006 to keep it that way — so it was paying two extra texture fetches
+            per fragment, across the walls and ceiling, for something deliberately at the edge
+            of perception. The walls are lit and coloured, which is all a wall has to be. */}
+        <meshPhongMaterial side={THREE.BackSide} color={ROOM_WALL} shininess={2} specular="#171310" />
       </mesh>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(startX + endX) / 2, floorY, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
@@ -1102,6 +1119,41 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
         <meshPhongMaterial color={ROOM_SKIRTING} shininess={22} specular="#332a20" />
       </mesh>
     </group>
+  );
+}
+
+/**
+ * Adaptive quality — the item the docs deferred "until measured on real hardware", now that
+ * there is a measurement.
+ *
+ * The shelf is fragment-bound, not draw-call-bound: 22 draw calls is nothing, but every one of
+ * those fragments runs a Phong shader with an atlas lookup, a bump chunk and, on covers, a
+ * luminance gradient. That cost scales with the number of pixels, and **the number of pixels
+ * scales with the square of the device pixel ratio** — a HiDPI laptop at dpr 1.5 is rendering
+ * 2.25 times the work of this headless harness at dpr 1, which is precisely the hardware most
+ * likely to be struggling and the hardware I cannot measure from here.
+ *
+ * So the scene measures itself and gives up resolution before it gives up frames. Resolution
+ * is the right thing to spend: a slightly softer image that moves is strictly better than a
+ * crisp one that stutters, and the artwork survives it far better than the motion does.
+ *
+ * `flipflops` + `onFallback` are the guard against the obvious failure — dropping quality
+ * raises the framerate, which raises quality, which drops the framerate. After three
+ * oscillations it stops adapting and stays low.
+ */
+function AdaptiveQuality() {
+  const setDpr = useThree((s) => s.setDpr);
+  return (
+    <PerformanceMonitor
+      // Clamped to the screen's own ratio, never above it. Without the clamp the monitor's
+      // starting factor asks a dpr-1 display to render at 1.1 — more pixels than it has,
+      // which is slower *and* softer, and on exactly the machines already struggling.
+      onChange={({ factor }) =>
+        setDpr(Math.min(window.devicePixelRatio, DPR_MIN + (DPR_MAX - DPR_MIN) * factor))
+      }
+      onFallback={() => setDpr(DPR_MIN)}
+      flipflops={3}
+    />
   );
 }
 
@@ -1394,7 +1446,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         // instanced objects on the no-discrete-GPU laptop this is designed for, and this
         // harness renders through SwiftShader (software GL) -- upgrade path is a single
         // baked contact-shadow decal per level if a unit reads as floating without one.
-        dpr={[1, 1.5]}
+        dpr={[DPR_MIN, DPR_MAX]}
         // Looking along the shelf at an angle, not square at it: at ~35 degrees the cases
         // read as objects with depth rather than as flat posters, which is the entire reason
         // this is 3D. Far enough back to hold all four levels of a unit.
@@ -1430,7 +1482,8 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
               mounts (and starts its timer) once the atlas texture -- and therefore the
               instanced meshes -- actually exist. Outside, its timer raced the texture
               load and once logged a bare "1 draw call" ground-plane-only frame. */}
-          <PerfLogger />
+          <AdaptiveQuality />
+        <PerfLogger />
         </Suspense>
 
         {/* Replaces the bare ground plane that used to stand in for a floor. */}
