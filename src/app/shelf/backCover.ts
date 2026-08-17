@@ -10,6 +10,8 @@ export type BackCoverData = {
   runtimeMin: number | null;
   universeLabel: string; // e.g. "Marvel Cinematic Universe"
   tint: string; // a CSS hsl() string in this project's space-separated form
+  /** The owner's curated note, when available. Optional: most callers still print facts only. */
+  note?: string;
 };
 
 /**
@@ -129,15 +131,16 @@ export function drawBackCover(
     ['Universe', data.universeLabel],
   ];
   // The rows are spread across the space they actually have rather than set at a fixed
-  // height. At a fixed height they finished a quarter of the way down and left the rest of
-  // the card empty — which only shows up when you look at the thing rendered at the size a
-  // reader sees it, never in the code. A real case back fills this area with a synopsis; this
-  // one deliberately carries facts only (see ShelfScene's backTexture), so the facts have to
-  // be what fills it.
+  // height, *when there is no note to fill that space itself*. A real case back fills the
+  // middle area with a synopsis; this one only sometimes has one (see docs/06-progress.md,
+  // "Prop or import, it still ships" — the note is fetched separately, not always present).
+  // With a note, the rows shrink to their natural height and the note fills what's left; with
+  // no note, the rows stretch to fill the card exactly as before.
   const labelFontSize = Math.round(width * 0.026);
   const valueFontSize = Math.round(width * 0.038);
   const rowsBottom = height * 0.8; // clear of the small print at 0.86
-  const rowHeight = Math.max((rowsBottom - y) / rows.length, height * 0.055);
+  const naturalRowHeight = height * 0.055;
+  const rowHeight = data.note ? naturalRowHeight : Math.max((rowsBottom - y) / rows.length, naturalRowHeight);
   for (const [label, value] of rows) {
     ctx.font = `${labelFontSize}px sans-serif`;
     ctx.fillStyle = '#8e8272';
@@ -157,6 +160,23 @@ export function drawBackCover(
     ctx.lineTo(width - margin, y + rowHeight * 0.72);
     ctx.stroke();
     y += rowHeight;
+  }
+
+  // The note, when present: wrapped prose filling the space the facts left behind. Truncates
+  // cleanly (wrapText's own last-line ellipsis) rather than overflowing into the small print.
+  if (data.note) {
+    y += height * 0.03;
+    const noteBottom = height * 0.83; // clear of the small print at 0.86
+    const noteFontSize = Math.round(width * 0.03);
+    const noteLineHeight = noteFontSize * 1.5;
+    const maxLines = Math.max(1, Math.floor((noteBottom - y) / noteLineHeight));
+    ctx.font = `${noteFontSize}px serif`;
+    ctx.fillStyle = '#c8bcac';
+    const noteLines = wrapText(ctx, data.note, contentWidth, maxLines);
+    for (const line of noteLines) {
+      y += noteLineHeight;
+      ctx.fillText(line, margin, y);
+    }
   }
 
   // Statutory-small-print line, honest rather than a fake legal notice.

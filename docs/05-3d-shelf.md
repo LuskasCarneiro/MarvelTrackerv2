@@ -32,8 +32,10 @@ close enough to read the printed back — see §8.
 **Spine text is built (2026-08-17)**, and the shelf is browsed close now — see §9. **The shared
 substrate bump is built** too, so steel reads as brushed metal and VHS as litho card — see §10.
 
-Not built: the per-item bump layer and the foil map (both need per-title authored art we do not
-have), LOD, KTX2.
+**Phase 3 is complete (2026-08-17).** The per-item bump and the foil are in too — derived from
+each cover's own artwork rather than from authored maps, see §10. KTX2, LOD, the room and
+spine-out were closed as decisions rather than work; `docs/06-progress.md` holds each one's
+reasoning and the trigger that would reopen it.
 
 ### Measured once it existed: the eras are not evenly spaced, and landmarks are cheap
 
@@ -366,9 +368,19 @@ steelbook's artwork is printed *onto* the metal — the metal must modulate the 
 maps take different UVs on the same material: `map` is windowed to an atlas cell by the injected
 shader, `bumpMap` tiles across the face through three's own `vBumpMapUv`.
 
-**Not built, and blocked on assets rather than effort:** the per-item bump and the foil map. Both
-are authored per title in the original. If wanted, derive the per-item bump from each cover's own
-luminance — those pixels are already in the atlas — rather than commissioning 152 maps.
+**The per-item layer and the foil are built too, and neither needed authored art.** That earlier
+note said they were blocked on assets; they were blocked on an assumption.
+
+- **Deboss follows the printing**, so a cover's own luminance gradient is its relief. Two extra
+  taps and a central difference, nudging the normal rather than replacing it, so the substrate
+  still reads underneath. Both of the teardown's layers, as intended.
+- **A foil stamp lands on the title treatment**, which is the brightest thing on nearly every one
+  of these covers — so the mask is a `smoothstep` on luminance driving `specularStrength`.
+  Steelbook takes the most, an Amaray insert under a clear sleeve the least.
+
+**What this is not:** authored foil. Stripe's mask hits only the title; ours hits whatever is
+brightest, which on *Iron Man 3* is the armour rather than the logotype. The right trade when §6
+rules out generating art — but know the difference before "fixing" it.
 
 ---
 
