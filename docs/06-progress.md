@@ -359,6 +359,59 @@ cost time and neither of which is a code fault:
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
 
+### 2026-08-17 — "It is very buggy": a framerate regression I shipped, measured and mostly undone
+
+The owner reported the shelf as buggy. It was not a logic fault and there were no errors in the
+console: **it was framerate**, and I had caused most of it. Static screenshots cannot show this,
+which is exactly why a day of them missed it.
+
+**Measured with a `requestAnimationFrame` counter in the real browser, bisected across the
+day's commits** — same headless harness (SwiftShader, software GL) throughout, so the numbers
+are comparable to each other even though none of them is anyone's real hardware:
+
+| after | fps |
+|---|---|
+| before today | **4.6** |
+| pull-and-turn | 4.6 |
+| close framing + spines | 4.4 |
+| **the substrate bump** | **2.6** |
+| per-item bump and foil | 2.4 |
+| **the room** | **1.8** |
+
+**The single biggest cost was waste I had already documented and then not acted on.** The
+substrate bump went on the case *body* as well as the cover — and the body's front is hidden
+behind its artwork plane, which is the very reason the substrate was moved onto the cover in
+the first place. three's bump chunk costs two extra texture fetches and a derivative per
+fragment, and the bodies cover most of the screen. Removing it changes nothing anyone can see.
+
+Second: **the plaster bump on the room's walls and ceiling.** Its own module calls it "almost
+unfelt" and sets `bumpScale` to 0.006 to keep it that way, so it was paying full fragment cost
+across two screen-filling surfaces for something deliberately at the edge of perception.
+
+Those two removals: **1.8 → 2.6 fps**, a 44% recovery, with no visual change at all.
+
+**Also found, and worse in its way: the lamp was blowing the nearest covers out to white.** I
+raised `LAMP_INTENSITY` from 95 to 130 to light the room; a lamp bright enough to reach the
+floor is bright enough to destroy the case standing next to it, and the artwork is the one
+thing in this scene that has to survive. Back to 95 — the room is lit by `LAMP_REACH` and the
+ambient term instead, which change how far the light carries rather than how hard it hits what
+is closest. **Found by looking at an interaction screenshot, not by any test.**
+
+**Adaptive quality is now built**, which the docs had deferred "until measured on real
+hardware". The measurement exists now, and the key insight is one this harness structurally
+cannot show: the scene is fragment-bound, and **fragment count scales with the square of the
+device pixel ratio**. A HiDPI laptop at dpr 1.5 does 2.25× the work of this harness at dpr 1 —
+which is both the hardware most likely to be struggling and the hardware that cannot be
+measured from here. `PerformanceMonitor` now trades resolution for frames, clamped to the
+screen's own ratio so it never asks a dpr-1 display to render at 1.1, with `flipflops` to stop
+it oscillating.
+
+**Left honestly unresolved:** even the baseline was 4.6 fps in this harness, so the shelf has
+never been smooth *here*. Whether it is smooth on the owner's actual machine is still unknown,
+and the remaining deficit against baseline (2.6 vs 4.6) is the price of the room and the
+materials, both of which are wanted. The next lever, if it is still slow on real hardware, is
+`frameloop="demand"` — the scene is static whenever nobody is scrolling.
+
 ### 2026-08-17 — The room, after I had closed it
 
 **I closed "no floor detail and no walls" as a decision. The owner wanted a room, and that was
