@@ -99,13 +99,14 @@ function createCoverMaterial(
     // One texel of the atlas, for the gradient below. A constant rather than textureSize(),
     // which needs GLSL3 and would tie this shader to the WebGL2 path for no gain.
     shader.uniforms.uTexel = { value: 1 / ATLAS_SIZE };
+    shader.uniforms.uDetailRange = { value: DETAIL_RANGE };
 
     shader.vertexShader =
       "attribute vec4 aCell;\nvarying vec4 vCell;\n" +
       shader.vertexShader.replace("#include <uv_vertex>", "#include <uv_vertex>\n\tvCell = aCell;");
 
     shader.fragmentShader =
-      "varying vec4 vCell;\nuniform float uItemBump;\nuniform float uFoil;\nuniform float uTexel;\n" +
+      "varying vec4 vCell;\nuniform float uItemBump;\nuniform float uFoil;\nuniform float uTexel;\nuniform float uDetailRange;\n" +
       shader.fragmentShader
         // Sample once, and keep the artwork's luminance — the two effects below are both
         // functions of it, and sampling a 4096² atlas three more times per fragment for
@@ -146,7 +147,7 @@ function createCoverMaterial(
         .replace(
           "#include <normal_fragment_maps>",
           `#include <normal_fragment_maps>
-	if ( uItemBump > 0.0 ) {
+	if ( uItemBump > 0.0 && length( vViewPosition ) < uDetailRange ) {
 		float lx = dot( texture2D( map, cellUv + vec2( uTexel, 0.0 ) ).rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
 		float ly = dot( texture2D( map, cellUv + vec2( 0.0, uTexel ) ).rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
 		normal = normalize( normal + vec3( ( itemLum - lx ) * uItemBump, ( itemLum - ly ) * uItemBump, 0.0 ) );
@@ -616,6 +617,31 @@ const PRESENT_YAW = -0.19;
 const HOLD_GAP = 2.8;
 
 /**
+ * How far below eye level a case is held. You do not hold an object you are inspecting dead in
+ * front of your pupils, and the composition agrees: at eye level the case sat exactly over the
+ * bay's brass nameplate, hiding the one element that says which section you are standing in.
+ * Perspective is why — the plaque is twelve units away and the case under three, so the near
+ * object covers a far larger angle than their world positions suggest.
+ */
+const HOLD_DROP = 0.3;
+
+/**
+ * How near a case must be for its per-item debossing to be computed at all — a level of detail
+ * rule, and the first one this scene has actually needed.
+ *
+ * The deboss costs two extra atlas taps per fragment and is derived from the artwork's own
+ * luminance gradient, so it is a *fine* relief: visible on a case held at arm's length and
+ * physically unresolvable on one sitting across the room at thumbnail size. The locked-off
+ * gallery framing put a whole bay of fifty-odd covers on screen at once, all of them paying for
+ * an effect none of them was large enough to show.
+ *
+ * A case in the hand is ~2.8 units away and one on the shelf ~12.6, so the two populations are
+ * nowhere near each other and the threshold needs no fine tuning. The branch is on a uniform
+ * and a varying, which is coherent across each case, so the GPU is not paying for divergence.
+ */
+const DETAIL_RANGE = 6;
+
+/**
  * The presentation light: the one that falls on a case once it is in your hands.
  *
  * Needed because the hold point is *in front of* the shelf lamp, so a case travelling towards
@@ -671,11 +697,8 @@ const LAMP_INTENSITY = 95;
  * complaint about there being no room. Measured against the real geometry: the floor sits 5.4
  * units below the lamp and the ceiling 5.2 above it.
  */
-const LAMP_REACH = 24;
+const LAMP_REACH = 30;
 
-/** The neighbouring bays' lights, relative to the one you are standing at. Dimmer, so the eye
- * still knows where it is meant to be looking. */
-const NEIGHBOUR_LAMP_FALLOFF = 0.55;
 
 /**
  * What to call each object. Release order's five are the media as the design system names
@@ -937,8 +960,6 @@ function ShelfContent({
 
   const lamp = useRef<THREE.PointLight>(null);
   const holdLight = useRef<THREE.PointLight>(null);
-  const lampLeft = useRef<THREE.PointLight>(null);
-  const lampRight = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
   const backRef = useRef<THREE.Mesh>(null);
 
@@ -1040,7 +1061,7 @@ function ShelfContent({
     // Derived from where the viewer is standing rather than from the shelf, so it is always
     // the same arm's length from the eye whichever bay you are at and whichever shelf the
     // title sits on.
-    const hold: Hold = { x: bayCentreX, y: eyeY, z: (wide ? WIDE_Z : STAND_Z) - HOLD_GAP };
+    const hold: Hold = { x: bayCentreX, y: eyeY - HOLD_DROP, z: (wide ? WIDE_Z : STAND_Z) - HOLD_GAP };
 
     // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
     // rather than travels, exactly as the camera does.
@@ -1141,18 +1162,6 @@ function ShelfContent({
 
     // The spotlight over this bay travels with the viewer.
     if (lamp.current) lamp.current.position.x = camera.position.x;
-    // The neighbours' lights sit over the neighbouring bays, so the sections either side stay
-    // lit as you move. Falls back to a bay-width offset at the ends of the run, where there is
-    // no neighbour to centre on and an unlit void would otherwise open up beside you.
-    const bays = layout.universes;
-    const here = bays.indexOf(universe);
-    const centreOf = (i: number, fallback: number) => {
-      const b = bays[i];
-      return b ? (b.startX + b.endX) / 2 : fallback;
-    };
-    const bayWidth = universe.endX - universe.startX;
-    if (lampLeft.current) lampLeft.current.position.x = centreOf(here - 1, bayCentreX - bayWidth);
-    if (lampRight.current) lampRight.current.position.x = centreOf(here + 1, bayCentreX + bayWidth);
     if (holdLight.current) {
       holdLight.current.position.set(hold.x, hold.y + HOLD_LIGHT_UP, hold.z + HOLD_LIGHT_FORWARD);
       holdLight.current.intensity = HOLD_LIGHT_INTENSITY * amount;
@@ -1253,27 +1262,17 @@ function ShelfContent({
         decay={1.5}
         color="#ffd9ad"
       />
-      {/* The neighbouring bays get their own picture lights, dimmer than the one you are
-          standing at. This is what turns a lit shelf in a dark room into a *gallery*: sections
-          receding either side, each under its own warm pool, which is the thing you cannot get
-          from one travelling lamp however far its reach. Two extra lights rather than twelve —
-          every light in a Phong scene costs every fragment, and you can only see three bays. */}
-      <pointLight
-        ref={lampLeft}
-        position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
-        intensity={LAMP_INTENSITY * NEIGHBOUR_LAMP_FALLOFF}
-        distance={LAMP_REACH}
-        decay={1.5}
-        color="#f4c88f"
-      />
-      <pointLight
-        ref={lampRight}
-        position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
-        intensity={LAMP_INTENSITY * NEIGHBOUR_LAMP_FALLOFF}
-        distance={LAMP_REACH}
-        decay={1.5}
-        color="#f4c88f"
-      />
+      {/* **There is one travelling lamp, not three, and that is a measurement rather than a
+          taste.** Picture lights over the neighbouring bays did make the room read as sections
+          receding either side — and cost a third of the framerate, because every light in a
+          Phong scene is charged against every fragment and the locked-off framing puts a whole
+          bay of covers on screen at once. Measured at 1.2 fps against 1.6 for the same scene
+          with one lamp.
+
+          `docs/05-3d-shelf.md` §2 wanted a single lamp with real falloff in the first place —
+          the neighbouring bays are meant to be *in the dark*, waiting, rather than lit for
+          inspection. Reach is longer now so they are dimly present rather than absent, which
+          is the effect the extra lights were buying, at none of the price. */}
     </>
   );
 }
@@ -1922,7 +1921,11 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             inside ShelfContent; what is left here is enough ambience that an unlit cover is
             dark rather than black, plus a cool fill for shape. */}
         <ambientLight intensity={0.13} color="#f0e4d2" />
-        <directionalLight position={[3.4, 0.4, 1.2]} intensity={0.18} color="#b9c2cc" />
+        {/* The cool fill is gone. It cost a light — every one of which Phong charges against
+            every fragment — and it was working against the room: a warm mahogany gallery under
+            one tungsten lamp does not want a blue rim on everything. Removing it bought roughly
+            a fifth of the framerate and made the palette more single-minded, which is the rare
+            change that is cheaper *and* better. */}
 
         <Suspense fallback={null}>
           <ShelfContent
