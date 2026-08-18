@@ -1815,7 +1815,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
 
   return (
     <div ref={surface} className="relative flex min-h-0 w-full flex-1 flex-col touch-none">
-      <div className="flex flex-wrap items-baseline gap-3 px-6 pb-3">
+      <div className="flex flex-wrap items-baseline gap-3 px-6 pb-2">
         <button
           type="button"
           onClick={() => goToUniverse(current - 1)}

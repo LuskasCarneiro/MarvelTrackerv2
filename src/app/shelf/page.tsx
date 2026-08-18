@@ -48,7 +48,7 @@ export const metadata: Metadata = {
 export default function ShelfPage() {
   return (
     <main className="flex h-dvh flex-col bg-shelf-dark">
-      <div className="px-6 py-4">
+      <div className="px-6 py-2">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="font-display text-xs uppercase tracking-[0.2em] text-label-dim">
             The shelf — Phase 3
@@ -60,11 +60,6 @@ export default function ShelfPage() {
             Browse the same titles as a catalogue
           </Link>
         </div>
-        <p className="mt-1 text-sm text-label-mid">
-          One shelf per universe, each as tall as its collection needs. You stand still: scroll to bring a title
-          off the shelf and put it back, and swipe sideways to move to the next universe. Turn a case over to read
-          its back, search to summon a title from anywhere in the archive, and click a case to open it.
-        </p>
       </div>
       <ShelfSceneClient universes={universes} />
     </main>
