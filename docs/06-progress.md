@@ -359,6 +359,50 @@ cost time and neither of which is a code fault:
   expected is an environment signal, not four regressions. Copy `.env` across; it stays
   ignored.
 
+### 2026-08-17 — Paying for the gallery: what the finish cost, and getting most of it back
+
+Measured the framerate after the finish pass, having shipped it without doing so. It had gone
+**2.9 → 1.2 fps** — the polish cost more than half, on a scene whose owner had already reported
+stuttering. Fixed to **1.8 at rest and 3.5 in the wide view**, same headless software-GL harness
+throughout.
+
+**Bisected rather than guessed, and two of the three suspects were innocent.**
+
+| change | rest fps |
+|---|---|
+| as shipped (four point lights) | 1.2 |
+| gating the per-item deboss by distance | 1.2 — *no effect* |
+| removing the cabinetry wood shader | +0.1 — *negligible* |
+| **one travelling lamp instead of three** | **1.6** |
+| **removing the cool directional fill** | **1.9** |
+
+**Lights were the whole story, and the reason is structural.** In a forward renderer every light
+is charged against every fragment, and the locked-off gallery framing puts a whole bay of covers
+on screen at once — so going from one light to four multiplied the most expensive thing in the
+scene by the thing there is most of. The wood shader and the artwork deboss, which *look* like
+the expensive additions, cost almost nothing.
+
+**The cool fill was a cost and a mistake at once.** A blue-grey directional at 0.18 was fighting
+the room: a warm mahogany gallery under one tungsten lamp does not want a cold rim on
+everything. Removing it bought roughly a fifth of the framerate and made the palette more
+single-minded — cheaper *and* better, which is rare enough to note.
+
+**Reverting to one lamp is also what `docs/05-3d-shelf.md` §2 asked for.** The neighbouring bays
+are meant to be in the dark, waiting, not lit for inspection; the doc says the infinite feeling
+comes from falloff rather than from geometry. `LAMP_REACH` is longer now, so they are dimly
+present rather than absent — the effect the extra lights were buying, at none of the price.
+
+**Kept anyway:** the distance gate on the per-item deboss. It measured as free rather than as a
+saving, but it is still correct — a relief derived from artwork luminance cannot resolve on a
+thumbnail across the room, and the gate stops it being computed there. Recorded as *not* the
+optimisation it was meant to be, so nobody re-derives it expecting a win.
+
+**Composition:** the held case sat exactly over the bay's brass nameplate, hiding the one element
+that says which section you are in. Perspective was why — the plaque is twelve units away and
+the case under three, so the near object covers far more angle than their positions suggest. The
+case is held slightly below eye level now, which is also where a person actually holds something
+they are inspecting.
+
 ### 2026-08-17 — The gallery gets its finish: mahogany, brass and named sections
 
 The visual half of the locked-off gallery brief, to a first version.
