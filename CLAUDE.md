@@ -87,9 +87,18 @@ owner pasting SQL into the Supabase SQL editor once, or `SUPABASE_ACCESS_TOKEN` 
 
 The archive is a shelf of home-video releases, and **the shelf physically ages as you move
 through it** — VHS clamshell → DVD Amaray → Blu-ray → steelbook → no physical release.
-Thickness encodes runtime. Foil encodes the title treatment. Nothing is labelled; you just
-feel it. Full reasoning, including how `press.stripe.com` actually works (three.js +
-`MeshPhongMaterial` with shader injection, per-book JSON materials), is in `docs/PLAN.md`.
+Thickness encodes runtime. Foil encodes the title treatment. Full reasoning, including how
+`press.stripe.com` actually works (three.js + `MeshPhongMaterial` with shader injection,
+per-book JSON materials), is in `docs/PLAN.md`.
+
+> **Amended 2026-08-18 by the owner.** This line used to end "Nothing is labelled; you just
+> feel it." It no longer holds: every spine now carries a **format mark** — a studio-style
+> coloured foot band, `docs/05-3d-shelf.md` §12 Q7/Q19. I argued against it on exactly the
+> grounds the old sentence stated, and **the owner overruled me.** It is a decision, not
+> drift. Do not "restore" the unlabelled rule.
+>
+> What survives is the *spirit*: the mark is a **band, not a word** — no release ever gets
+> "BLU-RAY" spelled out on it. Era is still read, never announced.
 
 ## Docs
 
