@@ -612,9 +612,18 @@ function BlankCover({
  */
 const PRESENT_YAW = -0.19;
 
-/** Where the case comes to: centred in the bay, at eye level, an arm's length in front of the
- * viewer. `HOLD_GAP` is measured back from where the camera stands. */
-const HOLD_GAP = 2.8;
+/**
+ * Where the case comes to: centred in the bay, at eye level, an arm's length in front of the
+ * viewer. `HOLD_GAP` is measured back from where the camera stands, so it is the one number
+ * that sets how large the held case draws.
+ *
+ * Widened from 2.8 after photographing the scene for the first time (`e2e/shelf-frames.spec.ts`).
+ * At 2.8 the case was 27% of the frame's width, ran off the bottom edge so its own cover could
+ * not be read end to end, and completely hid the bay it had just come out of — including the
+ * brass nameplate saying which section you are standing in. Every one of those is a defect the
+ * arithmetic could not show me and a screenshot showed immediately.
+ */
+const HOLD_GAP = 3.9;
 
 /**
  * How far below eye level a case is held. You do not hold an object you are inspecting dead in
@@ -1784,7 +1793,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   }
 
   return (
-    <div ref={surface} className="relative h-[62vh] w-full touch-none sm:h-[85vh]">
+    <div ref={surface} className="relative flex min-h-0 w-full flex-1 flex-col touch-none">
       <div className="flex flex-wrap items-baseline gap-3 px-6 pb-3">
         <button
           type="button"
@@ -1888,6 +1897,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         </p>
       </div>
       <Canvas
+        className="min-h-0 flex-1"
         // ponytail: no shadow maps. A shadow-casting light doubles every case draw call
         // (a depth pass over each InstancedMesh, same cost as the colour pass) for 152
         // instanced objects on the no-discrete-GPU laptop this is designed for, and this

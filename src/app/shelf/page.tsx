@@ -47,7 +47,7 @@ export const metadata: Metadata = {
 // Spike, not a feature yet -- see CLAUDE.md / AGENTS.md.
 export default function ShelfPage() {
   return (
-    <main className="min-h-screen bg-shelf-dark">
+    <main className="flex h-dvh flex-col bg-shelf-dark">
       <div className="px-6 py-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="font-display text-xs uppercase tracking-[0.2em] text-label-dim">
