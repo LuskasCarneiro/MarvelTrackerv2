@@ -258,6 +258,39 @@ is brightest.
 
 ## Log
 
+### 2026-08-18 — the owner rejected the look, and the rebuild was settled by interview
+
+**The owner saw it and did not like it.** Asked which of four things was wrong they picked
+three — objects don't read as objects, the room isn't a room, the interface — and pointedly
+did **not** pick "the concept isn't landing". What they volunteered as good: the pull-out
+motion and the way a case comes from and returns to the shelf.
+
+Twenty-three decisions settled by interview. **All of it is in `docs/05-3d-shelf.md` §12,
+written to be executed by a cold session.** Do not re-derive it here.
+
+The root cause is one line `PLAN.md` §6 wrote three months ago and the code never honoured:
+*"a shelf shows you spines first."* Every case is placed cover-out, so it photographs as a
+poster wall because functionally it is one — and thickness, which encodes runtime, is the one
+dimension you cannot see when everything faces you.
+
+**Five decisions went against my recommendation** and are marked as such in §12, so a future
+session knows they were argued and lost rather than drifted into: the format mark on spines
+(Q7), stylised rather than photoreal (Q2), full interior rather than dim architecture (Q3),
+strip the chrome to nothing rather than float it (Q4), and no committed framerate target (Q14).
+
+**`CLAUDE.md` was amended in the same change.** "Nothing is labelled; you just feel it" is no
+longer true once every spine carries a format mark. It is annotated rather than deleted, so
+nobody restores the rule I lost the argument about.
+
+**The §6 asset finding from earlier today is retired**, and honestly: the reasoning was still
+wrong — I cited a generative-AI rule to justify skipping photographic assets it said nothing
+about — but the outcome is now right, because photographic albedo carries baked lighting and
+is the wrong input for the stylised finish the owner chose. §6's asset table gets amended
+rather than complied with.
+
+**Still true and still first in the order of work:** no frame-time number from the owner's
+actual machine exists. Every measurement in this file is headless software rasterisation.
+
 ### 2026-08-18 — the harness was pointed everywhere except the shelf
 
 **`e2e/screenshots.spec.ts` never had `/shelf` in its route list.** It shot `/`, two title

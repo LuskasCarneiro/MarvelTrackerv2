@@ -421,6 +421,137 @@ A ceiling sitting directly on the furniture reads as a box, not a room.
 
 ---
 
+## 12. The presentation rebuild — settled with the owner, 2026-08-18
+
+**§§1–11 are how the shelf was built. This section is how it gets rebuilt, and it supersedes
+their presentation decisions wherever they conflict.** Settled by interview after the owner
+saw it and said, in as many words, that they did not like how it looked. Twenty-three
+decisions, all theirs; where they overruled a recommendation of mine it is marked, because a
+cold session that disagrees needs to know it was already argued and lost.
+
+### What was wrong, in the owner's own division
+
+Asked which of four things was bothering them, the owner picked three and left one alone:
+
+| | |
+|---|---|
+| **Objects don't read as objects** | picked |
+| **The room isn't a room** | picked |
+| **The interface around it** | picked |
+| The concept itself isn't landing | **not picked — the concept is fine** |
+
+**What is explicitly liked and must survive: the pull-out motion, and the way a case comes
+from and returns to the shelf.** Stated unprompted. Do not redesign it. Everything in this
+section changes what surrounds that motion, never the motion itself.
+
+### The root cause, which `PLAN.md` §6 named three months ago
+
+> *"a shelf shows you **spines** first"*
+
+Every case is placed **cover-out**, in columns `GAP_X` (2.5cm) apart — `instancing.ts`'s
+`place()` and the loop above it. That is why it photographs as a poster wall: functionally it
+is one. It also hides the concept, because thickness encodes runtime and thickness is the one
+dimension you cannot see when everything faces you.
+
+### The decisions
+
+**Layout and objects**
+
+| # | Decision | |
+|---|---|---|
+| Q1 | **Hybrid spine-out.** Spines by default; whatever is selected is already turned face-on, like a record shop where someone has flipped one forward | |
+| Q7 | **Spine carries title + tint band + format mark** | *owner overruled: I argued (b), title + tint only* |
+| Q19 | Format mark is the **studio-style coloured foot band**, not a word and not a glyph — it survives being seen at spine size, and it is what the real objects do | |
+
+**Finish**
+
+| # | Decision | |
+|---|---|---|
+| Q2 | **Stylised-real**, not photoreal — believable materials and light, deliberately graphic | *owner overruled: I argued photoreal* |
+| Q8 | **Keep procedural textures.** Seamless by construction, parameterised, zero bytes | |
+
+> **This retires the §6 asset finding, and the retirement is the honest part.** I recorded on
+> 2026-08-18 that `PLAN.md` §6 specifies Poly Haven / ambientCG CC0 photographic materials and
+> that `galleryMaterials.ts` substituted procedural noise while misciting §6's generative-AI
+> ban as the justification. **The reasoning was still wrong** — that rule had nothing to say
+> about Poly Haven. But the *outcome* is now correct, because photographic albedo carries
+> baked-in lighting and is the wrong input for a stylised finish. **Amend §6's asset table
+> rather than complying with it.**
+
+**The room**
+
+| # | Decision | |
+|---|---|---|
+| Q3 | **Full interior** — floor, panelled walls, ceiling, visible corners | *owner overruled: I argued for architecture-visible-but-dim* |
+| Q9 | **Alcoved gallery.** Each universe gets its own framed niche, so a section is architectural rather than labelled — the same principle as Q7's tint band | |
+| Q13 | **Three alcoves in frame**: current one centred, one either side. Five reads as mush at full geometry cost | |
+| Q18 | **The gallery ends.** A real end wall at each extreme. This is an archive of a finite thing and a wall says *complete* in a way no copy can. Wrapping would be the only option that lies about the collection | |
+
+**Interface**
+
+| # | Decision | |
+|---|---|---|
+| Q4 | **Strip to nothing.** Controls appear on hover, mouse move or keypress | *owner overruled: I argued for floating the existing bar* |
+| Q6 | **Pointer-led selection, scroll traversal.** Hover turns a spine face-on, click pulls it out, scroll travels the run, drag changes universe | |
+| Q15 | **Scroll also selects** on desktop, hover overriding while the pointer moves — no dead state where you have scrolled somewhere and nothing is presented | |
+| Q10 | **Touch: scroll position selects.** Touch becomes a true subset of desktop rather than a separate mode | |
+| Q17 | **Held-to-peek replaces the wide toggle.** A held key pulls the camera back; two-finger pinch-out on touch. A toggle you can get stuck in was half the original navigation complaint | |
+| Q20 | **Search is both** a `/` shortcut and an entry in the revealed bar | *owner overruled: I argued shortcut only* |
+| Q12 | **Ordering becomes diegetic** — a brass toggle on the gallery wall. It is the one control that changes what the objects *are*, and it earns being an object itself | |
+| Q21 | **Caption reveals with the controls** and fades with them. One rule for chrome, no exceptions | |
+
+**Accessibility — not optional, and the pattern generalises**
+
+| # | Decision | |
+|---|---|---|
+| Q11 | **First Tab reveals the full control bar and focuses the catalogue link.** A keyboard user's first action is Tab, so this is the same reveal a mouse user gets on move — not a compromise. A conventional skip-link was rejected because it hides the *shelf's* controls from keyboard users too | |
+| Q16 | **Every in-room control has a visually-hidden, focusable DOM twin** positioned over its mesh, driving the same state. A mesh is not focusable, not announceable and not in the tab order. **This is the mandated pattern for any future diegetic control, not a one-off for the brass toggle** | |
+| — | **The caption is an `aria-live` region** regardless of Q21, because a screen reader gets nothing from a canvas and the announcement is the only thing standing in for it | |
+
+**Process**
+
+| # | Decision | |
+|---|---|---|
+| Q14 | **No framerate target committed.** Build it and measure | *owner overruled: I argued 60fps* |
+| — | **But measure on real hardware first.** Declining a target is not declining a measurement. Every number in this repo — 1.8fps, 3.5fps, 23 draw calls — comes from headless software rasterisation, which is a comparator and not the truth. Two sessions were tuned against a proxy for a machine nobody has run this on | |
+| Q22 | **Merge PR #11 before starting.** The screenshot harness is the instrument this rebuild is verified with and must not sit behind the thing it exists to check | |
+| Q23 | **Rebuild `/shelf` in place, on a branch.** No `/v2` route — a parallel scene means maintaining two and deciding when to kill one, for a page nobody has bookmarked. Branch previews already give the side-by-side | |
+
+### Required amendments elsewhere — do these in the same change
+
+1. **`CLAUDE.md`: "Nothing is labelled; you just feel it" is no longer true.** Q7 puts a format
+   mark on every spine. Amend the line or a cold session will read it, see the marks, and
+   "fix" them back out. **This was argued and the owner overruled it; it is a decision, not
+   drift.**
+2. **`PLAN.md` §6's asset table** — see the Q8 note above.
+3. **`docs/02-design-system.md`** — the medium eras now have a visible foot-band treatment per
+   era, which is a design-system fact and not a scene detail.
+
+### Order of work
+
+1. Merge PR #11.
+2. **Measure frame time on the owner's actual machine.** Nothing downstream is trustworthy
+   before this number exists.
+3. Spine-out layout in `instancing.ts` — instance matrices need rotation, which they do not
+   currently carry (`matrix()` is translate/scale only). This is the largest single piece.
+4. The hybrid turn, and the pull-out carrying its 90° rotation. **Guard the existing motion
+   with the screenshot harness before touching it** — it is the one thing the owner likes.
+5. Spine artwork: tint band and foot band into `spineAtlas.ts`.
+6. The alcoved room, end walls, and the lighting to make it read.
+7. Strip the chrome to the reveal model; diegetic toggle plus its DOM twin.
+8. Re-tune `HOLD_GAP` and `TURN_APPROACH` — both were fitted to cover-out cases, and both
+   have recorded reasoning that stays true even as the values change.
+
+### Known and deliberately deferred
+
+- **The cover atlas is 3 MB and loads eagerly.** With spines primary it may no longer need to.
+  Blocked on step 2's measurement, so not decided here.
+- **The back cover's top ~15% is dead space**, and its note contrast is unmeasured —
+  `scripts/contrast.test.ts` guards DOM colours, not text baked into a texture and then tone
+  mapped. That gap is now where the risk lives.
+
+---
+
 ## Known costs and open questions
 
 - **`/shelf` transfers 3.7 MB**, almost all atlas. This is where KTX2/Basis finally earns its
