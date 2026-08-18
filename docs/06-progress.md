@@ -287,7 +287,28 @@ The layout fix alone bought **a third level of every bay**. Changed one at a tim
 between, because they would have masked each other: widening the gap alone would have "fixed"
 an overflow that was really the layout, and left the scene composing off-screen for good.
 
-Known and not fixed: the caption card overlaps the lower third of the held case.
+#### Then the turned state, photographed for the first time
+
+**The curated note was rendering at about seven pixels.** 152 paragraphs, migrated verbatim
+because §6 calls them the most valuable and least regenerable thing in v1, and none of them
+had ever been legible on the shelf. Widening `HOLD_GAP` above made it marginally worse.
+
+Scale mismatch, not a type choice: the back is a **1024px canvas on a plane ~250px wide on
+screen**, so everything in that texture arrives at roughly a quarter of its drawn size.
+
+Fixed with distance, not type size. `TURN_APPROACH = 1.5` brings the case closer once turned —
+what a person does with an object they have flipped over — which fixes the whole hierarchy at
+once rather than one element at a time. Turn easing moved above the hold point in the frame
+loop, since the hold point now depends on it. A turned case now covers its bay, which is
+correct: browsing wants to know where it is standing, reading does not.
+
+The caption card is dropped entirely while turned. It repeated in chrome what the back cover
+already prints (title, year, format) **and** covered the note's last lines. Only the turn-back
+control stays.
+
+Still open: the top ~15% of the back cover is dead space, and the note's contrast on the
+canvas texture is unmeasured — `scripts/contrast.test.ts` guards DOM colours, not text baked
+into a texture and then tone-mapped.
 
 #### `PLAN.md` §6 is narrower than it had been treated, and this deviated from it
 
