@@ -626,6 +626,21 @@ const PRESENT_YAW = -0.19;
 const HOLD_GAP = 3.9;
 
 /**
+ * How much closer a case comes once it is turned over. You do not read the back of something
+ * at arm's length — you bring it in, which is the whole reason a person turns an object at
+ * all. It is also the only fix that reaches the real defect: the back cover is a 1024px canvas
+ * mapped onto a plane roughly 250px wide on screen, so the curated note — the thing `PLAN.md`
+ * §6 calls the most valuable and least regenerable part of v1 — was landing at about seven
+ * pixels. Type size fights that one element at a time; distance fixes the whole hierarchy at
+ * once, and is what actually happens in the hand.
+ *
+ * The side effect is that a turned case covers its bay. That is correct here and was not
+ * correct for the presented state: browsing wants to know where it is standing, reading does
+ * not.
+ */
+const TURN_APPROACH = 1.5;
+
+/**
  * How far below eye level a case is held. You do not hold an object you are inspecting dead in
  * front of your pupils, and the composition agrees: at eye level the case sat exactly over the
  * bay's brass nameplate, hiding the one element that says which section you are standing in.
@@ -1067,15 +1082,21 @@ function ShelfContent({
     // subtle fault only because `const` is honest about it.
     const bayCentreX = (universe.startX + universe.endX) / 2;
     const eyeY = universe.centreY + EYE_OFFSET_Y;
-    // Derived from where the viewer is standing rather than from the shelf, so it is always
-    // the same arm's length from the eye whichever bay you are at and whichever shelf the
-    // title sits on.
-    const hold: Hold = { x: bayCentreX, y: eyeY - HOLD_DROP, z: (wide ? WIDE_Z : STAND_Z) - HOLD_GAP };
 
     // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
-    // rather than travels, exactly as the camera does.
+    // rather than travels, exactly as the camera does. Computed before the hold point rather
+    // than after, because the hold point now depends on it.
     turn.current += ((turnedItem ? 1 : 0) - turn.current) * (instant ? 1 : Math.min(1, dt * TURN_SPEED));
     if (turn.current < 0.001) turn.current = 0;
+
+    // Derived from where the viewer is standing rather than from the shelf, so it is always
+    // the same arm's length from the eye whichever bay you are at and whichever shelf the
+    // title sits on — and closer by TURN_APPROACH once turned, so the back can be read.
+    const hold: Hold = {
+      x: bayCentreX,
+      y: eyeY - HOLD_DROP,
+      z: (wide ? WIDE_Z : STAND_Z) - HOLD_GAP + TURN_APPROACH * turn.current,
+    };
 
     // A turned case is held fully out. Without the max() the walk's own sine would keep
     // running underneath and the case you are reading would sink back into the shelf while
@@ -1980,11 +2001,21 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           {/* The scrim is pointer-events-none so it never eats a click meant for the shelf
               behind it; the one control inside it opts back in. */}
           <div className="pointer-events-auto flex flex-col items-center gap-1 rounded bg-shelf-dark px-5 py-2 text-center">
-          <p className="font-display text-sm uppercase tracking-[0.16em] text-label-bright">{active.label}</p>
-          <p className="text-xs text-label-dim">
-            {order === "release" ? active.releaseYear : storyYearLabel(active.storyYear)} · {FORM_NAMES[active.form]} ·
-            click to open
-          </p>
+          {/* Dropped once the case is turned, for two reasons that happen to agree. It is
+              redundant — the back cover prints the title, the year and the format itself, so
+              this repeats in chrome what the object already says. And it is harmful: the two
+              lines make the card tall enough to cover the last lines of the curated note,
+              which is the most valuable and least regenerable thing in the archive
+              (`PLAN.md` §6). Photographed before it was believed. */}
+          {!turned && (
+            <>
+              <p className="font-display text-sm uppercase tracking-[0.16em] text-label-bright">{active.label}</p>
+              <p className="text-xs text-label-dim">
+                {order === "release" ? active.releaseYear : storyYearLabel(active.storyYear)} ·{" "}
+                {FORM_NAMES[active.form]} · click to open
+              </p>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setTurned((was) => !was)}
