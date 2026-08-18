@@ -258,6 +258,58 @@ is brightest.
 
 ## Log
 
+### 2026-08-18 — the harness was pointed everywhere except the shelf
+
+**`e2e/screenshots.spec.ts` never had `/shelf` in its route list.** It shot `/`, two title
+pages and `/sign-in`. So the one part of this app that cannot be reviewed by reading its
+source was the one part the screenshot harness did not photograph — which is v1's most
+expensive lesson (`CLAUDE.md`), re-made here. Two sessions of lighting, camera and shader work
+went by against a scene that had never been looked at.
+
+`e2e/shelf-frames.spec.ts` now captures four states in one test: at rest, presented, turned,
+and standing back. Sequential, so one test — the software-GL warm-up costs seconds there is no
+reason to pay four times. Driven through the named buttons, not clicks at guessed canvas
+coordinates: the case moves, the button does not.
+
+**Its control assertion checks tonal spread, not file size.** A black frame and a lit gallery
+land within a few KB of each other once compressed, so size proves nothing about whether WebGL
+drew. Per channel, because a scene that lost its textures but kept its lights would still have
+luminance spread while collapsing towards grey.
+
+#### What the first photograph found
+
+| defect | cause | fix |
+|---|---|---|
+| scene composed into space never on screen | surface was `h-[85vh]` but sits *below* the page header, so its bottom ran past the fold; R3F sizes to 100% of parent and is a flow sibling after the controls row, so it overflowed by that row's height on top | page is a fixed-height flex column, surface takes what remains, canvas takes what the controls row leaves — CSS, no JS measurement |
+| held case 27% of frame width, ran off the bottom, hid its own bay and nameplate | `HOLD_GAP` 2.8 | 3.9 → 19% of width, section visible around it |
+
+The layout fix alone bought **a third level of every bay**. Changed one at a time and re-shot
+between, because they would have masked each other: widening the gap alone would have "fixed"
+an overflow that was really the layout, and left the scene composing off-screen for good.
+
+Known and not fixed: the caption card overlaps the lower third of the held case.
+
+#### `PLAN.md` §6 is narrower than it had been treated, and this deviated from it
+
+Re-read while assessing whether the newly-supplied Gemini key changes anything. §6 rejects
+generative AI for product assets on **format** grounds, in as many words: *"format mismatches,
+not quality gaps"* — the shelf needs seamlessly tiling textures with split normal/roughness
+channels and an equirectangular HDRI. In the same table it **specifies the source it does
+want**: Poly Haven / ambientCG, CC0, no key, no account.
+
+Those were never fetched. `galleryMaterials.ts` builds procedural canvas noise instead, and its
+header comment justifies that by citing §6's ban on generative AI — but §6 does not ban Poly
+Haven, it prescribes it. A rule about one thing was used to wave away a different thing.
+**Not corrected yet; recorded so it is not re-derived as a decision.**
+
+On the models themselves, with the key verified working (`nano-banana-pro-preview`,
+`gemini-3-pro-image`, `gemini-omni-flash-preview`, `veo-3.1-*` all reachable): Omni outputs
+video and nothing in this pipeline consumes video. Nano Banana's images would have to be
+desaturated to the single channel the wood shader actually samples, arriving with lighting
+baked in and only approximately seamless — against tiles that are seamless by construction.
+Their real use is concept targets and one-off flat graphics, neither of which is a product
+asset. **The right fix for materials is the free CC0 photographs §6 already named.**
+
 ### 2026-08-12 — the atlas was being re-downloaded on every visit
 
 Measured first, in a browser, before touching anything:
