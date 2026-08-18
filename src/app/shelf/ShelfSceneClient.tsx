@@ -10,7 +10,7 @@ import type { UniverseData } from "./instancing";
 const ShelfScene = dynamic(() => import("./ShelfScene"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[85vh] items-center justify-center text-sm text-label-dim">
+    <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-label-dim">
       Building the shelf…
     </div>
   ),
