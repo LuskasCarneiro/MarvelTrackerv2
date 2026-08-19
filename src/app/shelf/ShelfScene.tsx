@@ -464,6 +464,10 @@ function buildMediumMeshes(
     specular: bm.specular,
   });
   const body = new THREE.InstancedMesh(bodyGeometry, bodyMaterial, count);
+  // The cases are the things that must darken the boards under them and the panel behind
+  // them. Receive too: a case standing next to a taller one should sit in its shadow.
+  body.castShadow = true;
+  body.receiveShadow = true;
   row.bodyMatrices.forEach((m, i) => body.setMatrixAt(i, m));
   body.instanceMatrix.needsUpdate = true;
 
@@ -648,6 +652,10 @@ function buildBoardMeshes(
     mix: GALLERY_COLOUR_MIX.mahogany,
   });
   const slab = new THREE.InstancedMesh(unitBox, slabMaterial, slabMatrices.length);
+  // The joinery both casts and receives: the run has to throw a shadow onto the wall behind
+  // it -- which is the whole of not looking stuck on -- and take the cases' shadows itself.
+  slab.castShadow = true;
+  slab.receiveShadow = true;
   slabMatrices.forEach((m, i) => slab.setMatrixAt(i, m));
   slab.instanceMatrix.needsUpdate = true;
   tintByWear(slab, slabWear, WOOD_FRESH, WOOD_WORN);
@@ -665,6 +673,8 @@ function buildBoardMeshes(
     mix: GALLERY_COLOUR_MIX.brass,
   });
   const lip = new THREE.InstancedMesh(unitBox, lipMaterial, lipMatrices.length);
+  lip.castShadow = true;
+  lip.receiveShadow = true;
   lipMatrices.forEach((m, i) => lip.setMatrixAt(i, m));
   lip.instanceMatrix.needsUpdate = true;
   tintByWear(lip, lipWear, LIP_FRESH, LIP_WORN);
@@ -806,6 +816,9 @@ const TURN_VISIBLE = 0.02;
  * positions chosen in different weeks, one of which later moved.
  */
 const LAMP_ABOVE = 2.2;
+/** The cone. Wide enough to wash a whole section, narrow enough that its edge falls off within
+ *  the frame rather than lighting the room evenly and casting nothing. */
+const LAMP_ANGLE = 1.0;
 const LAMP_HEIGHT = -1.2;
 /**
  * The shelf lamp sits close to the shelf face, and that matters more than it looks.
@@ -828,7 +841,7 @@ const LAMP_Z = 2.2;
  * its own: a lamp bright enough to reach the floor is a lamp bright enough to destroy the case
  * standing next to it. What changed is the distance, so the intensity had to follow it.
  */
-const LAMP_INTENSITY = 20;
+const LAMP_INTENSITY = 62;
 /**
  * Raised from 15 once there was actually a room to light. With no floor and no walls the reach
  * only had to cover the cases; now it has to *land* on something — a lamp whose pool dies
@@ -1107,7 +1120,7 @@ function ShelfContent({
   // without this guard every swipe opens a title page.
   const pressedAt = useRef<{ x: number; y: number } | null>(null);
 
-  const lamp = useRef<THREE.PointLight>(null);
+  const lamp = useRef<THREE.SpotLight>(null);
   const holdLight = useRef<THREE.PointLight>(null);
   const posed = useRef<ShelfItem | null>(null);
   const backRef = useRef<THREE.Mesh>(null);
@@ -1338,6 +1351,12 @@ function ShelfContent({
     if (lamp.current) {
       lamp.current.position.x = camera.position.x;
       lamp.current.position.y = universe.centreY + universe.height / 2 + LAMP_ABOVE;
+      // A SpotLight aims at its `target`, which is a plain Object3D that three does *not* add
+      // to the scene for you — so its world matrix is never updated by the normal traversal
+      // and the cone stays pointing wherever it was born. Moving it here and updating it by
+      // hand is the whole fix; without it the lamp lights the floor and nothing else.
+      lamp.current.target.position.set(camera.position.x, universe.centreY, 0);
+      lamp.current.target.updateMatrixWorld();
     }
     if (holdLight.current) {
       holdLight.current.position.set(hold.x, hold.y + HOLD_LIGHT_UP, hold.z + HOLD_LIGHT_FORWARD);
@@ -1431,13 +1450,27 @@ function ShelfContent({
         decay={1.6}
         color="#ffe6c4"
       />
-      <pointLight
+      {/* A spotlight rather than a point light, purely so it can cast. A point light's shadow
+          is a cube map — six depth passes for one lamp — where a spotlight's is a single map,
+          and the lamp already only ever throws its light one way: down at the shelf. */}
+      <spotLight
         ref={lamp}
         position={[universe.startX, LAMP_HEIGHT, LAMP_Z]}
+        target-position={[universe.startX, LAMP_HEIGHT - 4, 0]}
         intensity={LAMP_INTENSITY}
         distance={LAMP_REACH}
+        angle={LAMP_ANGLE}
+        penumbra={0.75}
         decay={1.5}
         color="#ffd9ad"
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        // The default near of 0.5 puts the depth range's precision miles from where the
+        // geometry is, which is what produces shadow acne on thin objects like a 3mm card.
+        shadow-camera-near={0.5}
+        shadow-camera-far={LAMP_REACH}
+        shadow-bias={-0.0006}
+        shadow-normalBias={0.02}
       />
       {/* **There is one travelling lamp, not three. That used to be a measurement, and the
           measurement was wrong.**
@@ -1496,6 +1529,8 @@ function Plaques({ bays, atlas, texture }: { bays: UniverseShelf[]; atlas: Plaqu
     // lamp" — so a bright specular on top of that is the room lighting it twice.
     const material = createCoverMaterial(texture, 14, null, { specular: "#241f18" });
     const instanced = new THREE.InstancedMesh(geometry, material, bays.length);
+    // A screwed-on plate stands proud of the wall, so it throws a small shadow onto it.
+    instanced.castShadow = true;
     const matrix = new THREE.Matrix4();
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
@@ -1581,16 +1616,28 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
 
   return (
     <group>
-      <mesh position={[(startX + endX) / 2, floorY + height / 2, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
+      {/* The walls receive. This is the single most important receiveShadow in the scene:
+          the run is mounted on this surface, and an object that does not darken what it hangs
+          on is not in the room, whatever else is done to it. */}
+      <mesh receiveShadow position={[(startX + endX) / 2, floorY + height / 2, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
         <boxGeometry args={[width, height, depth]} />
-        {/* No bump on the plaster. Its own module describes it as "almost unfelt" and sets a
-            bumpScale of 0.006 to keep it that way — so it was paying two extra texture fetches
-            per fragment, across the walls and ceiling, for something deliberately at the edge
-            of perception. The walls are lit and coloured, which is all a wall has to be. */}
-        <meshPhongMaterial side={THREE.BackSide} color={ROOM_WALL} shininess={2} specular="#171310" />
+        {/* **The plaster is back, and it was a mistake to take it out.** The note here used to
+            say the bump was "deliberately at the edge of perception" and so not worth two
+            texture fetches per fragment. Both halves were wrong. The cost was measured through
+            software rasterisation; and a wall of one flat colour is the single clearest tell
+            that a room is not a room — being at the edge of perception is exactly the point of
+            it, because real plaster is never uniform and the eye knows it immediately. */}
+        <meshPhongMaterial
+          side={THREE.BackSide}
+          color={ROOM_WALL}
+          shininess={2}
+          specular="#2a251f"
+          bumpMap={plasterTexture}
+          bumpScale={ROOM_BUMP_SCALE.plaster}
+        />
       </mesh>
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(startX + endX) / 2, floorY, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[(startX + endX) / 2, floorY, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
         <planeGeometry args={[width, depth]} />
         {/* Boards have a low sheen along the grain — enough that the lamp draws a soft pool on
             the floor as it travels, which is most of what sells the room. Not a gloss: a
@@ -1604,7 +1651,7 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
         />
       </mesh>
 
-      <mesh position={[(startX + endX) / 2, floorY + SKIRTING_HEIGHT / 2, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
+      <mesh castShadow receiveShadow position={[(startX + endX) / 2, floorY + SKIRTING_HEIGHT / 2, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
         <boxGeometry args={[width, SKIRTING_HEIGHT, SKIRTING_DEPTH]} />
         <meshPhongMaterial color={ROOM_SKIRTING} shininess={22} specular="#332a20" />
       </mesh>
@@ -1620,7 +1667,7 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
 
       {/* A picture rail, which is what a room like this actually has where wall meets ceiling,
           and what stops the corner being a bare seam between two flat colours. */}
-      <mesh position={[(startX + endX) / 2, ceilingY - RAIL_DROP, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
+      <mesh castShadow receiveShadow position={[(startX + endX) / 2, ceilingY - RAIL_DROP, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
         <boxGeometry args={[width, RAIL_HEIGHT, SKIRTING_DEPTH]} />
         <meshPhongMaterial color={ROOM_SKIRTING} shininess={18} specular="#2b2620" />
       </mesh>
@@ -2203,11 +2250,23 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       </div>
       <Canvas
         className="min-h-0 flex-1"
-        // ponytail: no shadow maps. A shadow-casting light doubles every case draw call
-        // (a depth pass over each InstancedMesh, same cost as the colour pass) for 152
-        // instanced objects on the no-discrete-GPU laptop this is designed for, and this
-        // harness renders through SwiftShader (software GL) -- upgrade path is a single
-        // baked contact-shadow decal per level if a unit reads as floating without one.
+        /**
+         * **Shadows, finally — and the note that used to sit here called this exactly right.**
+         *
+         * It said: no shadow maps, because a shadow-casting light doubles every case draw call
+         * on a laptop with no discrete GPU — with the *upgrade path* being "a contact shadow
+         * per level **if a unit reads as floating without one**". A unit read as floating
+         * without one. The owner said so in those words.
+         *
+         * Both halves of that note have now expired for the same reason: the cost was measured
+         * through SwiftShader, and on the real machine this scene has 60fps of headroom. So it
+         * gets a real shadow rather than a painted-on decal — an object that does not darken
+         * the wall behind it is the single loudest way to say "this is not in the room".
+         *
+         * `soft` maps, not the default hard ones: one lamp in a painted room throws a diffuse
+         * edge, and a razor-sharp shadow would read as a sticker of a different kind.
+         */
+        shadows="soft"
         dpr={[DPR_MIN, DPR_MAX]}
         // Looking along the shelf at an angle, not square at it: at ~35 degrees the cases
         // read as objects with depth rather than as flat posters, which is the entire reason
@@ -2239,11 +2298,11 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             lamp was the only source of anything; pale walls throw most of what hits them back,
             and without that the room reads as a white surface in a dark cave, which is the one
             thing a real room never looks like. */}
-        <ambientLight intensity={1.35} color="#f4ece0" />
+        <ambientLight intensity={0.9} color="#f4ece0" />
         {/* Sky-and-ground bounce, which is what actually separates a wall from a ceiling from a
             floor when there is no strong key light. Two colours and no shadow map — it costs a
             constant per fragment, and the real-hardware measurement leaves room for it. */}
-        <hemisphereLight args={["#efe7da", "#7d6a55", 1.9]} />
+        <hemisphereLight args={["#efe7da", "#7d6a55", 1.25]} />
         {/* The cool fill is gone. It cost a light — every one of which Phong charges against
             every fragment — and it was working against the room: a warm mahogany gallery under
             one tungsten lamp does not want a blue rim on everything. Removing it bought roughly

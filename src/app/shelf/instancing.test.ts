@@ -148,7 +148,10 @@ describe("buildShelfLayout — one continuous run", () => {
     // Per section a board, a top and a back; then two ends for the whole run and a divider
     // between each pair. All instances of the same box, so the run is still the two board
     // draw calls it always was however many sections it grows.
-    expect(layout.boardSlabMatrices).toHaveLength(carcassPieceCount(runs.length));
+    // At least the joinery. The brackets that hold the run on the wall are spaced by *length*
+    // rather than by section, so they cannot be derived from the run count here — what must
+    // hold is that every piece the layout emits has a wear value to go with it.
+    expect(layout.boardSlabMatrices.length).toBeGreaterThanOrEqual(carcassPieceCount(runs.length));
     expect(layout.boardLipMatrices).toHaveLength(runs.length);
     expect(layout.boardSlabWear).toHaveLength(layout.boardSlabMatrices.length);
   });
@@ -234,9 +237,17 @@ describe("buildShelfLayout — one continuous run", () => {
         ...withFloating.universes[0].items.filter((i) => shelvedSlugs.has(i.slug)).map((i) => i.y)
       );
       for (const item of hung) expect(item.y).toBeGreaterThan(topOfShelf);
-      // The joinery is unchanged. Nothing was built to hold these up — that is what "outside
-      // time" means here, and a shelf appearing under them would quietly assert the opposite.
-      expect(withFloating.boardSlabMatrices).toHaveLength(carcassPieceCount(1));
+      // Nothing was built to hold these up — that is what "outside time" means here, and a
+      // shelf appearing under them would quietly assert the opposite. Asserted by comparing
+      // the same run with and without them, rather than against a count that has to be kept in
+      // step with every piece of joinery the run grows.
+      const without = buildShelfLayout(
+        [{ key: "mcu", label: "MCU", titles: mcu, floating: [] }],
+        cells,
+        cellSize,
+        4096
+      );
+      expect(withFloating.boardSlabMatrices).toHaveLength(without.boardSlabMatrices.length);
     });
 
     it("scatters them by a hash of the slug, so the same title hangs in the same place", () => {

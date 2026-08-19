@@ -433,6 +433,37 @@ const BACK_PANEL_THICKNESS = 0.03;
 const CASE_BACK_Z = -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS;
 
 /**
+ * The brackets that hold the run on the wall — see their use for why they exist at all.
+ *
+ * Described as two endpoints rather than as a position and a rotation, because that is how a
+ * bracket is actually specified: it meets the underside of the board *here* and the wall
+ * *there*. The angle and length below are derived, so moving either end cannot leave a strut
+ * pointing into space.
+ */
+const BRACKET_PITCH = 2.4; // roughly every 240mm, which is what carries a loaded shelf
+const BRACKET_THICKNESS = 0.05; // its width along the run — a flat iron strap, seen edge-on
+const BRACKET_DEPTH = 0.13; // how deep the strap is, face-on
+const BRACKET_TOP_Y = -BOARD_THICKNESS; // tucked under the board
+const BRACKET_FOOT_Y = BRACKET_TOP_Y - 0.9;
+const BRACKET_FRONT_Z = 0.3;
+const BRACKET_BACK_Z = -BOARD_DEPTH / 2;
+const BRACKET_RISE = BRACKET_TOP_Y - BRACKET_FOOT_Y;
+const BRACKET_REACH = BRACKET_FRONT_Z - BRACKET_BACK_Z;
+const BRACKET_LENGTH = Math.hypot(BRACKET_RISE, BRACKET_REACH);
+/**
+ * Pitched about X so the box's long (local Z) axis lies along the strut.
+ *
+ * **Negative**, and the sign is the whole thing. Positive puts the strut's high end against the
+ * wall and its low end out at the front, hanging off nothing — a bracket upside down, which
+ * renders as a row of loose diagonal sticks under the shelf. A bracket is fixed to the wall
+ * *low* and rises to meet the board's front edge.
+ */
+const BRACKET_QUAT = new THREE.Quaternion().setFromAxisAngle(
+  new THREE.Vector3(1, 0, 0),
+  -Math.atan2(BRACKET_RISE, BRACKET_REACH)
+);
+
+/**
  * The joinery, counted so the layout test can assert it without re-deriving it.
  *
  * Each section contributes three box instances — its shelf board, the top board over it and
@@ -680,6 +711,34 @@ export function buildShelfLayout(
     boardSlabMatrices.push(matrix(x, runCentreY, 0, UPRIGHT_WIDTH, runHeight, BOARD_DEPTH));
     boardSlabWear.push(endWear[i]);
   });
+
+  // **Brackets.** The run is mounted on a wall at eye height, and the owner's words were that
+  // the shelves "seem like they are floating" — which is exactly what a wall-mounted shelf with
+  // no visible support is called. A cast shadow fixes the *detachment*; only a bracket answers
+  // the question of what is holding it up.
+  //
+  // A diagonal strut from under the front of the board back and down to the wall: the ordinary
+  // shelf bracket, and the one shape that reads as support at a glance from any distance.
+  const bracketRun = runRight - runLeft;
+  const bracketCount = Math.max(2, Math.round(bracketRun / BRACKET_PITCH));
+  for (let i = 0; i <= bracketCount; i++) {
+    const x = runLeft + (bracketRun * i) / bracketCount;
+    boardSlabMatrices.push(
+      matrix(
+        x,
+        (BRACKET_TOP_Y + BRACKET_FOOT_Y) / 2,
+        (BRACKET_FRONT_Z + BRACKET_BACK_Z) / 2,
+        BRACKET_THICKNESS,
+        BRACKET_DEPTH,
+        BRACKET_LENGTH,
+        BRACKET_QUAT
+      )
+    );
+    // Brackets take the wear of whatever stands above them, so the ironmongery ages with the
+    // section it carries rather than being a uniform band under an ageing run.
+    const above = sections.find((s) => x >= s.start && x <= s.end);
+    boardSlabWear.push(above?.wear ?? meanWear);
+  }
 
   // Frame the furniture, not just the cases: the carcass runs from its own top board down to
   // below the bottom shelf, and a camera fitted to the cases alone crops both.
