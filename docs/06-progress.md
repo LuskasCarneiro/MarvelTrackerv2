@@ -258,6 +258,34 @@ is brightest.
 
 ## Log
 
+### 2026-08-19 (latest) — "the shelves seem like they are floating"
+
+The owner's words, and they were right three times over. Fixed, and every fix was a constant
+that had outlived its reason:
+
+- **There were no shadows at all.** The note that disabled them named its own upgrade path —
+  a contact shadow *"if a unit reads as floating without one"*. It read as floating without
+  one. **Measured after: 16.7ms p50 and p95, cleaner than the build before them.** The
+  refusal, like the three-lamp one, rested on the SwiftShader number.
+- **Nothing was holding the run up**, which is the literal definition of a floating shelf. It
+  has brackets now — specified as two endpoints, angle and length derived, so neither end can
+  drift into space. The first attempt had the sign inverted, which fixes the strut's high end
+  to the wall and leaves its low end hanging.
+- **The wall was one flat colour.** The plaster texture existed and had been switched off as
+  "at the edge of perception" — which is the entire point of it.
+- **⚠️ The one that took longest: fog to `#14100d` from 13 to 38 units**, left from when the
+  room was near-black. Painting the room white did not touch it, so once the wide shot stood
+  back far enough to see the room, *every surface* was past the fog's far plane and resolved to
+  black. It rendered as a void with a lit case in it and looked exactly like a lighting failure.
+- The wide shot now stands back far enough to show floor, ceiling and both ends — derived from
+  the eye's height above the floor, not dialled in. The room gained a light of its own; the
+  picture light no longer casts, because a room lit through a window has **one** shadow
+  direction and two casters gave every case two shadows.
+
+> **Three times in two days, changing a ground invalidated something measured against the old
+> one** — the text tokens, the lamp intensity, and the fog. When the next ground changes, go
+> looking for the fourth. Vault: *Changing the ground invalidates everything measured against it*.
+
 ### 2026-08-19 (later) — one continuous run, in a room with the lights on
 
 The owner answered §12's open question: **(b), one continuous run**, plus *"dont forget to also
