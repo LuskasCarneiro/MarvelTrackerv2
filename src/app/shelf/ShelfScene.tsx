@@ -296,17 +296,23 @@ const BAY_FILL_X = 0.5;
 const BAY_FILL_Y = 0.6;
 /** Never closer than arm's length, never so far the room stops reading as a room. */
 const STAND_MIN = 3.2;
-const STAND_MAX = 30;
+const STAND_MAX = 44;
 /**
  * How much further back "the whole shelf" stands than the bay distance.
  *
  * Raised from 1.55, and it is doing a different job now. **The close shot cannot show the
  * room** — the camera is locked square-on at eye level, and a person standing at a shelf
  * looking straight ahead sees wall, not floor. That is not a framing bug, it is what facing a
- * wall looks like. So the room is the wide shot's job: back far enough and the picture rail,
- * the ceiling junction and both ends of the run come into frame at once.
+ * wall looks like. So the room is the wide shot's job: back far enough and the floor, the
+ * ceiling, the picture rail and both ends of the run come into frame at once.
+ *
+ * 5.0 rather than 3.2, and derived rather than dialled: the eye sits about 15.9 units above
+ * the floor and 11.2 below the ceiling, so seeing *both* needs a half-frame of 15.9 — which at
+ * this field of view is 41 units back. At 3.2 it stopped just short of the floor and filled
+ * the frame with blank wall instead, which is the one framing that makes a real room read as a
+ * painted backdrop.
  */
-const WIDE_FACTOR = 3.2;
+const WIDE_FACTOR = 5.0;
 
 function standingDistance(
   camera: THREE.PerspectiveCamera,
@@ -341,9 +347,9 @@ const ROOM_BACK_Z = -0.3;
 /**
  * The room's front wall. It must stay comfortably beyond `STAND_MAX`, or the widest shot puts
  * the camera outside the box the room is built from — and since the walls are `BackSide`, that
- * does not error, it simply renders the room inside out and unlit. 42 against a 30 maximum.
+ * does not error, it simply renders the room inside out and unlit. 58 against a 44 maximum.
  */
-const ROOM_FRONT = 42;
+const ROOM_FRONT = 58;
 const ROOM_MARGIN_X = 16;
 /**
  * Air above the run. With the floor 1.4m below it, this puts the ceiling about 2.7m up — an
@@ -386,6 +392,13 @@ const ROOM_FLOOR = "#8d7a63";
 const ROOM_SKIRTING = "#c9c0b1";
 /** The ceiling, lighter than the walls the way a ceiling is nearly always painted. */
 const ROOM_CEILING = "#e6e0d6";
+/**
+ * The air, and what the canvas clears to. A shade below the wall so distance still reads as
+ * distance — but a *pale* shade, because in a lit room the far end of anything goes hazy, not
+ * black. Used for both, so nothing can ever peek past the room into a differently-coloured
+ * void.
+ */
+const ROOM_HAZE = "#c4bcae";
 
 /**
  * How strongly each form's printing is debossed, and how much of its title treatment is foil.
@@ -819,6 +832,16 @@ const LAMP_ABOVE = 2.2;
 /** The cone. Wide enough to wash a whole section, narrow enough that its edge falls off within
  *  the frame rather than lighting the room evenly and casting nothing. */
 const LAMP_ANGLE = 1.0;
+
+/**
+ * Where the room's general light comes from: high, in front, and off to one side — the
+ * direction a window is, which is the only lighting a viewer will read as "a room" without
+ * being shown the window itself. Off-axis on purpose: a light square to the wall flattens the
+ * shelf's brackets and its shadow into nothing.
+ */
+const ROOM_LIGHT_X = -26;
+const ROOM_LIGHT_Y = 30;
+const ROOM_LIGHT_Z = 26;
 const LAMP_HEIGHT = -1.2;
 /**
  * The shelf lamp sits close to the shelf face, and that matters more than it looks.
@@ -1463,14 +1486,10 @@ function ShelfContent({
         penumbra={0.75}
         decay={1.5}
         color="#ffd9ad"
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-        // The default near of 0.5 puts the depth range's precision miles from where the
-        // geometry is, which is what produces shadow acne on thin objects like a 3mm card.
-        shadow-camera-near={0.5}
-        shadow-camera-far={LAMP_REACH}
-        shadow-bias={-0.0006}
-        shadow-normalBias={0.02}
+        // **Deliberately not a caster.** It was, briefly, and two shadow maps is both slower
+        // than this scene should be and *wrong*: a room lit through a window has one shadow
+        // direction, and a second one from a picture light gave every case two shadows going
+        // different ways. The room light casts; this one is the accent that picks out the bay.
       />
       {/* **There is one travelling lamp, not three. That used to be a measurement, and the
           measurement was wrong.**
@@ -2263,10 +2282,11 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
          * gets a real shadow rather than a painted-on decal — an object that does not darken
          * the wall behind it is the single loudest way to say "this is not in the room".
          *
-         * `soft` maps, not the default hard ones: one lamp in a painted room throws a diffuse
-         * edge, and a razor-sharp shadow would read as a sticker of a different kind.
+         * Plain `shadows`, not `"soft"`: that maps to PCFSoftShadowMap, which three now warns
+         * is deprecated on every single frame. The softness comes from the light being a broad
+         * room source rather than from the filter.
          */
-        shadows="soft"
+        shadows
         dpr={[DPR_MIN, DPR_MAX]}
         // Looking along the shelf at an angle, not square at it: at ~35 degrees the cases
         // read as objects with depth rather than as flat posters, which is the entire reason
@@ -2284,12 +2304,26 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,
         }}
-        onCreated={({ gl }) => gl.setClearColor("#14100d")}
+        onCreated={({ gl }) => gl.setClearColor(ROOM_HAZE)}
       >
-        {/* Fog in the background colour, as CaseScene.tsx does. With the lamp's falloff this
-            is the second half of "no visible end": light stops reaching, then the air closes,
-            and the neighbouring universes wait in the dark. */}
-        <fog attach="fog" args={["#14100d", 13, 38]} />
+        {/*
+          **Fog in the *room's* colour, and this was the whole of the black wide shot.**
+
+          It used to be `#14100d` from 13 to 38 units — near-black, tuned when the room was
+          near-black, where it did the second half of "no visible end": light stops reaching,
+          then the air closes, and the neighbouring bays wait in the dark.
+
+          Painting the room white did not touch it, so the far wall was still being blended to
+          black. It only showed once the wide shot pulled back to 41 units — past the fog's own
+          far plane — at which point *every surface in the room* resolved to the fog colour and
+          the room rendered as a void with a lit case floating in it. It looked like a lighting
+          failure and it was a leftover constant.
+
+          Now the haze is the room's own tone and it starts beyond the widest standing
+          distance, so it softens the far ends of the run without touching what you are
+          looking at. Aerial perspective in a bright room is pale, not black.
+        */}
+        <fog attach="fog" args={[ROOM_HAZE, 52, 150]} />
 
         {/* A dim room, not a display case. The warm key is the lamp that travels with you,
             inside ShelfContent; what is left here is enough ambience that an unlit cover is
@@ -2303,6 +2337,28 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             floor when there is no strong key light. Two colours and no shadow map — it costs a
             constant per fragment, and the real-hardware measurement leaves room for it. */}
         <hemisphereLight args={["#efe7da", "#7d6a55", 1.25]} />
+        {/* The room's own daylight. Ambient and hemisphere alone left everything outside the
+            picture light's cone almost black, which only showed once the wide shot pulled back
+            far enough to see the room — the close shot is nearly all cone and hid it.
+            It **casts**, on a wide orthographic frustum: a fill that did not would have
+            softened the shelf's shadow back out of existence, and that shadow is the whole
+            reason the run stopped looking stuck to the wall. Two shadow maps, and the real
+            hardware has the headroom for both. */}
+        <directionalLight
+          position={[ROOM_LIGHT_X, ROOM_LIGHT_Y, ROOM_LIGHT_Z]}
+          intensity={1.15}
+          color="#f7f1e6"
+          castShadow
+          shadow-mapSize={[1024, 1024]}
+          shadow-camera-left={-70}
+          shadow-camera-right={70}
+          shadow-camera-top={60}
+          shadow-camera-bottom={-60}
+          shadow-camera-near={1}
+          shadow-camera-far={160}
+          shadow-bias={-0.0008}
+          shadow-normalBias={0.03}
+        />
         {/* The cool fill is gone. It cost a light — every one of which Phong charges against
             every fragment — and it was working against the room: a warm mahogany gallery under
             one tungsten lamp does not want a blue rim on everything. Removing it bought roughly
