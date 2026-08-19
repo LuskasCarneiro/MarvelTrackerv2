@@ -65,11 +65,11 @@ export function packPlaqueCells(
 // than a saturated yellow, so the ground gradient below runs between the two BRASS tones
 // only; the bevel and the engraving take lighter/darker relatives of that same warm hue so
 // the whole plaque reads as one material lit from one place, not four unrelated colours.
-const BRASS_LIGHT = '#c9a75f'; // ground gradient, top — the face catching the room's lamp
-const BRASS_DARK = '#8a6f3e'; // ground gradient, bottom — turning away from the light
+const BRASS_LIGHT = '#a8874a'; // ground gradient, top — the face catching the room's lamp
+const BRASS_DARK = '#6d572f'; // ground gradient, bottom — turning away from the light
 const BEVEL_LIGHT = '#e8cf94'; // top/left edge: a machined edge catches more light than the flat face does
 const BEVEL_DARK = '#5a4726'; // bottom/right edge, and reused for the inner rule — the shadow side of the same bevel
-const ENGRAVE_SHADOW = '#3c2e17'; // the incised fill: dark, not black — a shadowed groove in metal, not printed ink
+const ENGRAVE_SHADOW = '#1c1408'; // the incised fill. Darkened once the plate sat directly under the picture light: at the old value the groove clipped to white along with the ground and the name vanished, which reads as a missing texture rather than as blown exposure
 const ENGRAVE_HIGHLIGHT = '#f6e8c8'; // the catch-light peeking out beneath each letter
 
 const BEVEL_WIDTH = 2; // px

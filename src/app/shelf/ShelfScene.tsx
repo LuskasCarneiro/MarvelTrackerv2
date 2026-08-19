@@ -25,6 +25,7 @@ import {
   buildShelfLayout,
   formForStoryYear,
   ROUND_FORMS,
+  SPINE_YAW,
   type Form,
   type ShelfTitleData,
   type ShelfItem,
@@ -81,12 +82,21 @@ function createCoverMaterial(
   /** Spine labels are ink on a transparent sheet laid over the case, so they need alpha
    * testing; covers are opaque and must not pay for it. Alpha *test* rather than blending
    * keeps depth writes on, so a spine still occludes properly and needs no sort order. */
-  options: { alphaTest?: number; bumpScale?: number; itemBump?: number; foil?: number } = {}
+  options: {
+    alphaTest?: number;
+    bumpScale?: number;
+    itemBump?: number;
+    foil?: number;
+    /** Override the default highlight. The nameplate needs it: it hangs directly under the
+     *  picture light, square to the camera, so the default specular lands as a broad
+     *  head-on highlight that clips the plate — engraving included — to flat white. */
+    specular?: string;
+  } = {}
 ): THREE.MeshPhongMaterial {
   const material = new THREE.MeshPhongMaterial({
     map,
     shininess,
-    specular: new THREE.Color("#6b6259"),
+    specular: new THREE.Color(options.specular ?? "#6b6259"),
     ...(substrate ? { bumpMap: substrate, bumpScale: options.bumpScale ?? 0.02 } : {}),
     ...(options.alphaTest ? { transparent: false, alphaTest: options.alphaTest } : {}),
   });
@@ -160,17 +170,21 @@ function createCoverMaterial(
 /**
  * Spine ink, and the one place in this scene that is deliberately unlit.
  *
- * A spine faces sideways while the lamp stands in front of the shelf, so a lit surface there
- * sits at about ninety degrees to its only light source and renders black — the labels were
- * being drawn correctly and lit into invisibility, which reads exactly like a bug in the UVs
- * and is not one. Printing is not a surface that reflects the room anyway; it is ink, and it
- * should read from any angle you can see it from, which is what an unlit material gives.
+ * **The original reason for this expired, and the decision outlived it.** It was unlit
+ * because a spine faced sideways while the lamp stood in front of the shelf, so a lit surface
+ * there sat at about ninety degrees to its only light source and rendered black — labels
+ * drawn correctly and lit into invisibility, which reads exactly like a UV bug and is not
+ * one. Spine-out, the spine faces the lamp squarely and that argument no longer applies.
  *
- * The colour is `--color-label-mid` rather than white so it sits in the design system's
- * ordinary text range instead of glowing off a dark case.
+ * It stays unlit on the *other* half of the old reasoning, which did not expire: printing is
+ * not a surface that reflects a room, it is ink, and it should read from any angle you can
+ * see it from. The cost is honest — a shelf of unlit spines does not fall off towards the
+ * dark ends of the run, so the case bodies behind them carry that depth alone.
  */
 function createSpineMaterial(map: THREE.Texture): THREE.MeshBasicMaterial {
-  const material = new THREE.MeshBasicMaterial({ map, color: "#c8bcac", alphaTest: 0.4 });
+  // White: the atlas now carries its own ink colour, the title's tint band and the format
+  // mark, so anything but white here would multiply all three towards the same warm grey.
+  const material = new THREE.MeshBasicMaterial({ map, alphaTest: 0.4 });
   material.onBeforeCompile = (shader) => {
     shader.vertexShader =
       "attribute vec4 aCell;\nvarying vec4 vCell;\n" +
@@ -220,10 +234,19 @@ function coverGeometryFor(form: Form): THREE.BufferGeometry {
 
 /**
  * Which forms carry a printed spine. A film can, a reel, a tablet and a bound volume have no
- * spine to print — and `none` is a 3mm card standing in for a title that never had a physical
- * release, so giving it a printed spine would assert the opposite of what it means.
+ * spine to print.
+ *
+ * `none` is now in the set, which reverses an earlier call. It was excluded because it stands
+ * for a title that never had a physical release, so printing a spine on it "would assert the
+ * opposite of what it means" — sound while spines faced sideways and were nearly never seen.
+ * Spine-out it is 66 of the 152 titles, and leaving them out meant 43% of the shelf was
+ * unmarked black slivers: no tint, and no format mark, on exactly the era Q7 exists to mark.
+ *
+ * It carries the two *bands* only, never a title — see buildSpineAtlas. A band is the
+ * object's own colour and its era; a printed title is the claim about a physical release that
+ * the old comment was right to refuse.
  */
-const SPINE_FORMS = new Set<Form>(["vhs", "amaray", "bluray", "steel"]);
+const SPINE_FORMS = new Set<Form>(["vhs", "amaray", "bluray", "steel", "none"]);
 
 /**
  * Which forms carry the substrate bump on their printed face.
@@ -248,10 +271,10 @@ const SUBSTRATE_REPEAT = 4;
 /** The range AdaptiveQuality is allowed to move the device pixel ratio through. The floor used
  * to be 1; it is lower now because a machine that cannot hold 1 needs somewhere to go, and a
  * soft image that moves beats a crisp one that stutters. */
-/** Where the viewer stands: a fixed distance from the shelf face, and a little above the
+/** Where the viewer stands: back far enough to frame this bay, and a little above the
  * bay's own mid-height, so the shot sits at standing eye level rather than looking at the
- * middle of the furniture. `WIDE_Z` is the same shot from further back, for taking in the
- * whole bay at once.
+ * middle of the furniture. `WIDE_FACTOR` is the same shot from further back, for taking in
+ * the whole bay at once.
  *
  * The standing distance is a **gallery** distance, not a reading one: close enough that the
  * artwork is legible, far enough that the bay, its neighbours and the room around them are all
@@ -259,9 +282,31 @@ const SUBSTRATE_REPEAT = 4;
  * posters and no architecture, which is the opposite of standing in a room. The case still
  * arrives at the same apparent size whichever distance is chosen, because the hold point is
  * measured back from the viewer rather than forward from the shelf. */
-const STAND_Z = 12.6;
-const WIDE_Z = 19;
-const EYE_OFFSET_Y = 1.1;
+/**
+ * Spine-out, a fixed standing distance stopped working. Cover-out every unit was metres wide
+ * and 12.6 framed them all much the same; packed by thickness a universe of two titles is
+ * 45cm and the MCU is a few times that, so one distance either buries the small units in the
+ * middle of the frame or pushes the big ones off both edges.
+ *
+ * So stand at whatever distance makes *this* bay fill the same fraction of the shot. The
+ * fractions are well under 1 on purpose — the note above still holds, this is a gallery
+ * distance and not a reading one, and the neighbouring alcoves have to stay in view.
+ */
+const BAY_FILL_X = 0.5;
+const BAY_FILL_Y = 0.6;
+/** Never closer than arm's length, never so far the room stops reading as a room. */
+const STAND_MIN = 3.2;
+const STAND_MAX = 17;
+/** How much further back "the whole shelf" stands than the bay distance. */
+const WIDE_FACTOR = 1.55;
+
+function standingDistance(camera: THREE.PerspectiveCamera, width: number, height: number): number {
+  const halfFov = THREE.MathUtils.degToRad(camera.fov) / 2;
+  const forWidth = width / (2 * BAY_FILL_X * Math.tan(halfFov) * camera.aspect);
+  const forHeight = height / (2 * BAY_FILL_Y * Math.tan(halfFov));
+  return THREE.MathUtils.clamp(Math.max(forWidth, forHeight), STAND_MIN, STAND_MAX);
+}
+
 
 const DPR_MIN = 0.7;
 const DPR_MAX = 1.5;
@@ -441,6 +486,13 @@ const PLAQUE_HEIGHT = 0.65;
 const PLAQUE_RISE = 0.62;
 const PLAQUE_Z = 0.26;
 
+/**
+ * How much of the wall above a unit belongs to it: its nameplate, plus air. The camera frames
+ * the unit *and* this, and sits at the middle of the two — which is what a person looking at
+ * a labelled bay actually looks at.
+ */
+const PLAQUE_HEADROOM = PLAQUE_RISE + PLAQUE_HEIGHT + 0.45;
+
 const MAHOGANY_SCALE = 0.22;
 const BRASS_SCALE = 1.4;
 
@@ -596,7 +648,10 @@ function BlankCover({
   }, [tint]);
 
   return (
-    <mesh ref={meshRef} position={position}>
+    // Turned with its case. Unrotated, a 135mm plane parked inside a 12mm spine would stick
+    // out of both sides of it — a bright tinted fin sticking through the shelf, for the three
+    // titles that have no artwork.
+    <mesh ref={meshRef} position={position} rotation={[0, SPINE_YAW, 0]}>
       <planeGeometry args={[size.w, size.h]} />
       <meshPhongMaterial color={color} shininess={4} specular="#1a1714" />
     </mesh>
@@ -695,6 +750,16 @@ const TURN_VISIBLE = 0.02;
 /** Head-height over the run and standing off its face, like a picture light on a wall unit.
  * The reach is short because the falloff is the whole effect: the neighbouring universes
  * are there, in the dark, and you travel to them rather than seeing them all at once. */
+/**
+ * How far above a bay's own top board the picture light hangs. It used to be a fixed height
+ * in the room, which worked while every unit was four levels tall and they all topped out at
+ * the same place. Spine-out the units are sized to their contents — the MCU is two levels and
+ * everything else is one — and a fixed lamp ended up *below* the top of the tall bay and
+ * about a quarter of a unit from its brass nameplate, which blew the plate to flat white. The
+ * same collision as the case-held-inside-the-lamp bug below, from the same cause: two
+ * positions chosen in different weeks, one of which later moved.
+ */
+const LAMP_ABOVE = 2.2;
 const LAMP_HEIGHT = -1.2;
 /**
  * The shelf lamp sits close to the shelf face, and that matters more than it looks.
@@ -707,13 +772,17 @@ const LAMP_HEIGHT = -1.2;
  */
 const LAMP_Z = 2.2;
 /**
- * Back to 95 from the 130 it was briefly raised to. Raising it did light the room, and it also
- * blew the nearest covers out to white — the artwork is the one thing in this scene that must
- * survive, and a lamp bright enough to reach the floor is a lamp bright enough to destroy the
- * case standing next to it. The room is lit by `LAMP_REACH` and the ambient term instead, which
- * change how far the light carries rather than how hard it hits what is closest.
+ * Was 95, and 130 before that. Both were fitted to a room roughly three times this size: a
+ * cover-out bay was metres wide, and the lamp had to throw that far to light one. Spine-out,
+ * the whole catalogue is 1.6m of shelf and the bays are 160-220mm across, so the same lamp now
+ * sits almost on top of everything — it blew every brass nameplate to flat white, the plate
+ * being the one thing mounted directly under it.
+ *
+ * The old warning still holds and is why this went down rather than the ambient going up on
+ * its own: a lamp bright enough to reach the floor is a lamp bright enough to destroy the case
+ * standing next to it. What changed is the distance, so the intensity had to follow it.
  */
-const LAMP_INTENSITY = 95;
+const LAMP_INTENSITY = 42;
 /**
  * Raised from 15 once there was actually a room to light. With no floor and no walls the reach
  * only had to cover the cases; now it has to *land* on something — a lamp whose pool dies
@@ -795,8 +864,18 @@ function poseCase(
   hold: { x: number; y: number; z: number }
 ): THREE.Matrix4 {
   const { matrix, quaternion, euler, position, scale, offset } = scratch;
-  quaternion.setFromEuler(euler.set(0, PRESENT_YAW * amount + TURN_YAW * turn, 0));
-  offset.set(0, 0, faceZ).applyQuaternion(quaternion);
+  // On the shelf the case is spine-out; drawn fully out it is face-on. So the pull *is* the
+  // turn — the motion the owner asked to keep now also does the work of showing you the
+  // cover, instead of a separate flourish bolted onto it. At amount = 0 this equals the
+  // SPINE_YAW the layout baked into the resting matrices, which is what stops the case
+  // jumping the first time it is touched.
+  const yaw = SPINE_YAW * (1 - amount) + PRESENT_YAW * amount + TURN_YAW * turn;
+  quaternion.setFromEuler(euler.set(0, yaw, 0));
+  // The printed faces sit flush inside the case until it is drawn out. Spine-out, a cover
+  // proud of its own face would poke through the neighbour 2mm away; scaling the offset by
+  // the pull parks it inside an opaque box exactly when that would happen, and it is hidden
+  // there rather than fighting for the depth test.
+  offset.set(0, 0, faceZ * amount).applyQuaternion(quaternion);
   // The case travels from its slot to the presentation point in front of the eye, rather than
   // simply nosing forward out of the shelf. With a locked-off camera this is the whole
   // interaction: the viewer does not go to the object, the object comes to the viewer.
@@ -1081,7 +1160,18 @@ function ShelfContent({
     // camera section and was read before it was initialised, which is a crash rather than a
     // subtle fault only because `const` is honest about it.
     const bayCentreX = (universe.startX + universe.endX) / 2;
-    const eyeY = universe.centreY + EYE_OFFSET_Y;
+    // Halfway up the unit *and its nameplate*, not a fixed lift above the unit's own middle.
+    // The old fixed +1.1 was measured against four-level bookcases; spine-out a small universe
+    // is one shelf about two units tall, and a 1.1 lift put the eye level with the top of the
+    // furniture — the camera is locked square-on, so that framed the wall and cropped the
+    // shelf off the bottom of the picture.
+    const eyeY = universe.centreY + PLAQUE_HEADROOM / 2;
+    const standZ =
+      standingDistance(
+        state.camera as THREE.PerspectiveCamera,
+        universe.endX - universe.startX,
+        universe.height + PLAQUE_HEADROOM
+      ) * (wide ? WIDE_FACTOR : 1);
 
     // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
     // rather than travels, exactly as the camera does. Computed before the hold point rather
@@ -1095,7 +1185,7 @@ function ShelfContent({
     const hold: Hold = {
       x: bayCentreX,
       y: eyeY - HOLD_DROP,
-      z: (wide ? WIDE_Z : STAND_Z) - HOLD_GAP + TURN_APPROACH * turn.current,
+      z: standZ - HOLD_GAP + TURN_APPROACH * turn.current,
     };
 
     // A turned case is held fully out. Without the max() the walk's own sine would keep
@@ -1119,7 +1209,15 @@ function ShelfContent({
           mesh.spine.instanceMatrix.needsUpdate = true;
         }
       }
-      blankRefs.current.get(previous.slug)?.position.set(previous.x, previous.y, previous.z + previous.coverZ);
+      // Put it back the same way it is posed, rather than by re-deriving where "back" is:
+      // the case has a resting *rotation* now, not just a resting position, and setting only
+      // the position would leave a blank cover facing the room on a shelf of spines.
+      const blankBack = blankRefs.current.get(previous.slug);
+      if (blankBack) {
+        const m = poseCover(previous, 0, 0, hold);
+        blankBack.position.setFromMatrixPosition(m);
+        blankBack.quaternion.setFromRotationMatrix(m);
+      }
     }
 
     const mesh = meshByForm.get(item.form);
@@ -1184,14 +1282,17 @@ function ShelfContent({
 
     camera.position.x += (bayCentreX - camera.position.x) * ease;
     camera.position.y += (eyeY - camera.position.y) * ease;
-    const standZ = wide ? WIDE_Z : STAND_Z;
     camera.position.z += (standZ - camera.position.z) * ease;
     // Square on, always. `lookAt` every frame rather than once, because the position is still
     // easing towards the bay and a stale orientation reads as a swimming horizon.
     camera.lookAt(bayCentreX, eyeY, 0);
 
-    // The spotlight over this bay travels with the viewer.
-    if (lamp.current) lamp.current.position.x = camera.position.x;
+    // The spotlight over this bay travels with the viewer — and now rides at this bay's own
+    // height, so it is a picture light over whatever furniture is actually there.
+    if (lamp.current) {
+      lamp.current.position.x = camera.position.x;
+      lamp.current.position.y = universe.centreY + universe.height / 2 + LAMP_ABOVE;
+    }
     if (holdLight.current) {
       holdLight.current.position.set(hold.x, hold.y + HOLD_LIGHT_UP, hold.z + HOLD_LIGHT_FORWARD);
       holdLight.current.intensity = HOLD_LIGHT_INTENSITY * amount;
@@ -1340,11 +1441,22 @@ function Plaques({ bays, atlas, texture }: { bays: UniverseShelf[]; atlas: Plaqu
 
     // Brass: hard, warm specular and very little diffuse spread, so the plate catches the bay's
     // light as a highlight rather than glowing evenly like paper.
-    const material = createCoverMaterial(texture, 55, null, {});
+    // Low shininess and a dark highlight: the plate's own lighting is already *painted into*
+    // its texture — the gradient is described in plaques.ts as "the face catching the room's
+    // lamp" — so a bright specular on top of that is the room lighting it twice.
+    const material = createCoverMaterial(texture, 14, null, { specular: "#241f18" });
     const instanced = new THREE.InstancedMesh(geometry, material, bays.length);
     const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    const noRotation = new THREE.Quaternion();
     bays.forEach((bay, i) => {
-      matrix.makeTranslation((bay.startX + bay.endX) / 2, bay.centreY + bay.height / 2 + PLAQUE_RISE, PLAQUE_Z);
+      // Scaled to its bay rather than a fixed size. Units used to be metres wide and one
+      // plate size suited all of them; spine-out a bay can be 160mm across, and a 260mm
+      // nameplate over it would be wider than the bookcase it names.
+      const fit = Math.min(1, ((bay.endX - bay.startX) * 0.92) / PLAQUE_WIDTH);
+      position.set((bay.startX + bay.endX) / 2, bay.centreY + bay.height / 2 + PLAQUE_RISE, PLAQUE_Z);
+      matrix.compose(position, noRotation, scale.set(fit, fit, 1));
       instanced.setMatrixAt(i, matrix);
     });
     instanced.instanceMatrix.needsUpdate = true;
@@ -1606,7 +1718,10 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   // in story order it drops the 14 titles that have no place on a timeline, which would print
   // a blank spine on exactly the cases that are most worth labelling.
   const spineTitles = useMemo<SpineTitle[]>(
-    () => universes.flatMap((u) => u.titles.map((t) => ({ slug: t.slug, label: t.label }))),
+    () =>
+      universes.flatMap((u) =>
+        u.titles.map((t) => ({ slug: t.slug, label: t.label, tint: t.tint, medium: t.medium }))
+      ),
     [universes]
   );
   const shelf = layout.universes[Math.min(current, layout.universes.length - 1)];
@@ -1951,7 +2066,9 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         {/* A dim room, not a display case. The warm key is the lamp that travels with you,
             inside ShelfContent; what is left here is enough ambience that an unlit cover is
             dark rather than black, plus a cool fill for shape. */}
-        <ambientLight intensity={0.13} color="#f0e4d2" />
+        {/* Raised with the lamp's drop: the lamp now throws a much smaller pool, and without
+            this the room beyond it went to black rather than to dark. */}
+        <ambientLight intensity={0.24} color="#f0e4d2" />
         {/* The cool fill is gone. It cost a light — every one of which Phong charges against
             every fragment — and it was working against the room: a warm mahogany gallery under
             one tungsten lamp does not want a blue rim on everything. Removing it bought roughly

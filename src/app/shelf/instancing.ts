@@ -132,14 +132,52 @@ export const COVER_SHININESS: Record<Form, number> = {
   none: 4,
 };
 
-const GAP_X = 0.025; // ~2.5cm between cases in a row
-const ROW_CLEARANCE = 0.15; // headroom above a row's cases, below the board above
+/**
+ * Spines face the room; covers face along it. docs/05-3d-shelf.md §12 Q1, and PLAN.md §6's
+ * "a shelf shows you spines first" — which this code contradicted for three months.
+ *
+ * `spineGeometryFor()` in ShelfScene.tsx already builds the printed spine on the case's local
+ * **-X** face, so the yaw that turns that face to the room is +90 degrees. Everything else
+ * follows from it: local Z (thickness, scaled per instance to carry runtime) becomes the
+ * case's footprint **along** the shelf, and local X (the 135mm width) becomes its depth
+ * **into** the shelf. That single swap is what finally makes thickness legible — §12 lists
+ * "thickness is encoded but not legible" as unsolved, and it was unsolvable cover-out,
+ * because thickness was the one axis pointing away from the viewer.
+ */
+export const SPINE_YAW = Math.PI / 2;
+
+/**
+ * Between spines. Real cases on a real shelf touch, but 66 of the 152 titles have no physical
+ * release and are 3mm cards: touching, they fuse into one dark 20cm block instead of reading
+ * as sixty-six things. 2mm is the smallest gap that keeps them countable.
+ */
+const SPINE_GAP = 0.002;
+/**
+ * Headroom above a row's cases. Cover-out needed 15cm so a cover could be seen at all;
+ * spine-out does not, and a real DVD shelf is snug. Dropping it tightens the whole unit into
+ * something that reads as furniture rather than as scaffolding.
+ */
+const ROW_CLEARANCE = 0.06;
 const BOARD_THICKNESS = 0.04;
 const BOARD_LIP_HEIGHT = 0.02;
 const BOARD_MARGIN = 0.08; // the board overhangs the end cases a little
-const BOARD_DEPTH = 0.5;
+/**
+ * Spine-out, a case lies 135mm *into* the shelf instead of 14mm, so the board has to be a
+ * real board — 50mm held a case on its edge and would now hold about a third of one. 175mm
+ * is a domestic DVD shelf, and it lets the widest historical form (a 170mm film can) sit on
+ * it with only the overhang a real object would have.
+ */
+const BOARD_DEPTH = 1.75;
+/**
+ * The narrowest a unit gets, however little stands on it. See its use for why.
+ *
+ * Measured, not guessed: the twelve universes hold between 17mm (Spider-Verse's two films)
+ * and 384mm (the MCU's fifty-seven) of spine. At 450mm every single unit — the MCU included —
+ * sat on the floor value, and the room became twelve identical boxes. 160mm lets the shape of
+ * the collection show through the furniture, which is the whole point of shelving it.
+ */
+const MIN_UNIT_WIDTH = 1.6;
 const COVER_INSET = 0.0015; // = the spike's INSET: the printed insert sits proud of the body
-const BLANK_COVER_INSET = 0.006; // further forward still, so it wins the depth test outright
 
 /**
  * Thickness encodes runtime, ±20% off each medium's base depth, drawn from the catalogue's
@@ -338,12 +376,32 @@ function hashUnit(seed: string): number {
   return ((h >>> 0) % 10000) / 10000;
 }
 
-function matrix(x: number, y: number, z: number, sx: number, sy: number, sz: number): THREE.Matrix4 {
-  return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), IDENTITY_QUAT, new THREE.Vector3(sx, sy, sz));
+/** Every case on the shelf carries this. Built once — it is the same rotation for all 152. */
+const SPINE_QUAT = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), SPINE_YAW);
+
+function matrix(
+  x: number,
+  y: number,
+  z: number,
+  sx: number,
+  sy: number,
+  sz: number,
+  quat: THREE.Quaternion = IDENTITY_QUAT
+): THREE.Matrix4 {
+  // compose() is T * R * S, so the scale is applied in the case's own axes and *then* turned.
+  // That is what keeps `sz` meaning "thickness" after the yaw has pointed thickness along X.
+  return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), quat, new THREE.Vector3(sx, sy, sz));
 }
 
 /** The tallest a unit gets. Four gives the mass of a real bookcase. */
 export const LEVELS = 4;
+
+/**
+ * How wide a unit wants to be relative to its height. Below 1 — these are *narrow* bays now,
+ * because spine-out the whole catalogue is 1.6m of shelf and a unit asked to be wider than
+ * tall would be a single low plinth holding a handful of slivers.
+ */
+const UNIT_ASPECT = 0.62;
 
 /**
  * How many shelves a unit needs. Filling every unit to four levels turns Spider-Verse's two
@@ -353,8 +411,13 @@ export const LEVELS = 4;
  * shape. Units are bottom-aligned, so a short one is a low shelf, not a tall one hanging in
  * the air.
  */
-export function levelsFor(count: number): number {
-  return Math.min(LEVELS, Math.max(1, Math.ceil(count / 3)));
+export function levelsForRun(spineLength: number): number {
+  // Width is spineLength/levels and height is levels*LEVEL_PITCH, so the level count that
+  // makes a unit about as wide as it is tall is sqrt(spineLength / (aspect * pitch)).
+  // Counting titles no longer works: spine-out, 57 steelbooks and 57 streaming cards are the
+  // same number of titles and a five-fold difference in shelf.
+  const levels = Math.round(Math.sqrt(spineLength / (UNIT_ASPECT * LEVEL_PITCH)));
+  return Math.min(LEVELS, Math.max(1, levels));
 }
 
 /** Every level is the same pitch, sized for the tallest case in the catalogue. Column-major
@@ -367,10 +430,13 @@ const FLOOR_BOARD_Y = -(LEVELS - 1) * LEVEL_PITCH;
 
 /** Clear air between one universe's unit and the next. Wide enough that they read as
  * separate pieces of furniture rather than one run with a gap in it. */
-const UNIVERSE_GAP = 2.6;
+const UNIVERSE_GAP = 1.2;
 
 const UPRIGHT_WIDTH = 0.07;
 const BACK_PANEL_THICKNESS = 0.03;
+
+/** Where every case's back sits: against the back panel, as they do on a real shelf. */
+const CASE_BACK_Z = -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS;
 
 /** How many pieces of carcass each unit adds beyond its shelves: a top, two uprights and a
  * back. Exported so the layout test can assert the furniture without re-deriving it. */
@@ -447,22 +513,28 @@ export function buildShelfLayout(
     const instance = bucket.slugs.length;
 
     // Base geometry is built at the medium's nominal depth; only Z scales per instance.
-    bucket.bodyMatrices.push(matrix(x, y, z, 1, 1, ds));
+    bucket.bodyMatrices.push(matrix(x, y, z, 1, 1, ds, SPINE_QUAT));
     const cellPx = atlasCells[title.slug];
     bucket.coverUvs.push(cropCellUv(cellPx ?? { x: 0, y: 0 }, cellSize, atlasSize, dims.w / dims.h));
-    bucket.coverMatrices.push(matrix(x, y, z + coverZ, 1, 1, 1));
+    // At rest the cover sits *at the case's own centre*, i.e. inside an opaque box, so it is
+    // simply not there until the case is drawn out. Cover-out could leave it proud because it
+    // faced open air; spine-out it would face the neighbour 2mm away and z-fight through it.
+    // poseCover() scales the same offset by the pull, so the two agree at amount = 0.
+    bucket.coverMatrices.push(matrix(x, y, z, 1, 1, 1, SPINE_QUAT));
     bucket.slugs.push(title.slug);
 
     if (!cellPx) {
       blankCovers.push({
         slug: title.slug,
         tint: title.tint,
-        position: { x, y, z: z + (dims.d * ds) / 2 + BLANK_COVER_INSET },
+        // Same reasoning as the cover above: parked inside the body until it is presented.
+        position: { x, y, z },
         size: { w: dims.w - CORNER_RADIUS * 0.6, h: dims.h - CORNER_RADIUS * 0.6 },
       });
     }
 
-    bounds.maxX = Math.max(bounds.maxX, x + dims.w / 2);
+    // Thickness is the footprint along the shelf now, not width.
+    bounds.maxX = Math.max(bounds.maxX, x + (dims.d * ds) / 2);
     bounds.minY = Math.min(bounds.minY, y - dims.h / 2);
     bounds.maxY = Math.max(bounds.maxY, y + dims.h / 2);
 
@@ -488,28 +560,59 @@ export function buildShelfLayout(
     const wear = wearByUnit[runIndex];
     const items: ShelfItem[] = [];
 
-    const levels = levelsFor(run.titles.length);
-    const columns: ShelfTitleData[][] = [];
-    run.titles.forEach((title, i) => {
-      const column = Math.floor(i / levels);
-      (columns[column] ??= []).push(title);
+    /** What one title occupies along the shelf, spine-out: its thickness plus its gap. */
+    const spineLength = (t: ShelfTitleData) =>
+      DIMENSIONS[t.form ?? t.medium].d * depthScale(t.runtimeMin, logRange) + SPINE_GAP;
+
+    const runLength = run.titles.reduce((sum, t) => sum + spineLength(t), 0);
+    const levels = levelsForRun(runLength);
+
+    // Row-major now, not column-major. Spine-out, a shelf is read the way a bookshelf is read
+    // — left to right along a row, then down to the next — so filling that way puts the
+    // chronology in reading order. Column-major existed to make a column mean "one moment in
+    // time"; that only worked when a column was a single wide case, and spine-out it would
+    // scatter each moment across a row of slivers.
+    //
+    // Rows are split by equal *length*, not equal count: 3mm cards and 32mm clamshells in
+    // equal numbers make wildly unequal rows, and a unit whose shelves ended at different
+    // points reads as half-finished rather than as full.
+    const rows: ShelfTitleData[][] = Array.from({ length: levels }, () => []);
+    const target = runLength / levels;
+    let level = 0;
+    let filled = 0;
+    run.titles.forEach((title) => {
+      const length = spineLength(title);
+      // Move on once this shelf is more than half-way through the title that would overrun
+      // it, so a long title lands on whichever shelf it mostly belongs to.
+      if (level < levels - 1 && filled + length / 2 > target) {
+        level += 1;
+        filled = 0;
+      }
+      rows[level].push(title);
+      filled += length;
     });
 
-    let columnLeft = unitLeft;
-    columns.forEach((column) => {
-      // A column is as wide as its widest member: a VHS (110mm) sharing a column with
-      // Amarays (135mm) centres within it rather than dragging the unit out of alignment.
-      const columnWidth = Math.max(...column.map((t) => DIMENSIONS[t.form ?? t.medium].w));
-      column.forEach((title, level) => {
+    let packedRight = unitLeft;
+    rows.forEach((rowTitles, rowLevel) => {
+      // Row 0 is this unit's top shelf, and the unit is bottom-aligned to the floor.
+      const boardTop = FLOOR_BOARD_Y + (levels - 1 - rowLevel) * LEVEL_PITCH;
+      let x = unitLeft;
+      rowTitles.forEach((title) => {
         const dims = DIMENSIONS[title.form ?? title.medium];
-        // level 0 is this unit's top shelf, and the unit is bottom-aligned to the floor.
-        const boardTop = FLOOR_BOARD_Y + (levels - 1 - level) * LEVEL_PITCH;
-        items.push(place(title, columnLeft + columnWidth / 2, boardTop + dims.h / 2, 0));
+        const length = spineLength(title);
+        // Backs aligned to the back panel, as a real shelf stacks them — so the *fronts* step
+        // in and out with each case's width, which is a thing you can actually see now that
+        // width points into the shelf.
+        items.push(place(title, x + (length - SPINE_GAP) / 2, boardTop + dims.h / 2, CASE_BACK_Z + dims.w / 2));
+        x += length;
       });
-      columnLeft += columnWidth + GAP_X;
+      packedRight = Math.max(packedRight, x - SPINE_GAP);
     });
 
-    const unitRight = Math.max(columnLeft - GAP_X, unitLeft + DIMENSIONS.amaray.w);
+    // A universe of two titles is 3cm of spine. Without a floor on the width it would get a
+    // bookcase narrower than one of its own shelves is tall, which reads as a mistake rather
+    // than as a small collection. An almost-empty shelf is the honest picture.
+    const unitRight = Math.max(packedRight, unitLeft + MIN_UNIT_WIDTH);
     const unitWidth = unitRight - unitLeft;
     const unitTop = FLOOR_BOARD_Y + levels * LEVEL_PITCH;
     const unitBottom = FLOOR_BOARD_Y - BOARD_THICKNESS;

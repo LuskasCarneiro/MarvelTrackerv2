@@ -5,7 +5,7 @@ import {
   depthScale,
   DIMENSIONS,
   LEVELS,
-  levelsFor,
+  levelsForRun,
   CARCASS_PIECES,
   runtimeLogRange,
   type ShelfRun,
@@ -123,21 +123,38 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
     for (const item of second.items) expect(item.x).toBeGreaterThan(first.endX);
   });
 
-  it("fills a unit top to bottom within a column, then steps right", () => {
-    const column0 = mcu.slice(0, LEVELS).map((t) => positionOf(t.slug));
-    // One column is one moment in time: same x, descending y.
-    expect(new Set(column0.map((p) => p.x.toFixed(6))).size).toBe(1);
-    for (let i = 1; i < column0.length; i++) expect(column0[i].y).toBeLessThan(column0[i - 1].y);
-    expect(positionOf("mcu-4").x).toBeGreaterThan(column0[0].x + DIMENSIONS.vhs.w / 2);
+  it("packs a shelf left to right with the spines a hair apart", () => {
+    const row = mcu.slice(0, 4).map((t) => positionOf(t.slug));
+    for (let i = 1; i < row.length; i++) expect(row[i].x).toBeGreaterThan(row[i - 1].x);
+
+    // All standing on the same board. Their *centres* differ, because a VHS is taller than an
+    // Amaray, so the thing that has to match is where their feet are — which is also the bug
+    // this would catch: cases hovering above the board, or sunk into it.
+    const feet = row.map((p) => (p.y - DIMENSIONS[p.form].h / 2).toFixed(6));
+    expect(new Set(feet).size).toBe(1);
+
+    // Adjacent spines are exactly one gap apart. This is the whole of "spine-out and packed":
+    // if the advance ever went back to using case *width* the gap here would jump to ~100mm.
+    const halfThickness = (p: (typeof row)[number]) => (DIMENSIONS[p.form].d * p.ds) / 2;
+    expect(row[1].x - row[0].x - halfThickness(row[0]) - halfThickness(row[1])).toBeCloseTo(0.002, 6);
+  });
+
+  it("gives a longer collection more shelves, by length rather than by title count", () => {
+    // Counting titles cannot work spine-out: these are the same number of titles and a
+    // five-fold difference in shelf, because a streaming card is 3mm and a clamshell 32mm.
+    expect(levelsForRun(0.3)).toBe(1);
+    expect(levelsForRun(20)).toBeGreaterThan(levelsForRun(2));
+    expect(levelsForRun(1000)).toBe(LEVELS); // never taller than a bookcase, however big
   });
 
   it("gives each unit its own carcass, so a universe reads as a piece of furniture", () => {
     // Four shelves plus a top, two uprights and a back — all instances of the same box, so
     // the whole room of bookcases is still the two board draw calls it always was.
-    // Units are as tall as their collection needs, so the count follows levelsFor(), not a
-    // constant: ten titles fill four shelves, three fill one.
-    const shelves = runs.map((r) => levelsFor(r.titles.length));
-    expect(shelves).toEqual([LEVELS, 1]);
+    // Units are as tall as their collection needs, so the count is whatever the layout chose
+    // — asserted against the layout itself rather than re-derived, since re-deriving it here
+    // would only prove the test can run the same formula twice.
+    const shelves = layout.universes.map((u) => u.levels);
+    expect(shelves.every((l) => l >= 1 && l <= LEVELS)).toBe(true);
     expect(layout.boardSlabMatrices).toHaveLength(shelves.reduce((n, l) => n + l + CARCASS_PIECES, 0));
     expect(layout.boardLipMatrices).toHaveLength(shelves.reduce((n, l) => n + l, 0));
   });
@@ -175,22 +192,18 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
     }
   });
 
-  it("keeps a narrow case centred in its column instead of shifting the unit", () => {
-    // Six titles is two levels, so "wide" and "narrow" share the first column.
-    const titles = [title("wide", "amaray"), title("narrow", "vhs"), ...Array.from({ length: 4 }, (_, i) => title(`rest-${i}`, "amaray"))];
+  it("stands every case on its back edge, whatever its width", () => {
+    // Spine-out, a case's *width* points into the shelf, so a 110mm VHS and a 135mm Amaray
+    // reach different distances forward. Real shelves are loaded back-to-back, and that is
+    // what makes the fronts step in and out — a detail you can only see once width is the
+    // depth axis. The bug this catches is aligning their fronts (or their centres) instead,
+    // which would bury the narrow ones behind their neighbours.
+    const titles = [title("wide", "amaray"), title("narrow", "vhs")];
     const mixed = buildShelfLayout([{ key: "u", label: "U", titles, floating: [] }], {}, cellSize, 4096);
     const [wide, narrow] = mixed.universes[0].items;
-    expect(mixed.universes[0].levels).toBe(2);
-    expect(narrow.x).toBeCloseTo(wide.x, 6);
-  });
-
-  it("sizes a unit to its collection rather than to a constant", () => {
-    expect(levelsFor(2)).toBe(1);
-    expect(levelsFor(5)).toBe(2);
-    expect(levelsFor(57)).toBe(LEVELS);
-    // Whatever the height, every unit stands on the same floor.
-    const floors = layout.universes.map((u) => u.centreY * 2 - u.levels * 0);
-    expect(floors.length).toBe(2);
+    const backOf = (p: (typeof mixed.universes)[number]["items"][number]) => p.z - DIMENSIONS[p.form].w / 2;
+    expect(backOf(narrow)).toBeCloseTo(backOf(wide), 6);
+    expect(narrow.z).toBeLessThan(wide.z); // ...so the narrower one sits further back
   });
 
   describe("the titles that belong outside time", () => {
@@ -208,10 +221,19 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
 
     it("hangs them above their own unit, with no board underneath", () => {
       expect(hung).toHaveLength(2);
-      const topOfShelf = Math.max(...withFloating.universes[0].items.filter((i) => i.z === 0).map((i) => i.y));
+      // Identify the shelved ones by slug. They used to be found with `z === 0`, which was
+      // only ever true while every case sat at the same depth; spine-out they each sit at
+      // their own width's worth of depth, and that filter would silently match nothing and
+      // compare against -Infinity — a test that passes by having nothing to check.
+      const shelvedSlugs = new Set(mcu.map((t) => t.slug));
+      const topOfShelf = Math.max(
+        ...withFloating.universes[0].items.filter((i) => shelvedSlugs.has(i.slug)).map((i) => i.y)
+      );
       for (const item of hung) expect(item.y).toBeGreaterThan(topOfShelf);
-      // Still four boards: the unit's furniture, unchanged. Nothing was built to hold these up.
-      expect(withFloating.boardSlabMatrices).toHaveLength(levelsFor(mcu.length) + CARCASS_PIECES);
+      // The unit's furniture, unchanged. Nothing was built to hold these up.
+      expect(withFloating.boardSlabMatrices).toHaveLength(
+        withFloating.universes[0].levels + CARCASS_PIECES
+      );
     });
 
     it("scatters them by a hash of the slug, so the same title hangs in the same place", () => {
