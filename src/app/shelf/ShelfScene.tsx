@@ -1393,17 +1393,21 @@ function ShelfContent({
         decay={1.5}
         color="#ffd9ad"
       />
-      {/* **There is one travelling lamp, not three, and that is a measurement rather than a
-          taste.** Picture lights over the neighbouring bays did make the room read as sections
-          receding either side — and cost a third of the framerate, because every light in a
-          Phong scene is charged against every fragment and the locked-off framing puts a whole
-          bay of covers on screen at once. Measured at 1.2 fps against 1.6 for the same scene
-          with one lamp.
+      {/* **There is one travelling lamp, not three. That used to be a measurement, and the
+          measurement was wrong.**
 
-          `docs/05-3d-shelf.md` §2 wanted a single lamp with real falloff in the first place —
-          the neighbouring bays are meant to be *in the dark*, waiting, rather than lit for
-          inspection. Reach is longer now so they are dimly present rather than absent, which
-          is the effect the extra lights were buying, at none of the price. */}
+          The old note here said picture lights over the neighbouring bays cost a third of the
+          framerate: "1.2 fps against 1.6". Both numbers came from headless software
+          rasterisation. On real hardware this scene sits at 16.7ms in every state with no
+          dropped frames at all (`scripts/measure-frames.mjs`), so a third of the framerate was
+          a third of a number that never described this machine. **There is room for the extra
+          lights.** Anything that cites that comparison to refuse work should stop.
+
+          One lamp stays anyway, on the half of the reasoning that was never about cost:
+          `docs/05-3d-shelf.md` §2 wanted a single lamp with real falloff, because the
+          neighbouring bays are meant to be *in the dark*, waiting, rather than lit for
+          inspection. Reach carries them as dimly present rather than absent. That is a
+          design decision and it should be argued as one — not defended with a dead number. */}
     </>
   );
 }
@@ -1664,6 +1668,13 @@ const SCROLL_PER_TITLE = 260;
 const AXIS_LOCK_SLOP = 10;
 const BAY_SWIPE_DISTANCE = 90;
 
+/**
+ * How long the chrome stays up after you stop doing anything. Long enough to cross the screen
+ * and reach a control without it going away in front of you; short enough that the room is
+ * what you are left looking at.
+ */
+const CHROME_LINGER = 2600;
+
 export default function ShelfScene({ universes }: { universes: UniverseData[] }) {
   const [order, setOrder] = useState<"release" | "story">("release");
   const [current, setCurrent] = useState(0);
@@ -1684,9 +1695,78 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   const [wide, setWide] = useState(false);
   const [query, setQuery] = useState("");
   const [missed, setMissed] = useState(false);
+  /**
+   * Whether the chrome is showing. docs/05-3d-shelf.md §12 Q4 — **strip to nothing**; the
+   * controls come back on a mouse move, a key or a scroll, and go away again when you stop.
+   * Q21 puts the caption under the same rule, so there is one rule for chrome and no
+   * exceptions to remember.
+   *
+   * Starts hidden. The room is the thing; arriving into a bare room and having the controls
+   * appear the moment you move is the behaviour that was asked for, and it also means the
+   * first frame anyone sees is the shelf rather than a toolbar.
+   */
+  const [chrome, setChrome] = useState(false);
+  /** Held open: the pointer is over the bar, or focus is inside it. Hiding controls out from
+   *  under a pointer that is on its way to click one is the classic version of this bug. */
+  const chromeHeld = useRef(false);
+  const chromeTimer = useRef<number | null>(null);
   const router = useRouter();
   const progress = useRef(0);
   const surface = useRef<HTMLDivElement>(null);
+
+  /** Show the chrome, and set it to fade again after a pause. */
+  const wakeChrome = useCallback(() => {
+    setChrome(true);
+    if (chromeTimer.current !== null) window.clearTimeout(chromeTimer.current);
+    chromeTimer.current = window.setTimeout(() => {
+      if (!chromeHeld.current) setChrome(false);
+    }, CHROME_LINGER);
+  }, []);
+
+  /**
+   * The state lives here but the *switch* is an attribute on <html>, because the page header
+   * and the catalogue link are rendered by a Server Component one level up (`page.tsx`) and
+   * cannot read this component's state. One attribute plus one rule in globals.css covers
+   * every piece of chrome on the route — which is what makes Q21's "one rule for chrome, no
+   * exceptions" true rather than aspirational.
+   */
+  useEffect(() => {
+    document.documentElement.dataset.chrome = chrome ? "shown" : "hidden";
+  }, [chrome]);
+
+  useEffect(() => {
+    const wake = () => wakeChrome();
+    window.addEventListener("pointermove", wake, { passive: true });
+    window.addEventListener("wheel", wake, { passive: true });
+    // Capture phase: the search box stops key events reaching the shelf (so typing "t" does
+    // not turn the case over), and without capture that would also stop the chrome noticing
+    // that someone is using it.
+    window.addEventListener("keydown", wake, true);
+    // Q11. A keyboard user's first action is Tab, so this is the *same* reveal a mouse user
+    // gets on move rather than a separate mechanism bolted on for them — and it is why a
+    // conventional skip-link was rejected, which would have hidden the shelf's own controls
+    // from exactly the people who most need them announced.
+    window.addEventListener("focusin", wake, true);
+    return () => {
+      window.removeEventListener("pointermove", wake);
+      window.removeEventListener("wheel", wake);
+      window.removeEventListener("keydown", wake, true);
+      window.removeEventListener("focusin", wake, true);
+      if (chromeTimer.current !== null) window.clearTimeout(chromeTimer.current);
+      delete document.documentElement.dataset.chrome;
+    };
+  }, [wakeChrome]);
+
+  /** Hold the chrome open while it is being used, and release it when it is not. */
+  const holdChrome = useCallback(() => {
+    chromeHeld.current = true;
+    setChrome(true);
+    if (chromeTimer.current !== null) window.clearTimeout(chromeTimer.current);
+  }, []);
+  const releaseChrome = useCallback(() => {
+    chromeHeld.current = false;
+    wakeChrome();
+  }, [wakeChrome]);
 
   // The two orderings (docs/05-3d-shelf.md §4), applied within each universe: the objects are
   // unchanged, the order is not. In story order the titles with no place on a timeline lift
@@ -1930,7 +2010,33 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
 
   return (
     <div ref={surface} className="relative flex min-h-0 w-full flex-1 flex-col touch-none">
-      <div className="flex flex-wrap items-baseline gap-3 px-6 pb-2">
+      {/* All of the shelf's chrome in one floating column, over the room rather than stacked
+          above it. Stacked, stripping it left an empty band where the controls used to be —
+          the room has to grow back into the space it gives up or "strip to nothing" only
+          removes the ink. `top-14` clears the masthead, which floats at top-0 on this route.
+
+          The page's own title and catalogue link live here rather than in `page.tsx` so that
+          every piece of chrome is one element with one reveal, instead of two components
+          guessing at each other's heights. */}
+      <div
+        className="shelf-chrome absolute inset-x-0 top-14 z-20 flex flex-col gap-2 px-6"
+        onPointerEnter={holdChrome}
+        onPointerLeave={releaseChrome}
+        onFocusCapture={holdChrome}
+        onBlurCapture={releaseChrome}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h1 className="font-display text-xs uppercase tracking-[0.2em] text-label-dim">
+            The shelf — Phase 3
+          </h1>
+          {/* The honest accessible equivalent of a WebGL canvas is not an aria-label, it is
+              the same 152 titles as text. That page exists; this is a link to it, for anyone
+              who cannot use the room and for anyone who would simply rather read. */}
+          <Link href="/" className="text-sm text-label-mid underline hover:text-label-bright">
+            Browse the same titles as a catalogue
+          </Link>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-3">
         <button
           type="button"
           onClick={() => goToUniverse(current - 1)}
@@ -2031,6 +2137,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             ? "Each release's medium is worked out from its year by a fixed rule, not verified title by title."
             : "A conceit: nothing was recorded in 1943. Titles with no place on a timeline hang above their shelf."}
         </p>
+        </div>
       </div>
       <Canvas
         className="min-h-0 flex-1"
@@ -2110,14 +2217,20 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
           and the rest of the record stay on the title page: shipping 152 of them into this
           route's bundle would cost more than it tells you here. */}
       {active && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-8">
+        <div className="shelf-chrome pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-8">
           {/* On an opaque scrim, not a translucent one: the caption sits over whatever
               artwork happens to be behind it, and at 85% over a bright cover the dim second
               line measured 3.16:1 — under the 4.5 floor. Measured, not eyeballed; the guard
               is in scripts/contrast.test.ts. */}
           {/* The scrim is pointer-events-none so it never eats a click meant for the shelf
               behind it; the one control inside it opts back in. */}
-          <div className="pointer-events-auto flex flex-col items-center gap-1 rounded bg-shelf-dark px-5 py-2 text-center">
+          <div
+            className="pointer-events-auto flex flex-col items-center gap-1 rounded bg-shelf-dark px-5 py-2 text-center"
+            onPointerEnter={holdChrome}
+            onPointerLeave={releaseChrome}
+            onFocusCapture={holdChrome}
+            onBlurCapture={releaseChrome}
+          >
           {/* Dropped once the case is turned, for two reasons that happen to agree. It is
               redundant — the back cover prints the title, the year and the format itself, so
               this repeats in chrome what the object already says. And it is harmful: the two

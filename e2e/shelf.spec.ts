@@ -13,6 +13,20 @@ import { test, expect } from "@playwright/test";
  * across machines is a flake generator; "the renderer drew the room, and clicking a case
  * opens that case" is the part that must not regress.
  */
+/**
+ * Bring the controls back before touching one.
+ *
+ * The chrome hides itself when nothing is happening (docs/05-3d-shelf.md §12 Q4) and is
+ * `pointer-events: none` while hidden, so a click aimed at a control lands on the canvas
+ * behind it instead — which Playwright reports as "canvas intercepts pointer events" and
+ * looks like a z-index bug. A real user's pointer is already moving when they reach for a
+ * button; this is that move, made explicit.
+ */
+async function wakeChrome(page: import("@playwright/test").Page) {
+  await page.mouse.move(700, 400);
+  await expect(page.locator("html")).toHaveAttribute("data-chrome", "shown");
+}
+
 test.describe("the shelf", () => {
   test("renders the room and opens the case you click", async ({ page }) => {
     const drawCalls: string[] = [];
@@ -49,6 +63,7 @@ test.describe("the shelf", () => {
     await page.goto("/shelf", { waitUntil: "load" });
     await expect(page.locator("canvas")).toBeVisible({ timeout: 60_000 });
 
+    await wakeChrome(page);
     const shelfName = page.locator("span.font-display").first();
     const first = (await shelfName.textContent())?.trim();
     await page.getByRole("button", { name: "Next universe" }).click();
@@ -69,6 +84,7 @@ test.describe("the shelf", () => {
     await expect(page.locator("canvas")).toBeVisible({ timeout: 60_000 });
 
     // The caption names whatever is out of the shelf, and carries the turn control.
+    await wakeChrome(page);
     const turn = page.getByRole("button", { name: "Turn it over" });
     await expect(turn).toBeVisible({ timeout: 30_000 });
     await expect(turn).toHaveAttribute("aria-pressed", "false");

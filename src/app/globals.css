@@ -120,3 +120,44 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/**
+ * The shelf's chrome, and the whole of docs/05-3d-shelf.md §12 Q4 and Q21.
+ *
+ * Everything that is *not the room* carries `.shelf-chrome` and obeys this one rule: the
+ * page header, the catalogue link, the control bar and the caption card. `ShelfScene`
+ * stamps `data-chrome` on <html> so the rule can reach the header and the link, which are
+ * rendered by a Server Component and cannot read the scene's state.
+ *
+ * `pointer-events: none` while hidden matters as much as the opacity — invisible controls
+ * that still swallow clicks are worse than visible ones. Focusability is deliberately left
+ * alone, because a Tab into a faded control fires `focusin` and brings the chrome straight
+ * back (Q11); hiding it from the tab order would strand keyboard users in an empty room.
+ *
+ * The reduced-motion block below already collapses this transition to nothing, so the fade
+ * becomes an instant swap for anyone who asked for that.
+ */
+.shelf-chrome {
+  transition: opacity 450ms ease;
+}
+
+[data-chrome="hidden"] .shelf-chrome {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/**
+ * On the shelf, the room *is* the page: the masthead floats over it instead of sitting above
+ * it in the flow, so stripping the chrome hands the whole viewport back to the room rather
+ * than leaving a band where the controls used to be.
+ *
+ * Scoped to `[data-chrome]`, which only `/shelf` sets, so every other page keeps the ordinary
+ * stacked masthead and its dividing rule.
+ */
+[data-chrome] body > header {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 20;
+  border-bottom: 0;
+}

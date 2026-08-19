@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { titles } from "@/lib/catalogue";
 import ShelfSceneClient from "./ShelfSceneClient";
 import type { UniverseData } from "./instancing";
@@ -48,19 +47,10 @@ export const metadata: Metadata = {
 export default function ShelfPage() {
   return (
     <main className="flex h-dvh flex-col bg-shelf-dark">
-      <div className="px-6 py-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h1 className="font-display text-xs uppercase tracking-[0.2em] text-label-dim">
-            The shelf — Phase 3
-          </h1>
-          {/* The honest accessible equivalent of a WebGL canvas is not an aria-label, it is
-              the same 152 titles as text. That page exists; this is a link to it, for anyone
-              who cannot use the room and for anyone who would simply rather read. */}
-          <Link href="/" className="text-sm text-label-mid underline hover:text-label-bright">
-            Browse the same titles as a catalogue
-          </Link>
-        </div>
-      </div>
+      {/* The title and the catalogue link moved into ShelfScene, so that every piece of this
+          route's chrome is one floating element with one reveal (§12 Q4/Q21) rather than a
+          Server Component and a Client Component stacked above the room and guessing at each
+          other's heights. */}
       <ShelfSceneClient universes={universes} />
     </main>
   );

@@ -63,7 +63,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <header className="flex justify-end border-b border-shelf-edge px-6 py-4">
+        {/* `shelf-chrome`: the masthead is chrome too, and §12 Q21 allows no exceptions. The
+            class is inert everywhere else — the rule in globals.css only bites when <html>
+            carries `data-chrome`, which only the shelf sets. */}
+        <header className="shelf-chrome flex justify-end border-b border-shelf-edge px-6 py-4">
           <AuthStatus />
         </header>
         <div id="content" className="flex flex-1 flex-col">
