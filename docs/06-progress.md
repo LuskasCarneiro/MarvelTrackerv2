@@ -258,6 +258,31 @@ is brightest.
 
 ## Log
 
+### 2026-08-19 — the shelf was turned around, and the machine was finally asked
+
+Executed `docs/05-3d-shelf.md` §12. **Steps 1–5, 7 and most of 8 are done; step 6 (the
+alcoved room) is blocked on one decision for the owner.** Full detail lives in §12's "What
+happened when it was built"; the short version:
+
+- **Measured on real hardware first, as §12 demanded.** Intel HD Graphics 5500, headed
+  Chromium on the machine's own display: **16.7ms in every state, no dropped frames.** Every
+  performance number this repo has ever recorded came from headless SwiftShader and was wrong
+  by about thirty times. `scripts/measure-frames.mjs` is the instrument, and it refuses to
+  report if it finds itself on a software rasteriser. The "three lamps cost a third of the
+  framerate" refusal is void and the comment saying so has been corrected in place.
+- **Spine-out (Q1).** Packing advances by thickness, rows fill left-to-right and are split by
+  equal *length*, cases stand backs-aligned. The pull-out — the one thing the owner said they
+  liked — is untouched in feel and now carries the turn: spine-out at rest, face-on when
+  drawn. **Thickness is legible at last**, which §12 listed as unsolved.
+- **Spines carry the tint band and the format mark** (Q7/Q19). `none` joined the printed
+  forms, reversing an earlier refusal: it is 66 of 152 titles and excluding it left 43% of the
+  shelf unmarked. Bands only, never a title.
+- **The chrome is stripped to nothing** (Q4/Q21/Q11) and floats over the room, so the room
+  now has the whole window rather than a band where the controls used to be.
+- **⚠️ For the owner:** spine-out, the whole archive is **1611mm of shelf**, and the twelve
+  universes run from 17mm to 384mm. Twelve alcoves was settled when a bay was metres wide.
+  §12 sets out the three options and does not choose between them.
+
 ### 2026-08-18 — the owner rejected the look, and the rebuild was settled by interview
 
 **The owner saw it and did not like it.** Asked which of four things was wrong they picked
