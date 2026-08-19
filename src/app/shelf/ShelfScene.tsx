@@ -296,15 +296,32 @@ const BAY_FILL_X = 0.5;
 const BAY_FILL_Y = 0.6;
 /** Never closer than arm's length, never so far the room stops reading as a room. */
 const STAND_MIN = 3.2;
-const STAND_MAX = 17;
-/** How much further back "the whole shelf" stands than the bay distance. */
-const WIDE_FACTOR = 1.55;
+const STAND_MAX = 30;
+/**
+ * How much further back "the whole shelf" stands than the bay distance.
+ *
+ * Raised from 1.55, and it is doing a different job now. **The close shot cannot show the
+ * room** — the camera is locked square-on at eye level, and a person standing at a shelf
+ * looking straight ahead sees wall, not floor. That is not a framing bug, it is what facing a
+ * wall looks like. So the room is the wide shot's job: back far enough and the picture rail,
+ * the ceiling junction and both ends of the run come into frame at once.
+ */
+const WIDE_FACTOR = 3.2;
 
-function standingDistance(camera: THREE.PerspectiveCamera, width: number, height: number): number {
+function standingDistance(
+  camera: THREE.PerspectiveCamera,
+  width: number,
+  height: number,
+  factor: number
+): number {
   const halfFov = THREE.MathUtils.degToRad(camera.fov) / 2;
   const forWidth = width / (2 * BAY_FILL_X * Math.tan(halfFov) * camera.aspect);
   const forHeight = height / (2 * BAY_FILL_Y * Math.tan(halfFov));
-  return THREE.MathUtils.clamp(Math.max(forWidth, forHeight), STAND_MIN, STAND_MAX);
+  // The wide factor is applied *before* the clamp, not after. Applied after, a bay that
+  // already wanted the maximum distance was multiplied past it and the camera stepped clean
+  // out through the front wall of the room — which does not look like a bug from inside the
+  // code and looks, from outside, like the whole room going flat and dim at once.
+  return THREE.MathUtils.clamp(Math.max(forWidth, forHeight) * factor, STAND_MIN, STAND_MAX);
 }
 
 
@@ -321,25 +338,54 @@ const DPR_MAX = 1.5;
  * viewer does is the single most obvious way to look like a set rather than a room.
  */
 const ROOM_BACK_Z = -0.3;
-const ROOM_FRONT = 15;
-const ROOM_MARGIN_X = 4;
-/** Air above the tallest unit. Enough that the ceiling is not sitting on the shelf, low enough
- * that it stays a room rather than a hall — and it is in darkness either way. */
-const ROOM_HEADROOM = 3.6;
+/**
+ * The room's front wall. It must stay comfortably beyond `STAND_MAX`, or the widest shot puts
+ * the camera outside the box the room is built from — and since the walls are `BackSide`, that
+ * does not error, it simply renders the room inside out and unlit. 42 against a 30 maximum.
+ */
+const ROOM_FRONT = 42;
+const ROOM_MARGIN_X = 16;
+/**
+ * Air above the run. With the floor 1.4m below it, this puts the ceiling about 2.7m up — an
+ * ordinary domestic room. It used to be 3.6 (36cm!) on the reasoning that the ceiling "is in
+ * darkness either way"; that stopped being true the moment the room was painted, and a
+ * ceiling you can see has to be at a height a person would believe.
+ */
+const ROOM_HEADROOM = 11;
 const SKIRTING_HEIGHT = 0.22;
 const SKIRTING_DEPTH = 0.05;
+/** The picture rail: how far below the ceiling it sits, and how deep the moulding is. */
+const RAIL_DROP = 1.4;
+const RAIL_HEIGHT = 0.12;
+/**
+ * How far the floor sits below the run. The run is **mounted on the wall**, not standing on
+ * the floor, so this is a real measurement rather than a clearance: 1.4m puts the shelf at
+ * chest height and the eye — which sits a little above the run's own middle — at about 1.6m,
+ * where a standing person's eye actually is.
+ */
+const ROOM_FLOOR_DROP = 14;
 
 /**
- * The room's colours. Deliberately duller and darker than `--color-shelf-raised`, which is the
- * furniture: the covers are the only colour in this scene (`docs/05-3d-shelf.md` §3), and a
- * room with opinions joins the fight the artwork is already having. Warm, because the lamp is.
+ * The room's colours. **A painted wall, not a void** — the owner's call on 2026-08-19, and it
+ * reverses the near-black this room has had since it was built.
+ *
+ * It also breaks the palette line in `CLAUDE.md` ("Dark, warm"), which is amended there rather
+ * than quietly contradicted here. What survives of the old reasoning is the discipline behind
+ * it: the room still has no opinions of its own. It is an off-white with a warm bias, the
+ * colour of ordinary emulsion in lamplight, so the artwork is still the only real colour in
+ * the scene — the ground simply stopped being black.
+ *
+ * A pale wall also does something the dark one could not: the cases are dark objects, so they
+ * now read as silhouettes against it, and the run's shape is legible from across the room.
  */
-const ROOM_WALL = "#171310";
-/** Lighter than the first attempt (#241a12), which was so dark that the boards were present
- * and invisible — a bump map reveals nothing on a surface with no light left to modulate. It
- * stays well below the case artwork, which is still the only real colour in the scene. */
-const ROOM_FLOOR = "#35271b";
-const ROOM_SKIRTING = "#1e1813";
+const ROOM_WALL = "#d9d2c6";
+/** A touch warmer and deeper than the wall, as a floor is — it takes the light at a glancing
+ * angle where the wall takes it square on, so an identical colour would read as lighter. */
+const ROOM_FLOOR = "#8d7a63";
+/** Painted joinery, a shade off the wall: present, never a stripe. */
+const ROOM_SKIRTING = "#c9c0b1";
+/** The ceiling, lighter than the walls the way a ceiling is nearly always painted. */
+const ROOM_CEILING = "#e6e0d6";
 
 /**
  * How strongly each form's printing is debossed, and how much of its title treatment is foil.
@@ -782,7 +828,7 @@ const LAMP_Z = 2.2;
  * its own: a lamp bright enough to reach the floor is a lamp bright enough to destroy the case
  * standing next to it. What changed is the distance, so the intensity had to follow it.
  */
-const LAMP_INTENSITY = 42;
+const LAMP_INTENSITY = 20;
 /**
  * Raised from 15 once there was actually a room to light. With no floor and no walls the reach
  * only had to cover the cases; now it has to *land* on something — a lamp whose pool dies
@@ -1166,12 +1212,12 @@ function ShelfContent({
     // furniture — the camera is locked square-on, so that framed the wall and cropped the
     // shelf off the bottom of the picture.
     const eyeY = universe.centreY + PLAQUE_HEADROOM / 2;
-    const standZ =
-      standingDistance(
-        state.camera as THREE.PerspectiveCamera,
-        universe.endX - universe.startX,
-        universe.height + PLAQUE_HEADROOM
-      ) * (wide ? WIDE_FACTOR : 1);
+    const standZ = standingDistance(
+      state.camera as THREE.PerspectiveCamera,
+      universe.endX - universe.startX,
+      universe.height + PLAQUE_HEADROOM,
+      wide ? WIDE_FACTOR : 1
+    );
 
     // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
     // rather than travels, exactly as the camera does. Computed before the hold point rather
@@ -1501,7 +1547,7 @@ function Plaques({ bays, atlas, texture }: { bays: UniverseShelf[]; atlas: Plaqu
  * never seen at full brightness — which is the point. It is there to be *fallen on*.
  */
 function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; maxY: number } }) {
-  const floorY = bounds.minY - 0.08;
+  const floorY = bounds.minY - ROOM_FLOOR_DROP;
   const ceilingY = bounds.maxY + ROOM_HEADROOM;
   const startX = -ROOM_MARGIN_X;
   const endX = bounds.maxX + ROOM_MARGIN_X;
@@ -1561,6 +1607,22 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
       <mesh position={[(startX + endX) / 2, floorY + SKIRTING_HEIGHT / 2, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
         <boxGeometry args={[width, SKIRTING_HEIGHT, SKIRTING_DEPTH]} />
         <meshPhongMaterial color={ROOM_SKIRTING} shininess={22} specular="#332a20" />
+      </mesh>
+
+      {/* The ceiling gets its own plane rather than taking the wall colour off the box above.
+          Ceilings are painted lighter than walls almost everywhere, and in a room lit from
+          below-ceiling height it is the surface that tells you there is a ceiling at all —
+          without it the top of the frame reads as the wall simply running out. */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[(startX + endX) / 2, ceilingY - 0.01, (ROOM_BACK_Z + ROOM_FRONT) / 2]}>
+        <planeGeometry args={[width, depth]} />
+        <meshPhongMaterial color={ROOM_CEILING} shininess={1} specular="#0a0a0a" />
+      </mesh>
+
+      {/* A picture rail, which is what a room like this actually has where wall meets ceiling,
+          and what stops the corner being a bare seam between two flat colours. */}
+      <mesh position={[(startX + endX) / 2, ceilingY - RAIL_DROP, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
+        <boxGeometry args={[width, RAIL_HEIGHT, SKIRTING_DEPTH]} />
+        <meshPhongMaterial color={ROOM_SKIRTING} shininess={18} specular="#2b2620" />
       </mesh>
     </group>
   );
@@ -2173,9 +2235,15 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         {/* A dim room, not a display case. The warm key is the lamp that travels with you,
             inside ShelfContent; what is left here is enough ambience that an unlit cover is
             dark rather than black, plus a cool fill for shape. */}
-        {/* Raised with the lamp's drop: the lamp now throws a much smaller pool, and without
-            this the room beyond it went to black rather than to dark. */}
-        <ambientLight intensity={0.24} color="#f0e4d2" />
+        {/* **A painted room bounces.** The old 0.13 was right for a near-black void where the
+            lamp was the only source of anything; pale walls throw most of what hits them back,
+            and without that the room reads as a white surface in a dark cave, which is the one
+            thing a real room never looks like. */}
+        <ambientLight intensity={1.35} color="#f4ece0" />
+        {/* Sky-and-ground bounce, which is what actually separates a wall from a ceiling from a
+            floor when there is no strong key light. Two colours and no shadow map — it costs a
+            constant per fragment, and the real-hardware measurement leaves room for it. */}
+        <hemisphereLight args={["#efe7da", "#7d6a55", 1.9]} />
         {/* The cool fill is gone. It cost a light — every one of which Phong charges against
             every fragment — and it was working against the room: a warm mahogany gallery under
             one tungsten lamp does not want a blue rim on everything. Removing it bought roughly

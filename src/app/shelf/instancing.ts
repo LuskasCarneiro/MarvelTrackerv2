@@ -160,7 +160,6 @@ const SPINE_GAP = 0.002;
 const ROW_CLEARANCE = 0.06;
 const BOARD_THICKNESS = 0.04;
 const BOARD_LIP_HEIGHT = 0.02;
-const BOARD_MARGIN = 0.08; // the board overhangs the end cases a little
 /**
  * Spine-out, a case lies 135mm *into* the shelf instead of 14mm, so the board has to be a
  * real board — 50mm held a case on its edge and would now hold about a third of one. 175mm
@@ -169,14 +168,14 @@ const BOARD_MARGIN = 0.08; // the board overhangs the end cases a little
  */
 const BOARD_DEPTH = 1.75;
 /**
- * The narrowest a unit gets, however little stands on it. See its use for why.
+ * The narrowest a section of the run gets, however little stands in it — enough to carry the
+ * nameplate above it and to read as a division rather than as a slot.
  *
  * Measured, not guessed: the twelve universes hold between 17mm (Spider-Verse's two films)
- * and 384mm (the MCU's fifty-seven) of spine. At 450mm every single unit — the MCU included —
- * sat on the floor value, and the room became twelve identical boxes. 160mm lets the shape of
- * the collection show through the furniture, which is the whole point of shelving it.
+ * and 384mm (the MCU's fifty-seven) of spine. Letting a section be its natural width would
+ * put a 260mm brass plate over a 17mm gap.
  */
-const MIN_UNIT_WIDTH = 1.6;
+const MIN_SECTION_WIDTH = 1.6;
 const COVER_INSET = 0.0015; // = the spike's INSET: the printed insert sits proud of the body
 
 /**
@@ -312,8 +311,6 @@ export type UniverseShelf = {
   endX: number;
   /** 0 = untouched, 1 = the most worn unit in the room. See unitWear(). */
   wear: number;
-  /** How many shelves this unit has — see levelsFor(). */
-  levels: number;
   /** Mid-height of this unit's own carcass, which is what the camera frames while you are
    * standing at it. Units are different heights, so this is not a constant. */
   centreY: number;
@@ -393,44 +390,41 @@ function matrix(
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), quat, new THREE.Vector3(sx, sy, sz));
 }
 
-/** The tallest a unit gets. Four gives the mass of a real bookcase. */
-export const LEVELS = 4;
-
 /**
- * How wide a unit wants to be relative to its height. Below 1 — these are *narrow* bays now,
- * because spine-out the whole catalogue is 1.6m of shelf and a unit asked to be wider than
- * tall would be a single low plinth holding a handful of slivers.
+ * **One continuous run**, decided by the owner on 2026-08-19 — `docs/05-3d-shelf.md` §12's
+ * open question, closed.
+ *
+ * Twelve separate bookcases was settled while a bay was metres wide. Measured spine-out, the
+ * whole archive is 1611mm and the twelve universes run 17mm to 384mm, so twelve carcasses
+ * meant twelve near-identical near-empty boxes. This is what `docs/05-3d-shelf.md` §5 and
+ * `CLAUDE.md`'s concept line described in the first place: one run that **ages along its
+ * length**, universes marked by joinery rather than by being separate furniture.
+ *
+ * It is deliberately a **single level**. The camera is locked off and travels horizontally,
+ * so a run that wrapped onto a second shelf would break both the travel and the one thing
+ * that makes a section legible — that a universe is a contiguous stretch you walk past.
+ * At roughly 2.4m long and 21cm tall this is a gallery shelf run, not a bookcase, which is
+ * the honest shape for 152 spines.
  */
-const UNIT_ASPECT = 0.62;
+const RUN_LEVELS = 1;
 
-/**
- * How many shelves a unit needs. Filling every unit to four levels turns Spider-Verse's two
- * films into a one-column tower with two empty shelves above them — a sliver, not a
- * bookcase. Roughly three titles per level keeps every unit at least as wide as it is tall,
- * so the room reads as furniture of different sizes rather than as broken copies of one
- * shape. Units are bottom-aligned, so a short one is a low shelf, not a tall one hanging in
- * the air.
- */
-export function levelsForRun(spineLength: number): number {
-  // Width is spineLength/levels and height is levels*LEVEL_PITCH, so the level count that
-  // makes a unit about as wide as it is tall is sqrt(spineLength / (aspect * pitch)).
-  // Counting titles no longer works: spine-out, 57 steelbooks and 57 streaming cards are the
-  // same number of titles and a five-fold difference in shelf.
-  const levels = Math.round(Math.sqrt(spineLength / (UNIT_ASPECT * LEVEL_PITCH)));
-  return Math.min(LEVELS, Math.max(1, levels));
-}
-
-/** Every level is the same pitch, sized for the tallest case in the catalogue. Column-major
- * means any medium can appear at any level, so a per-level height would have to be that max
- * anyway — and a run whose shelves stepped up and down would read as broken. */
+/** Sized for the tallest case in the catalogue: any medium can stand anywhere on the run. */
 const LEVEL_PITCH = Math.max(...Object.values(DIMENSIONS).map((d) => d.h)) + ROW_CLEARANCE + BOARD_THICKNESS;
 
-/** The bottom board of every unit, tall or short — they all stand on the same floor. */
-const FLOOR_BOARD_Y = -(LEVELS - 1) * LEVEL_PITCH;
+/**
+ * The top face of the run's board — the surface every case stands on, and the origin the
+ * whole room is measured from. Zero: the run is mounted on a wall rather than standing on
+ * the floor, so there is no reason for it to hang off the floor's coordinate.
+ */
+const FLOOR_BOARD_Y = 0;
 
-/** Clear air between one universe's unit and the next. Wide enough that they read as
- * separate pieces of furniture rather than one run with a gap in it. */
-const UNIVERSE_GAP = 1.2;
+/**
+ * A partition between one universe's stretch and the next, and the clear air either side of
+ * it. This is what replaced the gap between separate bookcases: the sections are **joinery**
+ * now, not furniture standing apart, so a universe is read as a division of one thing rather
+ * than as its own object.
+ */
+const DIVIDER_PAD = 0.14;
 
 const UPRIGHT_WIDTH = 0.07;
 const BACK_PANEL_THICKNESS = 0.03;
@@ -438,9 +432,21 @@ const BACK_PANEL_THICKNESS = 0.03;
 /** Where every case's back sits: against the back panel, as they do on a real shelf. */
 const CASE_BACK_Z = -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS;
 
-/** How many pieces of carcass each unit adds beyond its shelves: a top, two uprights and a
- * back. Exported so the layout test can assert the furniture without re-deriving it. */
-export const CARCASS_PIECES = 4;
+/**
+ * The joinery, counted so the layout test can assert it without re-deriving it.
+ *
+ * Each section contributes three box instances — its shelf board, the top board over it and
+ * the back panel behind it — all butted to their neighbours so the run reads as continuous
+ * while each still carries **its own section's wear**. That is what lets the gradient age
+ * along the length, which is the whole point of one run rather than twelve.
+ *
+ * The run as a whole then adds two end walls, and one divider between each pair of sections.
+ */
+export const SECTION_PIECES = 3;
+export const RUN_END_PIECES = 2;
+/** Total box instances for n sections: the per-section pieces, the two ends, the dividers. */
+export const carcassPieceCount = (sections: number) =>
+  sections * SECTION_PIECES + RUN_END_PIECES + Math.max(0, sections - 1);
 
 /**
  * How worn each unit's furniture looks, from the median release year of what stands on it —
@@ -555,134 +561,124 @@ export function buildShelfLayout(
     };
   };
 
-  let unitLeft = 0;
+  /** What one title occupies along the run, spine-out: its thickness plus its gap. */
+  const spineLength = (t: ShelfTitleData) =>
+    DIMENSIONS[t.form ?? t.medium].d * depthScale(t.runtimeMin, logRange) + SPINE_GAP;
+
+  // One run, left to right. Each universe is a contiguous stretch of it, divided from the next
+  // by a partition rather than by clear air, and each stretch's own boards carry that
+  // section's wear — which is what lets the furniture age *along the length* instead of
+  // twelve separate objects each being uniformly one age.
+  const boardTop = FLOOR_BOARD_Y;
+  const runTop = FLOOR_BOARD_Y + RUN_LEVELS * LEVEL_PITCH;
+  const runBottom = FLOOR_BOARD_Y - BOARD_THICKNESS;
+  const runHeight = runTop - runBottom;
+  const runCentreY = (runBottom + runTop) / 2;
+
+  let cursor = 0;
+  const dividerX: number[] = [];
+  const sections: { start: number; end: number; wear: number }[] = [];
+
   runs.forEach((run, runIndex) => {
     const wear = wearByUnit[runIndex];
     const items: ShelfItem[] = [];
+    const sectionStart = cursor;
 
-    /** What one title occupies along the shelf, spine-out: its thickness plus its gap. */
-    const spineLength = (t: ShelfTitleData) =>
-      DIMENSIONS[t.form ?? t.medium].d * depthScale(t.runtimeMin, logRange) + SPINE_GAP;
-
-    const runLength = run.titles.reduce((sum, t) => sum + spineLength(t), 0);
-    const levels = levelsForRun(runLength);
-
-    // Row-major now, not column-major. Spine-out, a shelf is read the way a bookshelf is read
-    // — left to right along a row, then down to the next — so filling that way puts the
-    // chronology in reading order. Column-major existed to make a column mean "one moment in
-    // time"; that only worked when a column was a single wide case, and spine-out it would
-    // scatter each moment across a row of slivers.
-    //
-    // Rows are split by equal *length*, not equal count: 3mm cards and 32mm clamshells in
-    // equal numbers make wildly unequal rows, and a unit whose shelves ended at different
-    // points reads as half-finished rather than as full.
-    const rows: ShelfTitleData[][] = Array.from({ length: levels }, () => []);
-    const target = runLength / levels;
-    let level = 0;
-    let filled = 0;
+    let x = cursor;
     run.titles.forEach((title) => {
+      const dims = DIMENSIONS[title.form ?? title.medium];
       const length = spineLength(title);
-      // Move on once this shelf is more than half-way through the title that would overrun
-      // it, so a long title lands on whichever shelf it mostly belongs to.
-      if (level < levels - 1 && filled + length / 2 > target) {
-        level += 1;
-        filled = 0;
-      }
-      rows[level].push(title);
-      filled += length;
+      // Backs aligned to the back panel, as a real shelf stacks them — so the *fronts* step in
+      // and out with each case's width, which is a thing you can actually see now that width
+      // points into the shelf.
+      items.push(place(title, x + (length - SPINE_GAP) / 2, boardTop + dims.h / 2, CASE_BACK_Z + dims.w / 2));
+      x += length;
     });
 
-    let packedRight = unitLeft;
-    rows.forEach((rowTitles, rowLevel) => {
-      // Row 0 is this unit's top shelf, and the unit is bottom-aligned to the floor.
-      const boardTop = FLOOR_BOARD_Y + (levels - 1 - rowLevel) * LEVEL_PITCH;
-      let x = unitLeft;
-      rowTitles.forEach((title) => {
-        const dims = DIMENSIONS[title.form ?? title.medium];
-        const length = spineLength(title);
-        // Backs aligned to the back panel, as a real shelf stacks them — so the *fronts* step
-        // in and out with each case's width, which is a thing you can actually see now that
-        // width points into the shelf.
-        items.push(place(title, x + (length - SPINE_GAP) / 2, boardTop + dims.h / 2, CASE_BACK_Z + dims.w / 2));
-        x += length;
-      });
-      packedRight = Math.max(packedRight, x - SPINE_GAP);
-    });
+    // A section is at least wide enough to carry its nameplate. Spider-Verse is two films and
+    // 17mm of spine; with no floor it would be a section narrower than the plate above it,
+    // which reads as a mistake rather than as a small collection.
+    const packed = Math.max(x - SPINE_GAP, sectionStart);
+    const sectionEnd = Math.max(packed, sectionStart + MIN_SECTION_WIDTH);
+    const sectionWidth = sectionEnd - sectionStart;
 
-    // A universe of two titles is 3cm of spine. Without a floor on the width it would get a
-    // bookcase narrower than one of its own shelves is tall, which reads as a mistake rather
-    // than as a small collection. An almost-empty shelf is the honest picture.
-    const unitRight = Math.max(packedRight, unitLeft + MIN_UNIT_WIDTH);
-    const unitWidth = unitRight - unitLeft;
-    const unitTop = FLOOR_BOARD_Y + levels * LEVEL_PITCH;
-    const unitBottom = FLOOR_BOARD_Y - BOARD_THICKNESS;
-
-    // The unanchored ones (story order's fourteen). They hang above their own universe's
-    // unit with nothing underneath, spread across its width and scattered by a hash of the
-    // slug, so the same title hangs in the same place on every render and every machine.
+    // The unanchored ones (story order's fourteen). They hang above their own section with
+    // nothing underneath, spread across its width and scattered by a hash of the slug, so the
+    // same title hangs in the same place on every render and every machine.
     run.floating.forEach((title, i) => {
       const spread = run.floating.length > 1 ? i / (run.floating.length - 1) : 0.5;
       const jitter = hashUnit(title.slug);
-      const x = unitLeft + 0.7 + spread * Math.max(unitWidth - 1.4, 0.5) + (jitter - 0.5) * 0.9;
-      // Above the carcass, not just above the top row of cases: the unit now has a top board,
-      // and hanging these at case height would push them through it.
-      const y = unitTop + 0.8 + jitter * 1.6;
-      items.push(place(title, x, y, (hashUnit(`${title.slug}-z`) - 0.5) * 1.2));
+      const hangX = sectionStart + 0.25 + spread * Math.max(sectionWidth - 0.5, 0.3) + (jitter - 0.5) * 0.3;
+      const hangY = runTop + 0.8 + jitter * 1.6;
+      const hangZ = CASE_BACK_Z + DIMENSIONS.amaray.w / 2 + (hashUnit(`${title.slug}-z`) - 0.5) * 0.6;
+      items.push(place(title, hangX, hangY, hangZ));
     });
 
-    // A carcass per unit, not just floating shelves: four boards, a top, two uprights and a
-    // back panel. Every piece is another instance of the same unit box, so a whole extra
-    // bookcase costs nothing in draw calls — and it is what makes a universe read as its own
-    // piece of furniture rather than a section of an endless wall. The back panel is
-    // docs/05-3d-shelf.md §3's one concession to building a room: real shelves have backs, it
-    // stops the floating-in-void feeling, and it gives the lamp a surface to fall on.
-    const slabWidth = unitWidth + BOARD_MARGIN * 2;
-    const centreX = unitLeft + unitWidth / 2;
-    const unitHeight = unitTop - unitBottom;
-
-    for (let level = 0; level < levels; level++) {
-      const boardTop = FLOOR_BOARD_Y + (levels - 1 - level) * LEVEL_PITCH;
-      boardSlabMatrices.push(matrix(centreX, boardTop - BOARD_THICKNESS / 2, 0, slabWidth, BOARD_THICKNESS, BOARD_DEPTH));
-      boardSlabWear.push(wear);
-      // The lip: a brighter trim strip along the board's front-top edge — the one surface a
-      // face-out shelf never hides behind its own cases.
-      boardLipMatrices.push(
-        matrix(centreX, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, slabWidth, BOARD_LIP_HEIGHT, 0.03)
-      );
-      boardLipWear.push(wear);
-    }
-    boardSlabMatrices.push(matrix(centreX, unitTop - BOARD_THICKNESS / 2, 0, slabWidth, BOARD_THICKNESS, BOARD_DEPTH));
-    boardSlabWear.push(wear);
-    for (const side of [-1, 1]) {
-      boardSlabMatrices.push(
-        matrix(
-          centreX + side * (slabWidth / 2 + UPRIGHT_WIDTH / 2),
-          unitBottom + unitHeight / 2,
-          0,
-          UPRIGHT_WIDTH,
-          unitHeight,
-          BOARD_DEPTH
-        )
-      );
-      boardSlabWear.push(wear);
-    }
-    boardSlabMatrices.push(
-      matrix(centreX, unitBottom + unitHeight / 2, -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS, slabWidth, unitHeight, BACK_PANEL_THICKNESS)
-    );
-    boardSlabWear.push(wear);
+    // Recorded, not emitted. The boards cannot be sized from the section alone: they have to
+    // reach the *divider centres* either side, or the padding around each divider becomes a
+    // hole in the shelf and twelve sections read as twelve boxes standing in a row — which is
+    // precisely the thing one run exists not to be.
+    sections.push({ start: sectionStart, end: sectionEnd, wear });
 
     universes.push({
       key: run.key,
       label: run.label,
-      startX: unitLeft,
-      endX: unitRight,
+      startX: sectionStart,
+      endX: sectionEnd,
       wear,
-      levels,
-      centreY: (unitBottom + unitTop) / 2,
-      height: unitTop - unitBottom,
+      centreY: runCentreY,
+      height: runHeight,
       items,
     });
-    unitLeft = unitRight + UNIVERSE_GAP;
+
+    cursor = sectionEnd;
+    if (runIndex < runs.length - 1) {
+      dividerX.push(cursor + DIVIDER_PAD + UPRIGHT_WIDTH / 2);
+      cursor += DIVIDER_PAD * 2 + UPRIGHT_WIDTH;
+    }
+  });
+
+  // The boards, now that the divider positions are known. Each spans from the boundary behind
+  // it to the boundary in front — the divider centres, or the run's own ends — so consecutive
+  // boards share an edge and the shelf is unbroken along its whole length, while each still
+  // carries its own section's wear. Continuous timber, a gradient of age.
+  const runLeft = -UPRIGHT_WIDTH / 2;
+  const runRight = cursor + UPRIGHT_WIDTH / 2;
+  sections.forEach((section, i) => {
+    const left = i === 0 ? runLeft : dividerX[i - 1];
+    const right = i === sections.length - 1 ? runRight : dividerX[i];
+    const span = right - left;
+    const mid = (left + right) / 2;
+    boardSlabMatrices.push(matrix(mid, boardTop - BOARD_THICKNESS / 2, 0, span, BOARD_THICKNESS, BOARD_DEPTH));
+    boardSlabWear.push(section.wear);
+    boardSlabMatrices.push(matrix(mid, runTop - BOARD_THICKNESS / 2, 0, span, BOARD_THICKNESS, BOARD_DEPTH));
+    boardSlabWear.push(section.wear);
+    boardSlabMatrices.push(
+      matrix(mid, runCentreY, -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS, span, runHeight, BACK_PANEL_THICKNESS)
+    );
+    boardSlabWear.push(section.wear);
+    // The lip: a brighter trim strip along the board's front-top edge.
+    boardLipMatrices.push(matrix(mid, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, span, BOARD_LIP_HEIGHT, 0.03));
+    boardLipWear.push(section.wear);
+  });
+
+  // The partitions between sections. They take the mean wear rather than either neighbour's:
+  // a divider belongs to both sides, and giving it one side's value would read as the gradient
+  // stepping in the wrong place.
+  const meanWear = wearByUnit.length ? wearByUnit.reduce((a, b) => a + b, 0) / wearByUnit.length : 0.5;
+  for (const x of dividerX) {
+    boardSlabMatrices.push(matrix(x, runCentreY, 0, UPRIGHT_WIDTH, runHeight, BOARD_DEPTH));
+    boardSlabWear.push(meanWear);
+  }
+
+  // And the two ends. docs/05-3d-shelf.md §12 Q18: **the gallery ends.** A real wall at each
+  // extreme, because this is an archive of a finite thing and a wall says *complete* in a way
+  // no caption can. Each end takes the wear of the section it closes, so the oldest end of the
+  // run is visibly the oldest.
+  const endWear = [wearByUnit[0] ?? meanWear, wearByUnit[wearByUnit.length - 1] ?? meanWear];
+  [runLeft, runRight].forEach((x, i) => {
+    boardSlabMatrices.push(matrix(x, runCentreY, 0, UPRIGHT_WIDTH, runHeight, BOARD_DEPTH));
+    boardSlabWear.push(endWear[i]);
   });
 
   // Frame the furniture, not just the cases: the carcass runs from its own top board down to

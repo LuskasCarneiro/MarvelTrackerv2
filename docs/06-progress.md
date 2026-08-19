@@ -258,6 +258,27 @@ is brightest.
 
 ## Log
 
+### 2026-08-19 (later) — one continuous run, in a room with the lights on
+
+The owner answered §12's open question: **(b), one continuous run**, plus *"dont forget to also
+build the room, and make the room a light color like you would see in a normal wall"*.
+
+- **Twelve carcasses became one run.** A single level, ~2.4m long, universes as contiguous
+  stretches divided by partitions, a real end wall at each extreme. Per-section boards butted
+  at the divider centres so the timber is continuous while the **wear gradient ages along the
+  length** — the thing one run buys over twelve, and now asserted in the layout test because
+  no screenshot can catch it.
+- **The room is painted.** Warm off-white walls, a lighter ceiling, a picture rail, a skirting;
+  floor 1.4m below the run, ceiling ~2.7m. Ambient and a hemisphere light carry it instead of
+  the travelling lamp, which is now an accent at 20 rather than the room's only source at 95.
+- **The chrome had to be re-inked**, and this is the part worth remembering: the text tokens
+  are built for light-on-dark and `--color-label-mid` is ~1.6:1 on plaster. Redefining the
+  tokens inside `.shelf-chrome` re-inks every utility beneath without a single component
+  knowing which room it is in. Measured on the render at 12.4 / 8.3 / 6.6.
+- **`CLAUDE.md`'s palette line is amended, not contradicted** — the same treatment the format
+  mark got. It was a decision, and a cold session must not "restore" the dark room.
+- **Still 16.7ms p50 in every state** on the same 2015 Intel GPU.
+
 ### 2026-08-19 — the shelf was turned around, and the machine was finally asked
 
 Executed `docs/05-3d-shelf.md` §12. **Steps 1–5, 7 and most of 8 are done; step 6 (the

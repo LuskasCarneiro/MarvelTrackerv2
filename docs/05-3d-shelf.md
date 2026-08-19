@@ -600,6 +600,36 @@ collection, but it leaves the open question:
 > shelves. **This is the owner's call and it is not made here.** Everything else in the
 > rebuild is independent of it.
 
+#### Answered 2026-08-19 — (b), one continuous run, and the room is a light wall
+
+**The owner chose (b), and added two things: build the room, and paint it a light colour "like
+you would see in a normal wall".** Q9 and Q13 are superseded; there are no alcoves.
+
+| | |
+|---|---|
+| **The run** | One shelf, **a single level**, about 2.4m long. Universes are contiguous stretches of it, divided by a partition rather than by clear air |
+| **Why single-level** | The camera is locked off and travels horizontally. A run that wrapped onto a second shelf would break the travel *and* the thing that makes a section legible — that a universe is a stretch you walk past |
+| **The wear gradient** | Per-section boards, butted at the divider centres, each carrying its own section's wear. Continuous timber, a gradient of age — which is what one run buys over twelve carcasses, and is asserted in the layout test because a screenshot cannot catch it |
+| **The ends** | Q18 survives intact: a real end wall at each extreme |
+| **The room** | Warm off-white (`#d9d2c6`), a lighter ceiling, a picture rail, a skirting. Floor 1.4m below the run, ceiling ~2.7m — a domestic room, measured |
+
+**Three consequences that were not obvious and are now recorded in code:**
+
+1. **The chrome had to be re-inked.** This project's text tokens are built for light-on-dark;
+   `--color-label-mid` is 10.1:1 on the page ground and about **1.6:1 on plaster**. The tokens
+   are redefined inside `.shelf-chrome` on this route, so every utility beneath follows and no
+   component needs to know which room it stands in. Measured on the render: 12.4 / 8.3 / 6.6.
+2. **The close shot cannot show the floor, and that is not a bug.** The camera is locked
+   square-on at eye level; a person facing a wall sees wall. The room is the *wide* shot's
+   job, which is why `WIDE_FACTOR` went from 1.55 to 3.2.
+3. **`ROOM_FRONT` must exceed `STAND_MAX`.** At the new wide distance the camera stepped out
+   through the front wall of the room. The walls are `BackSide`, so this does not error — it
+   renders the room inside out and unlit, which looks like a lighting failure and is a camera
+   one.
+
+**Measured after, on the same hardware:** 16.7ms p50 in every state, still. p95 shows an
+occasional dropped frame while a case is animating; at rest and wide it is clean.
+
 #### Smaller findings worth keeping
 
 - **`none` now carries a printed spine**, reversing an earlier refusal. It is 66 of 152

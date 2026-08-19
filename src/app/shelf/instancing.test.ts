@@ -4,9 +4,7 @@ import {
   cropCellUv,
   depthScale,
   DIMENSIONS,
-  LEVELS,
-  levelsForRun,
-  CARCASS_PIECES,
+  carcassPieceCount,
   runtimeLogRange,
   type ShelfRun,
   type ShelfTitleData,
@@ -88,7 +86,7 @@ describe("depthScale", () => {
   });
 });
 
-describe("buildShelfLayout — one shelf unit per universe", () => {
+describe("buildShelfLayout — one continuous run", () => {
   const cellSize = { w: 256, h: 360 };
   const mcu: ShelfTitleData[] = Array.from({ length: 10 }, (_, i) =>
     title(`mcu-${i}`, i < 4 ? "vhs" : "amaray", { releaseYear: 1990 + i, storyYear: 1990 + i })
@@ -116,11 +114,18 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
     expect(layout.media.flatMap((m) => m.slugs)).toHaveLength(mcu.length + sony.length);
   });
 
-  it("stands the units side by side with clear air between them", () => {
+  it("joins the sections into one run, divided rather than separated", () => {
     const [first, second] = layout.universes;
-    expect(second.startX).toBeGreaterThan(first.endX + 1);
-    // ...and every case on a unit is within that unit's own span.
+    // A divider and its clearance, not a gap between two pieces of furniture. The old layout
+    // put whole units 1.2 apart; if that ever came back this would catch it.
+    const between = second.startX - first.endX;
+    expect(between).toBeGreaterThan(0);
+    expect(between).toBeLessThan(0.5);
+    // ...and every case in a section is within that section's own span.
     for (const item of second.items) expect(item.x).toBeGreaterThan(first.endX);
+    // One run means one shelf height: every section sits at the same level.
+    expect(second.centreY).toBeCloseTo(first.centreY, 6);
+    expect(second.height).toBeCloseTo(first.height, 6);
   });
 
   it("packs a shelf left to right with the spines a hair apart", () => {
@@ -139,24 +144,20 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
     expect(row[1].x - row[0].x - halfThickness(row[0]) - halfThickness(row[1])).toBeCloseTo(0.002, 6);
   });
 
-  it("gives a longer collection more shelves, by length rather than by title count", () => {
-    // Counting titles cannot work spine-out: these are the same number of titles and a
-    // five-fold difference in shelf, because a streaming card is 3mm and a clamshell 32mm.
-    expect(levelsForRun(0.3)).toBe(1);
-    expect(levelsForRun(20)).toBeGreaterThan(levelsForRun(2));
-    expect(levelsForRun(1000)).toBe(LEVELS); // never taller than a bookcase, however big
+  it("builds one run's worth of joinery, not one carcass per universe", () => {
+    // Per section a board, a top and a back; then two ends for the whole run and a divider
+    // between each pair. All instances of the same box, so the run is still the two board
+    // draw calls it always was however many sections it grows.
+    expect(layout.boardSlabMatrices).toHaveLength(carcassPieceCount(runs.length));
+    expect(layout.boardLipMatrices).toHaveLength(runs.length);
+    expect(layout.boardSlabWear).toHaveLength(layout.boardSlabMatrices.length);
   });
 
-  it("gives each unit its own carcass, so a universe reads as a piece of furniture", () => {
-    // Four shelves plus a top, two uprights and a back — all instances of the same box, so
-    // the whole room of bookcases is still the two board draw calls it always was.
-    // Units are as tall as their collection needs, so the count is whatever the layout chose
-    // — asserted against the layout itself rather than re-derived, since re-deriving it here
-    // would only prove the test can run the same formula twice.
-    const shelves = layout.universes.map((u) => u.levels);
-    expect(shelves.every((l) => l >= 1 && l <= LEVELS)).toBe(true);
-    expect(layout.boardSlabMatrices).toHaveLength(shelves.reduce((n, l) => n + l + CARCASS_PIECES, 0));
-    expect(layout.boardLipMatrices).toHaveLength(shelves.reduce((n, l) => n + l, 0));
+  it("ages the run along its length rather than as one object", () => {
+    // The point of one run over twelve bookcases: the wear gradient has to travel *through*
+    // it. If every board took the same value the concept would be gone while the picture
+    // looked identical, which is exactly the kind of regression a screenshot cannot catch.
+    expect(new Set(layout.boardSlabWear).size).toBeGreaterThan(1);
   });
 
   // Instance index is the whole of the picking lookup and of the pull: `slugs[instanceId]`
@@ -176,11 +177,14 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
     );
     expect(aged.universes[0].wear).toBe(1);
     expect(aged.universes[1].wear).toBe(0);
-    // Wear travels per board instance, not per material — that is what keeps twelve
-    // differently-aged bookcases at two draw calls.
+    // Wear travels per board instance, not per material — that is what keeps a run whose
+    // every section is a different age at two draw calls.
     expect(aged.boardSlabWear).toHaveLength(aged.boardSlabMatrices.length);
     expect(aged.boardLipWear).toHaveLength(aged.boardLipMatrices.length);
-    expect(new Set(aged.boardSlabWear)).toEqual(new Set([1, 0]));
+    // 0.5 is the divider between the two sections. It belongs to both sides, so it takes the
+    // mean rather than either neighbour's value — otherwise the gradient visibly steps in the
+    // wrong place, half a partition early.
+    expect(new Set(aged.boardSlabWear)).toEqual(new Set([1, 0.5, 0]));
   });
 
   it("agrees with itself about which instance is which title", () => {
@@ -230,10 +234,9 @@ describe("buildShelfLayout — one shelf unit per universe", () => {
         ...withFloating.universes[0].items.filter((i) => shelvedSlugs.has(i.slug)).map((i) => i.y)
       );
       for (const item of hung) expect(item.y).toBeGreaterThan(topOfShelf);
-      // The unit's furniture, unchanged. Nothing was built to hold these up.
-      expect(withFloating.boardSlabMatrices).toHaveLength(
-        withFloating.universes[0].levels + CARCASS_PIECES
-      );
+      // The joinery is unchanged. Nothing was built to hold these up — that is what "outside
+      // time" means here, and a shelf appearing under them would quietly assert the opposite.
+      expect(withFloating.boardSlabMatrices).toHaveLength(carcassPieceCount(1));
     });
 
     it("scatters them by a hash of the slug, so the same title hangs in the same place", () => {

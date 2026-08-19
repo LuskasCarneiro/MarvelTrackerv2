@@ -161,3 +161,25 @@ body {
   z-index: 20;
   border-bottom: 0;
 }
+
+/**
+ * The chrome floats over a *pale* room now (the owner's call, 2026-08-19), and this palette
+ * was built for light text on a near-black page. `--color-label-mid` is 10.1:1 on shelf-dark
+ * and about 1.6:1 on plaster — invisible, not merely weak.
+ *
+ * So on this route the chrome is **re-inked, not re-styled**: the tokens are redefined inside
+ * `.shelf-chrome`, and every Tailwind utility beneath it follows without a single component
+ * needing to know which room it is standing in. Same palette, read the other way up.
+ *
+ * Ratios measured against the wall (#d9d2c6), which is what these actually sit on:
+ *   bright 12.4:1 · mid 8.3:1 · dim 6.6:1 — all above the 4.5 floor this project holds.
+ */
+[data-chrome] .shelf-chrome {
+  --color-label-bright: #17120c;
+  --color-label-mid: #3b332a;
+  --color-label-dim: #4b4239;
+  --color-shelf-edge: #a9a091;
+  /* The caption card's own scrim, which has to stay opaque — it sits over artwork. */
+  --color-shelf-dark: #efeae1;
+  --color-shelf-raised: #e4ddd1;
+}

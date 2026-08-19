@@ -80,8 +80,21 @@ owner pasting SQL into the Supabase SQL editor once, or `SUPABASE_ACCESS_TOKEN` 
 | Sign-up | **Public**, with rate limiting and abuse protections | owner, 2026-08-09 |
 | Shelves | **Private** — nobody can see another user's ratings | owner, 2026-08-09 |
 | Design authority | **Claude decides**, using design skills + subagents | owner, 2026-08-09 |
-| Palette | Dark, warm; no fixed accent — each title tints from its own artwork | Claude |
+| Palette | **The room is a painted wall — light, warm** (see below). The rest of the app stays dark. No fixed accent; each title tints from its own artwork | owner, 2026-08-19 |
 | Generative AI assets | **Not used for product assets** — see `docs/PLAN.md` §6 | 2026-08-06 |
+
+> **Amended 2026-08-19 by the owner: the room is a light wall, not a dark one.** The palette
+> line above used to read "Dark, warm" full stop, and the shelf room was near-black
+> (`#171310`). It is now ordinary warm off-white emulsion (`#d9d2c6`), with a ceiling, a
+> picture rail and a skirting. **This is a decision, not drift** — do not "restore" the dark
+> room because a doc elsewhere still implies one.
+>
+> Two things follow that a cold session must not undo. The room's *discipline* is unchanged:
+> it still has no opinions of its own, so the artwork is still the only real colour in the
+> scene. And the shelf's chrome is **re-inked** on that route (`globals.css`,
+> `[data-chrome] .shelf-chrome`) because this project's text tokens are built for light-on-dark
+> and are around 1.6:1 on plaster — invisible, not merely weak. The rest of the app is still
+> dark and still uses the tokens as declared.
 
 ## The concept in one line
 

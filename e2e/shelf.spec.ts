@@ -60,9 +60,23 @@ test.describe("the shelf", () => {
 
     // A case opens its own page. Which case depends on the framing, so this asserts the
     // relationship rather than a fixed title: whatever was clicked, a title page opened.
+    //
+    // Where the run sits in frame is a function of the camera framing, and the framing is
+    // tuned. A single hard-coded point re-breaks this every time the shelf moves up or down a
+    // few percent — which is a test failing for being out of date rather than for finding a
+    // fault. So walk down the middle and take the first point that actually hits a case.
     const box = (await canvas.boundingBox())!;
-    await page.mouse.click(box.x + box.width * 0.55, box.y + box.height * 0.45);
-    await page.waitForURL(/\/title\/[a-z0-9-]+$/, { timeout: 15_000 });
+    for (const fraction of [0.62, 0.55, 0.7, 0.45, 0.78]) {
+      await page.mouse.click(box.x + box.width * 0.55, box.y + box.height * fraction);
+      const opened = await page
+        .waitForURL(/\/title\/[a-z0-9-]+$/, { timeout: 4_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (opened) break;
+    }
+    await expect(page, "no click down the middle of the canvas hit a case").toHaveURL(
+      /\/title\/[a-z0-9-]+$/
+    );
     await expect(page.locator("h1")).toBeVisible();
   });
 
