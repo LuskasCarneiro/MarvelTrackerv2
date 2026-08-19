@@ -314,6 +314,9 @@ const STAND_MAX = 44;
  */
 const WIDE_FACTOR = 5.0;
 
+/** Air kept between the cabinet and the frame edge when the camera is tracking along it. */
+const CABINET_MARGIN = 2.5;
+
 function standingDistance(
   camera: THREE.PerspectiveCamera,
   width: number,
@@ -357,7 +360,7 @@ const ROOM_MARGIN_X = 16;
  * darkness either way"; that stopped being true the moment the room was painted, and a
  * ceiling you can see has to be at a height a person would believe.
  */
-const ROOM_HEADROOM = 11;
+const ROOM_HEADROOM = 13;
 const SKIRTING_HEIGHT = 0.22;
 const SKIRTING_DEPTH = 0.05;
 /** The picture rail: how far below the ceiling it sits, and how deep the moulding is. */
@@ -369,7 +372,7 @@ const RAIL_HEIGHT = 0.12;
  * chest height and the eye — which sits a little above the run's own middle — at about 1.6m,
  * where a standing person's eye actually is.
  */
-const ROOM_FLOOR_DROP = 14;
+const ROOM_FLOOR_DROP = 0.02;
 
 /**
  * The room's colours. **A painted wall, not a void** — the owner's call on 2026-08-19, and it
@@ -915,6 +918,13 @@ const FOV = 42;
  * into it. Constant, so it is built once rather than per frame. */
 const FLIP_Y = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI, 0));
 
+/**
+ * How far into the pull a printed face takes to come proud of the case. Small: it only has to
+ * outlast the moment the case is still between its neighbours, and every frame after that is a
+ * frame the artwork should be visible for.
+ */
+const COVER_EMERGE = 0.05;
+
 const scratch = {
   matrix: new THREE.Matrix4(),
   quaternion: new THREE.Quaternion(),
@@ -957,7 +967,17 @@ function poseCase(
   // proud of its own face would poke through the neighbour 2mm away; scaling the offset by
   // the pull parks it inside an opaque box exactly when that would happen, and it is hidden
   // there rather than fighting for the depth test.
-  offset.set(0, 0, faceZ * amount).applyQuaternion(quaternion);
+  // The printed faces sit flush inside the case *only while it is on the shelf*, where a cover
+  // proud of its own face would poke through the neighbour 2mm away and z-fight with it.
+  //
+  // This used to scale by `amount` directly, which is the bug the owner reported as artwork
+  // that "only loads when the box is fully in front of you": at half-drawn the cover was still
+  // at half its offset, i.e. still buried inside an opaque box, so the poster appeared to snap
+  // into existence at the end of the travel. Nothing was loading late — it was inside the case
+  // the whole way out. The ramp is over the first few percent of the pull instead, so the
+  // cover is proud as soon as the case has cleared its neighbours and is visible for the whole
+  // of the animation.
+  offset.set(0, 0, faceZ * Math.min(1, amount / COVER_EMERGE)).applyQuaternion(quaternion);
   // The case travels from its slot to the presentation point in front of the eye, rather than
   // simply nosing forward out of the shelf. With a locked-off camera this is the whole
   // interaction: the viewer does not go to the object, the object comes to the viewer.
@@ -1241,12 +1261,8 @@ function ShelfContent({
     // Computed here, at the top, because the poses below need it — it used to sit down in the
     // camera section and was read before it was initialised, which is a crash rather than a
     // subtle fault only because `const` is honest about it.
-    const bayCentreX = (universe.startX + universe.endX) / 2;
-    // Halfway up the unit *and its nameplate*, not a fixed lift above the unit's own middle.
-    // The old fixed +1.1 was measured against four-level bookcases; spine-out a small universe
-    // is one shelf about two units tall, and a 1.1 lift put the eye level with the top of the
-    // furniture — the camera is locked square-on, so that framed the wall and cropped the
-    // shelf off the bottom of the picture.
+    // Halfway up the cabinet *and its nameplates*, so the whole piece of furniture and the
+    // brass above it sit in the frame together.
     const eyeY = universe.centreY + PLAQUE_HEADROOM / 2;
     const standZ = standingDistance(
       state.camera as THREE.PerspectiveCamera,
@@ -1254,6 +1270,24 @@ function ShelfContent({
       universe.height + PLAQUE_HEADROOM,
       wide ? WIDE_FACTOR : 1
     );
+
+    // Where to stand along the cabinet. Centring flatly on the current bay was right while the
+    // shelf was a 2.4m run you walked *past* — most of it was off-frame either way. A cabinet
+    // is one object that fits in the shot, so that same rule parked it hard against one edge
+    // with a wall of empty plaster beside it, in a room whose whole point is being a room.
+    // Clamped to keep the cabinet in frame, and centred outright once it fits entirely.
+    const cam = state.camera as THREE.PerspectiveCamera;
+    const halfVisible = standZ * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2) * cam.aspect;
+    const cabinetLeft = 0;
+    const cabinetRight = layout.bounds.maxX;
+    const fitsWhole = cabinetRight - cabinetLeft + CABINET_MARGIN * 2 <= halfVisible * 2;
+    const bayCentreX = fitsWhole
+      ? (cabinetLeft + cabinetRight) / 2
+      : THREE.MathUtils.clamp(
+          (universe.startX + universe.endX) / 2,
+          cabinetRight + CABINET_MARGIN - halfVisible,
+          cabinetLeft - CABINET_MARGIN + halfVisible
+        );
 
     // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
     // rather than travels, exactly as the camera does. Computed before the hold point rather
@@ -2282,11 +2316,12 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
          * gets a real shadow rather than a painted-on decal — an object that does not darken
          * the wall behind it is the single loudest way to say "this is not in the room".
          *
-         * Plain `shadows`, not `"soft"`: that maps to PCFSoftShadowMap, which three now warns
-         * is deprecated on every single frame. The softness comes from the light being a broad
-         * room source rather than from the filter.
+         * `"percentage"` names the filter explicitly. Both `"soft"` and a bare `shadows` land on
+         * PCFSoftShadowMap, which three now warns is deprecated — on every frame, in the
+         * console, forever. The softness here comes from the light being a broad room source
+         * rather than from the filter, so nothing is lost by saying which one.
          */
-        shadows
+        shadows="percentage"
         dpr={[DPR_MIN, DPR_MAX]}
         // Looking along the shelf at an angle, not square at it: at ~35 degrees the cases
         // read as objects with depth rather than as flat posters, which is the entire reason

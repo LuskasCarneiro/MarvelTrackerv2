@@ -99,14 +99,6 @@ describe("buildShelfLayout — one continuous run", () => {
   const cells = Object.fromEntries([...mcu, ...sony].map((t, i) => [t.slug, { x: i * 256, y: 0 }]));
   const layout = buildShelfLayout(runs, cells, cellSize, 4096);
 
-  const positionOf = (slug: string) => {
-    for (const shelf of layout.universes) {
-      const item = shelf.items.find((i) => i.slug === slug);
-      if (item) return item;
-    }
-    throw new Error(`${slug} was not placed`);
-  };
-
   it("places every title exactly once, on its own universe's shelf", () => {
     expect(layout.universes.map((u) => u.key)).toEqual(["mcu", "sony"]);
     expect(layout.universes[0].items).toHaveLength(mcu.length);
@@ -129,7 +121,15 @@ describe("buildShelfLayout — one continuous run", () => {
   });
 
   it("packs a shelf left to right with the spines a hair apart", () => {
-    const row = mcu.slice(0, 4).map((t) => positionOf(t.slug));
+    // Grouped by which board they stand on, because a bay is a *stack* of shelves now and a
+    // fixed slice of the titles would straddle two of them — where x quite correctly resets.
+    const byShelf = new Map<string, typeof layout.universes[number]["items"]>();
+    for (const item of layout.universes[0].items) {
+      const foot = (item.y - DIMENSIONS[item.form].h / 2).toFixed(4);
+      byShelf.set(foot, [...(byShelf.get(foot) ?? []), item]);
+    }
+    const row = [...byShelf.values()].sort((a, b) => b.length - a.length)[0].sort((a, b) => a.x - b.x);
+    expect(row.length).toBeGreaterThan(1);
     for (let i = 1; i < row.length; i++) expect(row[i].x).toBeGreaterThan(row[i - 1].x);
 
     // All standing on the same board. Their *centres* differ, because a VHS is taller than an
@@ -152,8 +152,12 @@ describe("buildShelfLayout — one continuous run", () => {
     // rather than by section, so they cannot be derived from the run count here — what must
     // hold is that every piece the layout emits has a wear value to go with it.
     expect(layout.boardSlabMatrices.length).toBeGreaterThanOrEqual(carcassPieceCount(runs.length));
-    expect(layout.boardLipMatrices).toHaveLength(runs.length);
     expect(layout.boardSlabWear).toHaveLength(layout.boardSlabMatrices.length);
+    // One lip per board, and **more than one board per bay** — which is the whole of "it is a
+    // cabinet, not a ledge". Every bay gets the same number, or the cabinet has a stepped top.
+    expect(layout.boardLipMatrices.length % runs.length).toBe(0);
+    expect(layout.boardLipMatrices.length / runs.length).toBeGreaterThan(1);
+    expect(layout.boardLipWear).toHaveLength(layout.boardLipMatrices.length);
   });
 
   it("ages the run along its length rather than as one object", () => {

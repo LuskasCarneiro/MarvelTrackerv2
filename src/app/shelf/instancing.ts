@@ -175,7 +175,7 @@ const BOARD_DEPTH = 1.75;
  * and 384mm (the MCU's fifty-seven) of spine. Letting a section be its natural width would
  * put a 260mm brass plate over a 17mm gap.
  */
-const MIN_SECTION_WIDTH = 1.6;
+const MIN_SECTION_WIDTH = 0.95;
 const COVER_INSET = 0.0015; // = the spike's INSET: the printed insert sits proud of the body
 
 /**
@@ -406,7 +406,7 @@ function matrix(
  * At roughly 2.4m long and 21cm tall this is a gallery shelf run, not a bookcase, which is
  * the honest shape for 152 spines.
  */
-const RUN_LEVELS = 1;
+const CABINET_LEVELS = 5;
 
 /** Sized for the tallest case in the catalogue: any medium can stand anywhere on the run. */
 const LEVEL_PITCH = Math.max(...Object.values(DIMENSIONS).map((d) => d.h)) + ROW_CLEARANCE + BOARD_THICKNESS;
@@ -426,42 +426,18 @@ const FLOOR_BOARD_Y = 0;
  */
 const DIVIDER_PAD = 0.14;
 
+/** The base the cabinet stands on. A plinth is what stops a tall case looking like it was
+ *  dropped on the floor, and it is the reason the room now has a visible floor line. */
+const PLINTH_HEIGHT = 0.8;
+/** How far the plinth is set back from the cabinet face. The recess is what makes it read as
+ *  a base rather than as the carcass carrying on to the floor. */
+const PLINTH_SETBACK = 0.18;
+
 const UPRIGHT_WIDTH = 0.07;
 const BACK_PANEL_THICKNESS = 0.03;
 
 /** Where every case's back sits: against the back panel, as they do on a real shelf. */
 const CASE_BACK_Z = -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS;
-
-/**
- * The brackets that hold the run on the wall — see their use for why they exist at all.
- *
- * Described as two endpoints rather than as a position and a rotation, because that is how a
- * bracket is actually specified: it meets the underside of the board *here* and the wall
- * *there*. The angle and length below are derived, so moving either end cannot leave a strut
- * pointing into space.
- */
-const BRACKET_PITCH = 2.4; // roughly every 240mm, which is what carries a loaded shelf
-const BRACKET_THICKNESS = 0.05; // its width along the run — a flat iron strap, seen edge-on
-const BRACKET_DEPTH = 0.13; // how deep the strap is, face-on
-const BRACKET_TOP_Y = -BOARD_THICKNESS; // tucked under the board
-const BRACKET_FOOT_Y = BRACKET_TOP_Y - 0.9;
-const BRACKET_FRONT_Z = 0.3;
-const BRACKET_BACK_Z = -BOARD_DEPTH / 2;
-const BRACKET_RISE = BRACKET_TOP_Y - BRACKET_FOOT_Y;
-const BRACKET_REACH = BRACKET_FRONT_Z - BRACKET_BACK_Z;
-const BRACKET_LENGTH = Math.hypot(BRACKET_RISE, BRACKET_REACH);
-/**
- * Pitched about X so the box's long (local Z) axis lies along the strut.
- *
- * **Negative**, and the sign is the whole thing. Positive puts the strut's high end against the
- * wall and its low end out at the front, hanging off nothing — a bracket upside down, which
- * renders as a row of loose diagonal sticks under the shelf. A bracket is fixed to the wall
- * *low* and rises to meet the board's front edge.
- */
-const BRACKET_QUAT = new THREE.Quaternion().setFromAxisAngle(
-  new THREE.Vector3(1, 0, 0),
-  -Math.atan2(BRACKET_RISE, BRACKET_REACH)
-);
 
 /**
  * The joinery, counted so the layout test can assert it without re-deriving it.
@@ -600,9 +576,8 @@ export function buildShelfLayout(
   // by a partition rather than by clear air, and each stretch's own boards carry that
   // section's wear — which is what lets the furniture age *along the length* instead of
   // twelve separate objects each being uniformly one age.
-  const boardTop = FLOOR_BOARD_Y;
-  const runTop = FLOOR_BOARD_Y + RUN_LEVELS * LEVEL_PITCH;
-  const runBottom = FLOOR_BOARD_Y - BOARD_THICKNESS;
+  const runTop = FLOOR_BOARD_Y + CABINET_LEVELS * LEVEL_PITCH;
+  const runBottom = FLOOR_BOARD_Y - BOARD_THICKNESS - PLINTH_HEIGHT;
   const runHeight = runTop - runBottom;
   const runCentreY = (runBottom + runTop) / 2;
 
@@ -615,21 +590,49 @@ export function buildShelfLayout(
     const items: ShelfItem[] = [];
     const sectionStart = cursor;
 
-    let x = cursor;
+    // A bay of the cabinet: one universe, stacked down its own column of shelves. Split by
+    // equal *length* rather than equal count, because 3mm cards and 32mm clamshells in equal
+    // numbers make wildly unequal shelves and a bay whose rows ended at different points reads
+    // as half-finished rather than as full.
+    const sectionLength = run.titles.reduce((sum, t) => sum + spineLength(t), 0);
+    const target = sectionLength / CABINET_LEVELS;
+    const shelves: ShelfTitleData[][] = Array.from({ length: CABINET_LEVELS }, () => []);
+    let level = 0;
+    let filled = 0;
     run.titles.forEach((title) => {
-      const dims = DIMENSIONS[title.form ?? title.medium];
       const length = spineLength(title);
-      // Backs aligned to the back panel, as a real shelf stacks them — so the *fronts* step in
-      // and out with each case's width, which is a thing you can actually see now that width
-      // points into the shelf.
-      items.push(place(title, x + (length - SPINE_GAP) / 2, boardTop + dims.h / 2, CASE_BACK_Z + dims.w / 2));
-      x += length;
+      // Move on once this shelf is more than half-way through the title that would overrun it,
+      // so a long title lands on whichever shelf it mostly belongs to.
+      if (level < CABINET_LEVELS - 1 && filled + length / 2 > target) {
+        level += 1;
+        filled = 0;
+      }
+      shelves[level].push(title);
+      filled += length;
     });
 
-    // A section is at least wide enough to carry its nameplate. Spider-Verse is two films and
-    // 17mm of spine; with no floor it would be a section narrower than the plate above it,
-    // which reads as a mistake rather than as a small collection.
-    const packed = Math.max(x - SPINE_GAP, sectionStart);
+    let packed = sectionStart;
+    shelves.forEach((row, rowLevel) => {
+      // Level 0 is the top shelf, so a bay fills the way a bookcase is read: along the top,
+      // then down. The cabinet stands on the floor, so the *bottom* shelf is the origin and
+      // the stack is measured up from it.
+      const rowTop = FLOOR_BOARD_Y + (CABINET_LEVELS - 1 - rowLevel) * LEVEL_PITCH;
+      let x = cursor;
+      row.forEach((title) => {
+        const dims = DIMENSIONS[title.form ?? title.medium];
+        const length = spineLength(title);
+        // Backs aligned to the back panel, as a real shelf stacks them — so the *fronts* step
+        // in and out with each case's width, which is a thing you can actually see now that
+        // width points into the shelf.
+        items.push(place(title, x + (length - SPINE_GAP) / 2, rowTop + dims.h / 2, CASE_BACK_Z + dims.w / 2));
+        x += length;
+      });
+      packed = Math.max(packed, x - SPINE_GAP);
+    });
+
+    // A bay is at least wide enough to carry its nameplate. Spider-Verse is two films and 17mm
+    // of spine; with no floor it would be a bay narrower than the plate above it, which reads
+    // as a mistake rather than as a small collection.
     const sectionEnd = Math.max(packed, sectionStart + MIN_SECTION_WIDTH);
     const sectionWidth = sectionEnd - sectionStart;
 
@@ -680,17 +683,35 @@ export function buildShelfLayout(
     const right = i === sections.length - 1 ? runRight : dividerX[i];
     const span = right - left;
     const mid = (left + right) / 2;
-    boardSlabMatrices.push(matrix(mid, boardTop - BOARD_THICKNESS / 2, 0, span, BOARD_THICKNESS, BOARD_DEPTH));
-    boardSlabWear.push(section.wear);
+    // One board per level, plus the cabinet's own top. Each butts to its neighbours across the
+    // divider, so the cabinet is unbroken along its length while the wear still steps per bay.
+    for (let level = 0; level < CABINET_LEVELS; level++) {
+      const shelfTop = FLOOR_BOARD_Y + level * LEVEL_PITCH;
+      boardSlabMatrices.push(matrix(mid, shelfTop - BOARD_THICKNESS / 2, 0, span, BOARD_THICKNESS, BOARD_DEPTH));
+      boardSlabWear.push(section.wear);
+      // The lip: a brighter trim strip along each board's front-top edge.
+      boardLipMatrices.push(matrix(mid, shelfTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, span, BOARD_LIP_HEIGHT, 0.03));
+      boardLipWear.push(section.wear);
+    }
     boardSlabMatrices.push(matrix(mid, runTop - BOARD_THICKNESS / 2, 0, span, BOARD_THICKNESS, BOARD_DEPTH));
     boardSlabWear.push(section.wear);
     boardSlabMatrices.push(
       matrix(mid, runCentreY, -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS, span, runHeight, BACK_PANEL_THICKNESS)
     );
     boardSlabWear.push(section.wear);
-    // The lip: a brighter trim strip along the board's front-top edge.
-    boardLipMatrices.push(matrix(mid, boardTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, span, BOARD_LIP_HEIGHT, 0.03));
-    boardLipWear.push(section.wear);
+    // The plinth. Set back from the front, the way a plinth always is — the recess is what
+    // reads as a base rather than as the carcass simply continuing to the floor.
+    boardSlabMatrices.push(
+      matrix(
+        mid,
+        runBottom + PLINTH_HEIGHT / 2,
+        -PLINTH_SETBACK / 2,
+        span,
+        PLINTH_HEIGHT,
+        BOARD_DEPTH - PLINTH_SETBACK
+      )
+    );
+    boardSlabWear.push(section.wear);
   });
 
   // The partitions between sections. They take the mean wear rather than either neighbour's:
@@ -712,37 +733,11 @@ export function buildShelfLayout(
     boardSlabWear.push(endWear[i]);
   });
 
-  // **Brackets.** The run is mounted on a wall at eye height, and the owner's words were that
-  // the shelves "seem like they are floating" — which is exactly what a wall-mounted shelf with
-  // no visible support is called. A cast shadow fixes the *detachment*; only a bracket answers
-  // the question of what is holding it up.
-  //
-  // A diagonal strut from under the front of the board back and down to the wall: the ordinary
-  // shelf bracket, and the one shape that reads as support at a glance from any distance.
-  const bracketRun = runRight - runLeft;
-  const bracketCount = Math.max(2, Math.round(bracketRun / BRACKET_PITCH));
-  for (let i = 0; i <= bracketCount; i++) {
-    const x = runLeft + (bracketRun * i) / bracketCount;
-    boardSlabMatrices.push(
-      matrix(
-        x,
-        (BRACKET_TOP_Y + BRACKET_FOOT_Y) / 2,
-        (BRACKET_FRONT_Z + BRACKET_BACK_Z) / 2,
-        BRACKET_THICKNESS,
-        BRACKET_DEPTH,
-        BRACKET_LENGTH,
-        BRACKET_QUAT
-      )
-    );
-    // Brackets take the wear of whatever stands above them, so the ironmongery ages with the
-    // section it carries rather than being a uniform band under an ageing run.
-    const above = sections.find((s) => x >= s.start && x <= s.end);
-    boardSlabWear.push(above?.wear ?? meanWear);
-  }
-
   // Frame the furniture, not just the cases: the carcass runs from its own top board down to
   // below the bottom shelf, and a camera fitted to the cases alone crops both.
-  bounds.minY = Math.min(bounds.minY, FLOOR_BOARD_Y - BOARD_THICKNESS);
+  // Down to the foot of the plinth, so the room's floor can be put exactly where the cabinet
+  // actually stands rather than at a guessed distance below it.
+  bounds.minY = Math.min(bounds.minY, runBottom);
   bounds.maxY = Math.max(bounds.maxY, ...universes.map((u) => u.centreY * 2 - (FLOOR_BOARD_Y - BOARD_THICKNESS)));
 
   return {
