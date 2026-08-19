@@ -67,7 +67,10 @@ test.describe("shelf frames", () => {
     // working would leave a room with no way into it and every click silently doing nothing.
     const root = page.locator("html");
     const wake = async () => {
-      await page.mouse.move(700, 400);
+      // Focus rather than pointer: no hit-test, so it works while the chrome is still faded,
+      // and it pins the bar open so nothing downstream races the linger. Full reasoning in
+      // shelf.spec.ts's wakeChrome().
+      await page.getByRole("button", { name: "Release order" }).focus();
       await expect(root).toHaveAttribute("data-chrome", "shown");
     };
 

@@ -23,7 +23,14 @@ import { test, expect } from "@playwright/test";
  * button; this is that move, made explicit.
  */
 async function wakeChrome(page: import("@playwright/test").Page) {
-  await page.mouse.move(700, 400);
+  // **Focus, not hover.** `focus()` needs no hit-test, so it works while the chrome is still
+  // faded and `pointer-events: none`; `hover()` and `mouse.move()` both have to win a race
+  // against the 2.6s linger, which under software GL they lose about a third of the time.
+  //
+  // Focusing a control inside the bar also *pins* it open (`onFocusCapture` → holdChrome), so
+  // nothing later in the test can be caught by the fade. And it is a real user path rather
+  // than a test-only backdoor: it is exactly the keyboard reveal of §12 Q11.
+  await page.getByRole("button", { name: "Release order" }).focus();
   await expect(page.locator("html")).toHaveAttribute("data-chrome", "shown");
 }
 
