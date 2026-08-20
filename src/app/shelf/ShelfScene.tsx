@@ -339,7 +339,10 @@ function standingDistance(
 }
 
 
-const DPR_MIN = 0.7;
+/** Pinned to 1. AdaptiveQuality used to trade sharpness for smoothness down to 0.7x, and
+ * that softness is what the owner saw as "the resolution of the 3d things is too low" — it
+ * gave up resolution before frames, and they have twice said they want it the other way. */
+const DPR_MIN = 1;
 const DPR_MAX = 1.5;
 
 /**
@@ -368,7 +371,7 @@ const ROOM_FRONT_MARGIN = 26;
  * darkness either way"; that stopped being true the moment the room was painted, and a
  * ceiling you can see has to be at a height a person would believe.
  */
-const ROOM_HEADROOM = 13;
+const ROOM_HEADROOM = 1.6;
 const SKIRTING_HEIGHT = 0.22;
 const SKIRTING_DEPTH = 0.05;
 /** The picture rail: how far below the ceiling it sits, and how deep the moulding is. */

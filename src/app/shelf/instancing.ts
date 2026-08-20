@@ -515,11 +515,23 @@ const FACE_PITCH = 1.4;
 
 /** The narrowest a cabinet gets, however little it holds. Below this it reads as a slot. */
 const MIN_BAY = 4.5;
+/** How wide a filler cupboard wants to be — a run of them, not one enormous door. */
+const FILLER_TARGET = 7;
+const EMPTY_RUN: ShelfRun = { key: "", label: "", titles: [], floating: [] };
+const meanOf = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0.5);
 
 /** The arched recess at the centre of the back wall — the room's focal point. */
 const ARCH_WIDTH = 9;
-/** However small the collection, a room you stand inside has a minimum that reads as a room. */
-const MIN_ROOM_WIDTH = 38;
+/**
+ * However small the collection, a room you stand inside has a minimum that reads as a room.
+ *
+ * Measured against the furniture rather than guessed: two life-sized 2.19m sofas facing each
+ * other do not fit in the 3.8m room this used to build, which is why they read as "too big"
+ * when they were the one thing at correct scale. 6m by 5m is a gallery; 3.8 by 2.8 was a
+ * cupboard with a very high ceiling.
+ */
+const MIN_ROOM_WIDTH = 60;
+const MIN_ROOM_DEPTH = 50;
 /** How far a case stands out from the wall plane: back against the carcass, as they do. */
 const CASE_FACE_D = 1.28;
 /** Cupboard doors sit fractionally proud of the carcass, as doors do, and are thin. */
@@ -531,7 +543,12 @@ const DOOR_THICKNESS = 0.09;
  * it is open shelf and how much is cupboard door below, and *that* is what encodes the size of
  * the collection. One cornice line all the way round the room.
  */
-const CABINET_HEIGHT = 20;
+/**
+ * Floor to (near enough) ceiling, at 2.6m in a 2.75m room. It was 2.0m in a 3.3m room, which
+ * left half a metre of bare plaster over every cabinet and was most of why the walls read as
+ * unfinished. Fitted joinery in a room like the reference runs to the cornice.
+ */
+const CABINET_HEIGHT = 26;
 const TOP_RAIL = 0.3;
 const MAX_OPEN_LEVELS = 8;
 
@@ -667,7 +684,15 @@ export function buildShelfLayout(
     .slice(0, 1)
     .sort((a, b) => a - b);
 
-  type Bay = { run: ShelfRun; wear: number; titles: ShelfTitleData[]; open: number; width: number };
+  type Bay = {
+    run: ShelfRun;
+    wear: number;
+    titles: ShelfTitleData[];
+    open: number;
+    width: number;
+    /** Carcass with nothing in it, put there so a wall is never bare. */
+    filler?: boolean;
+  };
   const bays: Bay[] = runs.map((run, i) => {
     const open = openLevelsFor(run.titles.length);
     const perLevel = Math.max(1, Math.ceil(run.titles.length / open));
@@ -692,13 +717,52 @@ export function buildShelfLayout(
     { id: 2, bays: rest.slice(half) },
   ];
 
+  /**
+   * **Fill the leftover wall with cabinetry rather than leaving plaster.**
+   *
+   * The owner's words: *"I would rather accept empty shelves or closed cabinets than a bare
+   * wall."* Bays are sized by what they hold, so a small collection on a 6m wall left metres
+   * of nothing either side of it. These are real carcasses — same joinery, same brass, same
+   * cupboard doors — holding no titles. A fitted library has runs that are simply not full;
+   * it does not have gaps where the joinery stops.
+   */
+  const addFillers = (wall: { id: WallId; bays: number[] }) => {
+    const span = wall.id === 0 ? halfWidth * 2 : sideLength;
+    const used = wallLength(wall.bays) + (wall.id === 0 ? ARCH_WIDTH : 0);
+    const leftover = span - used - DIVIDER_PAD * 4;
+    if (leftover < MIN_BAY) return;
+
+    // Split evenly between the two ends, and again if either end would be a single
+    // implausibly wide cupboard rather than a run of them.
+    const perEnd = leftover / 2;
+    const count = Math.max(1, Math.round(perEnd / FILLER_TARGET));
+    const width = perEnd / count;
+    const make = () => {
+      bays.push({ run: EMPTY_RUN, wear: meanOf(wearByUnit), titles: [], open: 0, width, filler: true });
+      return bays.length - 1;
+    };
+    const head = Array.from({ length: count }, make);
+    const tail = Array.from({ length: count }, make);
+    wall.bays = [...head, ...wall.bays, ...tail];
+  };
+
   const wallLength = (ids: number[]) =>
     ids.reduce((sum, i) => sum + bays[i].width, 0) + Math.max(0, ids.length - 1) * DIVIDER_PAD * 2;
 
   // The room is sized to its contents rather than the other way round.
   const backLength = wallLength(walls[1].bays) + ARCH_WIDTH;
-  const sideLength = Math.max(wallLength(walls[0].bays), wallLength(walls[2].bays), backLength * 0.8);
+  const sideLength = Math.max(
+    wallLength(walls[0].bays),
+    wallLength(walls[2].bays),
+    backLength * 0.8,
+    MIN_ROOM_DEPTH
+  );
   const halfWidth = Math.max(backLength, MIN_ROOM_WIDTH) / 2;
+
+  // Only now, with the room actually sized: the fillers measure the leftover against a wall
+  // whose length is already known. Called before this, they read halfWidth and sideLength in
+  // their temporal dead zone and the whole scene fails to build.
+  walls.forEach(addFillers);
 
   /** Wall-local (u, y, d) to world. See WALL_YAW. */
   const toWorld = (wall: WallId, u: number, y: number, d: number) => {
@@ -872,6 +936,11 @@ export function buildShelfLayout(
 
       const centre = toWorld(wall.id, mid, (runBottom + runTop) / 2, 0);
       const face = toWorld(wall.id, mid, (runBottom + runTop) / 2, BOARD_DEPTH);
+      if (bay.filler) {
+        u = start + bay.width + DIVIDER_PAD * 2;
+        return;
+      }
+
       universes.push({
         key: bay.run.key,
         label: bay.run.label,

@@ -200,9 +200,10 @@ describe("buildShelfLayout — one continuous run", () => {
     // every section is a different age at two draw calls.
     expect(aged.boardSlabWear).toHaveLength(aged.boardSlabMatrices.length);
     expect(aged.boardLipWear).toHaveLength(aged.boardLipMatrices.length);
-    // Each bay's joinery carries that bay's own age, and there is nothing between them to
-    // take a middle value — the bays stand on walls now, not butted along one run.
-    expect(new Set(aged.boardSlabWear)).toEqual(new Set([1, 0]));
+    // Each named bay's joinery carries that bay's own age. 0.5 is the filler cupboards that
+    // line the rest of the wall: they belong to no universe, so they take the room's mean age
+    // rather than borrowing a neighbour's and putting a visible step in the gradient.
+    expect(new Set(aged.boardSlabWear)).toEqual(new Set([1, 0.5, 0]));
   });
 
   it("agrees with itself about which instance is which title", () => {
