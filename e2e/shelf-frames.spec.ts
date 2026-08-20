@@ -37,9 +37,6 @@ async function expectDrawn(file: string) {
 }
 
 test.describe("shelf frames", () => {
-  // Software GL needs a long warm-up, and under the whole suite it overruns Playwright's 30s
-  // default. That failure reads as flake and is nothing of the kind — it is the budget.
-  test.slow();
 
   test("captures the five states worth looking at", async ({ page }) => {
     const errors: string[] = [];

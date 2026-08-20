@@ -10,6 +10,7 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { tintToHsl } from "@/lib/tint";
 import { renderBackCover } from "./backCover";
 import { buildSpineAtlas, type SpineTitle } from "./spineAtlas";
+import Furniture from "./Furniture";
 import { buildSubstrate, SUBSTRATE_SCALE } from "./substrate";
 import { loadNotes } from "./notes";
 import { bestMatch, type SearchableTitle } from "./search";
@@ -2557,6 +2558,11 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
 
         {/* Replaces the bare ground plane that used to stand in for a floor. */}
         <Room room={layout.room} />
+        {/* Suspends while the models load, so the room is usable before the furniture lands
+            rather than the whole scene waiting on a sofa. */}
+        <Suspense fallback={null}>
+          <Furniture room={layout.room} />
+        </Suspense>
 
         {/* No controls. The camera is locked off and driven entirely by the frame loop
             above — see the comment there. An OrbitControls rig used to live here; it is

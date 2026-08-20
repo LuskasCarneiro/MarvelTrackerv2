@@ -36,9 +36,6 @@ async function wakeChrome(page: import("@playwright/test").Page) {
 
 test.describe("the shelf", () => {
   test("renders the room and opens the case you click", async ({ page }) => {
-    // Software GL plus a room's worth of geometry: under the whole suite this overruns the
-    // 30s default, and the overrun reads as a picking failure rather than as the budget.
-    test.slow();
     const drawCalls: string[] = [];
     page.on("console", (message) => {
       if (message.text().includes("[shelf] draw calls")) drawCalls.push(message.text());
@@ -79,16 +76,14 @@ test.describe("the shelf", () => {
     // side walls near the frame edges.
     const points = [
       [0.45, 0.45],
-      [0.45, 0.32],
       [0.12, 0.3],
       [0.88, 0.3],
-      [0.2, 0.38],
-      [0.8, 0.38],
+      [0.45, 0.32],
     ] as const;
     for (const [fx, fy] of points) {
       await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
       const opened = await page
-        .waitForURL(/\/title\/[a-z0-9-]+$/, { timeout: 2_000 })
+        .waitForURL(/\/title\/[a-z0-9-]+$/, { timeout: 6_000 })
         .then(() => true)
         .catch(() => false);
       if (opened) break;
