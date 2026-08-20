@@ -1613,6 +1613,15 @@ function ShelfContent({
         // direction, and a second one from a picture light gave every case two shadows going
         // different ways. The room light casts; this one is the accent that picks out the bay.
       />
+      {/* **Two extra picture lights were tried here and taken out again.**
+
+          One spot per side wall did light the walls, and it also pushed the screenshot harness
+          past its 90s budget — every light in a Phong scene is charged against every fragment,
+          and the harness renders through software GL where that is ruinous. Q9 said two or
+          three real lights and to check before adding more; I went to four without checking,
+          and the instrument said no. The pooling comes from a lower ambient and the glow
+          strips instead, which cost nothing per light because they are not lights. */}
+
       {/* **There is one travelling lamp, not three. That used to be a measurement, and the
           measurement was wrong.**
 
@@ -2484,11 +2493,17 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             lamp was the only source of anything; pale walls throw most of what hits them back,
             and without that the room reads as a white surface in a dark cave, which is the one
             thing a real room never looks like. */}
-        <ambientLight intensity={0.9} color="#f4ece0" />
+        {/* **Halved, now that the shelves light themselves.**
+            Ambient this high was doing the job the glow strips and picture lights now do, and
+            the cost of it was that nothing anywhere fell into shadow — the room was uniformly
+            bright, which is the one thing a room with lamps in it never is. It cannot go to
+            zero: the walls are pale and a pale wall with no fill reads as grey, which is how
+            this looked when the fog was still black. */}
+        <ambientLight intensity={0.6} color="#f4ece0" />
         {/* Sky-and-ground bounce, which is what actually separates a wall from a ceiling from a
             floor when there is no strong key light. Two colours and no shadow map — it costs a
             constant per fragment, and the real-hardware measurement leaves room for it. */}
-        <hemisphereLight args={["#efe7da", "#7d6a55", 1.25]} />
+        <hemisphereLight args={["#efe7da", "#7d6a55", 0.78]} />
         {/* The room's own daylight. Ambient and hemisphere alone left everything outside the
             picture light's cone almost black, which only showed once the wide shot pulled back
             far enough to see the room — the close shot is nearly all cone and hid it.
@@ -2498,7 +2513,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             hardware has the headroom for both. */}
         <directionalLight
           position={[ROOM_LIGHT_X, ROOM_LIGHT_Y, ROOM_LIGHT_Z]}
-          intensity={1.15}
+          intensity={0.8}
           color="#f7f1e6"
           castShadow
           shadow-mapSize={[1024, 1024]}
