@@ -115,7 +115,26 @@ describe("buildShelfLayout — one continuous run", () => {
       expect(WALL_YAW[u.wall]).toBeCloseTo(u.yaw, 6);
       for (const item of u.items) expect(item.yaw).toBeCloseTo(u.yaw, 6);
     }
-    expect(new Set(layout.universes.map((u) => u.wall)).size).toBeGreaterThan(1);
+    for (const u of layout.universes) expect([0, 1, 2]).toContain(u.wall);
+  });
+
+  it("spreads a full catalogue across all three walls", () => {
+    // The two-universe fixture above quite correctly puts both on the back wall, either side
+    // of the arch — so it cannot see whether the side walls are ever used. This one can, and
+    // an empty side wall is exactly the bug that shipped: splitting the rest by their index
+    // either side of the biggest left one wall bare whenever the biggest came first.
+    const many: ShelfRun[] = Array.from({ length: 7 }, (_, i) => ({
+      key: `u${i}`,
+      label: `U${i}`,
+      titles: Array.from({ length: 10 - i }, (_, j) => title(`u${i}-${j}`, "amaray")),
+      floating: [],
+    }));
+    const wide = buildShelfLayout(many, {}, cellSize, 4096);
+    expect(new Set(wide.universes.map((u) => u.wall))).toEqual(new Set([0, 1, 2]));
+    // ...and neither side wall is left empty.
+    for (const wall of [1, 2]) {
+      expect(wide.universes.filter((u) => u.wall === wall).length).toBeGreaterThan(0);
+    }
   });
 
   it("stands the cases at an even pitch along each shelf", () => {

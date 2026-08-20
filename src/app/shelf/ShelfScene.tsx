@@ -522,7 +522,25 @@ function buildMediumMeshes(
     spineMesh.instanceMatrix.needsUpdate = true;
   }
 
-  return { body, cover, spine: spineMesh };
+  // **The mount.** Face-out, a cover with nothing behind it reads as a sticker on the
+  // woodwork — which is exactly what the owner saw. Every comic in the reference sits in a
+  // slab with a pale border, and that border is most of why they read as *objects* against
+  // dark wood. One extra plane per case, instanced, sharing the cover's own matrices: a hair
+  // larger, a hair behind, in bone rather than brass so the artwork stays the brightest thing.
+  const mountGeometry = coverGeometryFor(row.form);
+  mountGeometry.scale(MOUNT_OVERSIZE, MOUNT_OVERSIZE, 1);
+  mountGeometry.translate(0, 0, -MOUNT_SETBACK);
+  const mount = new THREE.InstancedMesh(
+    mountGeometry,
+    new THREE.MeshPhongMaterial({ color: MOUNT_COLOUR, shininess: 6, specular: "#2a2620" }),
+    count
+  );
+  mount.castShadow = true;
+  mount.receiveShadow = true;
+  row.coverMatrices.forEach((m, i) => mount.setMatrixAt(i, m));
+  mount.instanceMatrix.needsUpdate = true;
+
+  return { body, cover, spine: spineMesh, mount };
 }
 
 /**
@@ -535,8 +553,11 @@ function buildMediumMeshes(
  * morphing into a 2020s one would be a costume change and would look like one
  * (docs/05-3d-shelf.md §3).
  */
-const WOOD_FRESH = new THREE.Color("#3a2418");
-const WOOD_WORN = new THREE.Color("#1d1109");
+// Lifted well off the near-black it was. Against a pale room a very dark carcass reads as a
+// flat silhouette — no grain, no sheen, no material at all — and the reference's wood is a
+// clearly-visible mid red-brown, not a shadow. The grain map has to have something to modulate.
+const WOOD_FRESH = new THREE.Color("#6b3a24");
+const WOOD_WORN = new THREE.Color("#402014");
 
 /**
  * The trim is **brass** now rather than a lighter wood, and it is the cheapest single thing
@@ -547,8 +568,18 @@ const WOOD_WORN = new THREE.Color("#1d1109");
  * Brass ages the way the wood does — a worn bay's trim has dulled and darkened where hands have
  * been, which is the same wear signal the boards carry, told in a different material.
  */
-const LIP_FRESH = new THREE.Color("#6b5127");
-const LIP_WORN = new THREE.Color("#2e2314");
+// Actual brass, not a browner wood. The shelf edge is the most-repeated brass element in the
+// reference and the cheapest to read from across a room.
+/** How much bigger the mount is than the artwork, and how far behind it sits. Small: this is
+ *  a slab's border, not a picture mat. */
+const MOUNT_OVERSIZE = 1.1;
+const MOUNT_SETBACK = 0.004;
+/** Bone, not white — a graded-comic slab and a museum mount are both off-white, and true
+ *  white against these covers would out-shout every one of them. */
+const MOUNT_COLOUR = "#cfc6b4";
+
+const LIP_FRESH = new THREE.Color("#c9a54e");
+const LIP_WORN = new THREE.Color("#7a6030");
 
 /** How many world units one tile of grain covers. Mahogany is coarse enough to read across a
  * whole shelf board; brass brushing is fine and tight, as machined metal is. */
@@ -1460,7 +1491,7 @@ function ShelfContent({
           the event as `instanceId`; body and cover are built from the same title order, so
           either hit resolves through the medium's slug array. stopPropagation keeps a click
           that passes through a gap from also hitting the shelf behind it. */}
-      {mediumMeshes.map(({ form, slugs, body, cover, spine }) => (
+      {mediumMeshes.map(({ form, slugs, body, cover, spine, mount }) => (
         <group
           key={form}
           onPointerDown={(e: ThreeEvent<PointerEvent>) => {
@@ -1483,6 +1514,8 @@ function ShelfContent({
             document.body.style.cursor = "";
           }}
         >
+          {/* Behind the cover, so it is drawn first and the artwork sits on it. */}
+          <primitive object={mount} />
           <primitive object={body} />
           <primitive object={cover} />
           {/* Inside the picking group deliberately: clicking the spine of a case is clicking

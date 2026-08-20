@@ -153,7 +153,9 @@ export const SPINE_YAW = Math.PI / 2;
  */
 const ROW_CLEARANCE = 0.06;
 const BOARD_THICKNESS = 0.04;
-const BOARD_LIP_HEIGHT = 0.02;
+/** The brass shelf edge. Deep enough to catch light and read as a line across the room —
+ *  at 2mm it was there and invisible, which is the same as not being there. */
+const BOARD_LIP_HEIGHT = 0.16;
 /**
  * Spine-out, a case lies 135mm *into* the shelf instead of 14mm, so the board has to be a
  * real board — 50mm held a case on its edge and would now hold about a third of one. 175mm
@@ -417,7 +419,15 @@ const PLINTH_HEIGHT = 0.8;
  *  a base rather than as the carcass carrying on to the floor. */
 const PLINTH_SETBACK = 0.18;
 
-const UPRIGHT_WIDTH = 0.07;
+const UPRIGHT_WIDTH = 0.16;
+/** The brass inlay down each pilaster: how wide the strip is, and how far it stands proud. */
+const PILASTER_BRASS = 0.07;
+const PILASTER_PROUD = 0.05;
+/** The brass band under the cornice. */
+const CORNICE_BAND = 0.2;
+/** The door panel's brass rule: how far in from the door edge, and how fine the line. */
+const DOOR_MARGIN = 0.55;
+const DOOR_RULE = 0.05;
 const BACK_PANEL_THICKNESS = 0.03;
 
 /** Where every case's back sits: against the back panel, as they do on a real shelf. */
@@ -503,7 +513,7 @@ const MIN_BAY = 4.5;
 /** The arched recess at the centre of the back wall — the room's focal point. */
 const ARCH_WIDTH = 9;
 /** However small the collection, a room you stand inside has a minimum that reads as a room. */
-const MIN_ROOM_WIDTH = 46;
+const MIN_ROOM_WIDTH = 38;
 /** How far a case stands out from the wall plane: back against the carcass, as they do. */
 const CASE_FACE_D = 1.28;
 /** Cupboard doors sit fractionally proud of the carcass, as doors do, and are thin. */
@@ -641,7 +651,14 @@ export function buildShelfLayout(
   // MCU, the room re-composes itself instead of quietly putting the wrong thing in front of
   // the door.
   const sizes = runs.map((r) => r.titles.length);
-  const biggest = sizes.indexOf(Math.max(...sizes));
+  // **The two largest take the back wall, one either side of the arch** — which is exactly
+  // what the reference does with its doorway. One bay plus an arch left most of the back wall
+  // bare, and the bare back wall was the first thing you saw on arrival.
+  const backTwo = runs
+    .map((_, i) => i)
+    .sort((a, b) => sizes[b] - sizes[a])
+    .slice(0, 1)
+    .sort((a, b) => a - b);
 
   type Bay = { run: ShelfRun; wear: number; titles: ShelfTitleData[]; open: number; width: number };
   const bays: Bay[] = runs.map((run, i) => {
@@ -660,11 +677,11 @@ export function buildShelfLayout(
   // left wall, across the back, and up the right. Splitting on the biggest one's *index*
   // instead left one wall bare whenever the largest collection happened to come first in the
   // catalogue — which it does.
-  const rest = bays.map((_, i) => i).filter((i) => i !== biggest);
+  const rest = bays.map((_, i) => i).filter((i) => !backTwo.includes(i));
   const half = Math.ceil(rest.length / 2);
   const walls: { id: WallId; bays: number[] }[] = [
     { id: 1, bays: rest.slice(0, half) },
-    { id: 0, bays: [biggest] },
+    { id: 0, bays: backTwo },
     { id: 2, bays: rest.slice(half) },
   ];
 
@@ -758,6 +775,31 @@ export function buildShelfLayout(
         const at = toWorld(wall.id, mid, runBottom + PLINTH_HEIGHT + doorHeight / 2, BOARD_DEPTH - DOOR_INSET);
         boardSlabMatrices.push(matrix(at.x, at.y, at.z, bay.width - 0.12, doorHeight, DOOR_THICKNESS, quat));
         boardSlabWear.push(bay.wear);
+
+        // A brass rule inset around each door panel — the last of Q24's four brass elements.
+        // Without it the closed half of every small universe is a blank wall of wood, which is
+        // most of the cabinet on most of the bays.
+        const inset = DOOR_MARGIN;
+        const panelW = bay.width - 0.12 - inset * 2;
+        const panelH = doorHeight - inset * 2;
+        if (panelW > 0.4 && panelH > 0.4) {
+          for (const [w, h, dy] of [
+            [panelW, DOOR_RULE, panelH / 2],
+            [panelW, DOOR_RULE, -panelH / 2],
+            [DOOR_RULE, panelH, 0],
+            [DOOR_RULE, panelH, 0],
+          ] as const) {
+            const dx = w === DOOR_RULE ? (panelW / 2) * (boardLipMatrices.length % 2 ? 1 : -1) : 0;
+            const rule = toWorld(
+              wall.id,
+              mid + dx,
+              runBottom + PLINTH_HEIGHT + doorHeight / 2 + dy,
+              BOARD_DEPTH - DOOR_INSET + PILASTER_PROUD / 2
+            );
+            boardLipMatrices.push(matrix(rule.x, rule.y, rule.z, w, h, PILASTER_PROUD, quat));
+            boardLipWear.push(bay.wear);
+          }
+        }
       }
 
       // Carcass: back panel, the top, and the plinth.
@@ -784,7 +826,31 @@ export function buildShelfLayout(
           matrix(post.x, post.y, post.z, UPRIGHT_WIDTH, runTop - runBottom, BOARD_DEPTH, quat)
         );
         boardSlabWear.push(bay.wear);
+
+        // **A brass strip down the face of each pilaster.** This is the single most repeated
+        // detail in the reference and the room read as bare boxes without it. It goes into the
+        // lip bucket, which is already the brass material, so a room's worth of it costs no
+        // extra draw call.
+        const strip = toWorld(
+          wall.id,
+          mid + side * (bay.width / 2 + UPRIGHT_WIDTH / 2),
+          (runBottom + runTop) / 2,
+          BOARD_DEPTH + PILASTER_PROUD / 2
+        );
+        boardLipMatrices.push(
+          matrix(strip.x, strip.y, strip.z, PILASTER_BRASS, runTop - runBottom, PILASTER_PROUD, quat)
+        );
+        boardLipWear.push(bay.wear);
       }
+
+      // A brass band under the cornice, running the width of the bay — the reference frames
+      // every nameplate against one, and it is what stops the top of the cabinet being a plain
+      // edge of wood.
+      const band = toWorld(wall.id, mid, runTop - TOP_RAIL - CORNICE_BAND / 2, BOARD_DEPTH + PILASTER_PROUD / 2);
+      boardLipMatrices.push(
+        matrix(band.x, band.y, band.z, bay.width, CORNICE_BAND, PILASTER_PROUD, quat)
+      );
+      boardLipWear.push(bay.wear);
 
       const centre = toWorld(wall.id, mid, (runBottom + runTop) / 2, 0);
       const face = toWorld(wall.id, mid, (runBottom + runTop) / 2, BOARD_DEPTH);
