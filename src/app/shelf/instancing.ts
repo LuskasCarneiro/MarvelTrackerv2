@@ -360,6 +360,8 @@ export type ShelfLayout = {
   }[];
   boardSlabMatrices: THREE.Matrix4[];
   boardLipMatrices: THREE.Matrix4[];
+  /** Concealed strip lighting under every shelf — emissive geometry, not lights. See Q9. */
+  boardGlowMatrices: THREE.Matrix4[];
   /** Wear per board instance, in the same order as the matrices above, so the furniture can
    * be tinted per unit without a material or a draw call per bookcase. */
   boardSlabWear: number[];
@@ -428,6 +430,10 @@ const CORNICE_BAND = 0.2;
 /** The door panel's brass rule: how far in from the door edge, and how fine the line. */
 const DOOR_MARGIN = 0.55;
 const DOOR_RULE = 0.05;
+/** The concealed strip under each shelf: how deep the line reads, and how far it is tucked
+ *  back from the front edge so you see the light and not the fitting. */
+const GLOW_HEIGHT = 0.24;
+const GLOW_SETBACK = 0.3;
 const BACK_PANEL_THICKNESS = 0.03;
 
 /** Where every case's back sits: against the back panel, as they do on a real shelf. */
@@ -559,6 +565,7 @@ export function buildShelfLayout(
   const blankCovers: ShelfLayout["blankCovers"] = [];
   const boardSlabMatrices: THREE.Matrix4[] = [];
   const boardLipMatrices: THREE.Matrix4[] = [];
+  const boardGlowMatrices: THREE.Matrix4[] = [];
   const boardSlabWear: number[] = [];
   const boardLipWear: number[] = [];
   const wearByUnit = unitWear(runs);
@@ -765,6 +772,14 @@ export function buildShelfLayout(
         const lip = toWorld(wall.id, mid, shelfTop - LEVEL_PITCH - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH);
         boardLipMatrices.push(matrix(lip.x, lip.y, lip.z, bay.width, BOARD_LIP_HEIGHT, 0.04, quat));
         boardLipWear.push(bay.wear);
+
+        // **Concealed lighting.** The bright line under every shelf edge is the reference's
+        // signature and the reason its shelves read as lit rather than as recesses. This is
+        // the emissive half of Q9: geometry that *glows* without lighting anything, which
+        // costs a draw call for the whole room instead of a light per bay charged against
+        // every fragment in the scene.
+        const glow = toWorld(wall.id, mid, shelfTop - BOARD_THICKNESS - GLOW_HEIGHT / 2, BOARD_DEPTH - GLOW_SETBACK);
+        boardGlowMatrices.push(matrix(glow.x, glow.y, glow.z, bay.width - 0.3, GLOW_HEIGHT, 0.06, quat));
       }
 
       // The cupboard below. Its height is the whole point of Q21: the less a universe holds,
@@ -808,6 +823,9 @@ export function buildShelfLayout(
         matrix(back.x, back.y, back.z, bay.width, runTop - runBottom, BACK_PANEL_THICKNESS, quat)
       );
       boardSlabWear.push(bay.wear);
+
+      const topGlow = toWorld(wall.id, mid, runTop - TOP_RAIL - GLOW_HEIGHT / 2, BOARD_DEPTH - GLOW_SETBACK);
+      boardGlowMatrices.push(matrix(topGlow.x, topGlow.y, topGlow.z, bay.width - 0.3, GLOW_HEIGHT, 0.06, quat));
 
       const top = toWorld(wall.id, mid, runTop - TOP_RAIL / 2, BOARD_DEPTH / 2);
       boardSlabMatrices.push(matrix(top.x, top.y, top.z, bay.width + UPRIGHT_WIDTH * 2, TOP_RAIL, BOARD_DEPTH, quat));
@@ -885,6 +903,7 @@ export function buildShelfLayout(
     boardLipMatrices,
     boardSlabWear,
     boardLipWear,
+    boardGlowMatrices,
     bounds,
     room: { halfWidth, depth: sideLength, height: CABINET_HEIGHT },
   };

@@ -578,6 +578,12 @@ const MOUNT_SETBACK = 0.004;
  *  white against these covers would out-shout every one of them. */
 const MOUNT_COLOUR = "#cfc6b4";
 
+/** Warm, and close to white without reaching it — a concealed lamp behind a brass fitting,
+ *  not an LED strip. */
+const GLOW_COLOUR = "#ffeacb";
+/** How far past white the strips are driven, so the tone mapper reads them as a source. */
+const GLOW_GAIN = 4.5;
+
 const LIP_FRESH = new THREE.Color("#c9a54e");
 const LIP_WORN = new THREE.Color("#7a6030");
 
@@ -689,6 +695,7 @@ function tintByWear(mesh: THREE.InstancedMesh, wear: number[], fresh: THREE.Colo
 function buildBoardMeshes(
   slabMatrices: THREE.Matrix4[],
   lipMatrices: THREE.Matrix4[],
+  glowMatrices: THREE.Matrix4[],
   slabWear: number[],
   lipWear: number[],
   mahogany: THREE.Texture,
@@ -733,7 +740,20 @@ function buildBoardMeshes(
   lip.instanceMatrix.needsUpdate = true;
   tintByWear(lip, lipWear, LIP_FRESH, LIP_WORN);
 
-  return { slab, lip };
+  // The concealed strips. `MeshBasicMaterial` because they are the *source*: a lit material
+  // would have them shaded by the room, which is exactly backwards for something that is
+  // supposed to be the brightest thing in the bay.
+  // Pushed past 1.0 on purpose. A basic material at #ffeacb tone-maps to about the same value
+  // as the plaster behind it, so the strip reads as a pale moulding rather than as a lamp —
+  // it was drawn correctly and looked like nothing. Multiplying into HDR lets ACES roll it off
+  // to a hot near-white that is unmistakably the brightest thing in the bay.
+  const glowMaterial = new THREE.MeshBasicMaterial({ color: GLOW_COLOUR });
+  glowMaterial.color.multiplyScalar(GLOW_GAIN);
+  const glow = new THREE.InstancedMesh(unitBox, glowMaterial, glowMatrices.length);
+  glowMatrices.forEach((m, i) => glow.setMatrixAt(i, m));
+  glow.instanceMatrix.needsUpdate = true;
+
+  return { slab, lip, glow };
 }
 
 type Layout = ReturnType<typeof buildShelfLayout>;
@@ -1203,6 +1223,7 @@ function ShelfContent({
       buildBoardMeshes(
         layout.boardSlabMatrices,
         layout.boardLipMatrices,
+        layout.boardGlowMatrices,
         layout.boardSlabWear,
         layout.boardLipWear,
         cabinetry.mahogany,
@@ -1527,6 +1548,7 @@ function ShelfContent({
       <Plaques bays={layout.universes} atlas={plaques} texture={plaqueTexture} />
       <primitive object={boards.slab} />
       <primitive object={boards.lip} />
+      <primitive object={boards.glow} />
       {layout.blankCovers.map((blank) => (
         <BlankCover
           key={blank.slug}
