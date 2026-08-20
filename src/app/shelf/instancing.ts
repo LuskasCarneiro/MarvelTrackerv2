@@ -147,12 +147,6 @@ export const COVER_SHININESS: Record<Form, number> = {
 export const SPINE_YAW = Math.PI / 2;
 
 /**
- * Between spines. Real cases on a real shelf touch, but 66 of the 152 titles have no physical
- * release and are 3mm cards: touching, they fuse into one dark 20cm block instead of reading
- * as sixty-six things. 2mm is the smallest gap that keeps them countable.
- */
-const SPINE_GAP = 0.002;
-/**
  * Headroom above a row's cases. Cover-out needed 15cm so a cover could be seen at all;
  * spine-out does not, and a real DVD shelf is snug. Dropping it tightens the whole unit into
  * something that reads as furniture rather than as scaffolding.
@@ -167,15 +161,6 @@ const BOARD_LIP_HEIGHT = 0.02;
  * it with only the overhang a real object would have.
  */
 const BOARD_DEPTH = 1.75;
-/**
- * The narrowest a section of the run gets, however little stands in it — enough to carry the
- * nameplate above it and to read as a division rather than as a slot.
- *
- * Measured, not guessed: the twelve universes hold between 17mm (Spider-Verse's two films)
- * and 384mm (the MCU's fifty-seven) of spine. Letting a section be its natural width would
- * put a 260mm brass plate over a 17mm gap.
- */
-const MIN_SECTION_WIDTH = 0.95;
 const COVER_INSET = 0.0015; // = the spike's INSET: the printed insert sits proud of the body
 
 /**
@@ -302,11 +287,32 @@ export type ShelfItem = {
   ds: number;
   /** The cover plane's offset in front of the case's own centre. */
   coverZ: number;
+  /** Which way this case faces at rest. Face-out it is its wall's yaw; spine-out it is that
+   *  plus SPINE_YAW. Stored per item because the room has three walls and a case on the left
+   *  wall is turned ninety degrees from one on the back. */
+  yaw: number;
+  /** Whether it stands spine-out. Face-out its printed cover is proud at rest, because that
+   *  is what is on display; spine-out the cover parks inside the case so it cannot z-fight
+   *  through the neighbour 2mm away. */
+  spineOut: boolean;
+  /** The yaw of the wall it lives on, which is the direction it must face once presented —
+   *  a case drawn out on the left wall has to turn to the viewer standing at the left wall. */
+  wallYaw: number;
 };
 
 export type UniverseShelf = {
   key: string;
   label: string;
+  /** 0 back, 1 left, 2 right. See WALL_YAW. */
+  wall: number;
+  /** The wall's outward yaw — where the camera stands, and which way it looks. */
+  yaw: number;
+  width: number;
+  /** How many shelves of this cabinet are open rather than cupboard door. Encodes the size
+   *  of the collection: see openLevelsFor(). */
+  openLevels: number;
+  /** The centre of this bay's front face, which is what the camera squares up to. */
+  face: { x: number; y: number; z: number };
   startX: number;
   endX: number;
   /** 0 = untouched, 1 = the most worn unit in the room. See unitWear(). */
@@ -358,6 +364,8 @@ export type ShelfLayout = {
   boardLipWear: number[];
   /** World-space bounds of every case (not the boards), for framing the default camera. */
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
+  /** The room the cabinets imply, sized to its contents rather than the other way round. */
+  room: { halfWidth: number; depth: number; height: number };
 };
 
 const IDENTITY_QUAT = new THREE.Quaternion();
@@ -374,7 +382,6 @@ function hashUnit(seed: string): number {
 }
 
 /** Every case on the shelf carries this. Built once — it is the same rotation for all 152. */
-const SPINE_QUAT = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), SPINE_YAW);
 
 function matrix(
   x: number,
@@ -390,33 +397,10 @@ function matrix(
   return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), quat, new THREE.Vector3(sx, sy, sz));
 }
 
-/**
- * **One continuous run**, decided by the owner on 2026-08-19 — `docs/05-3d-shelf.md` §12's
- * open question, closed.
- *
- * Twelve separate bookcases was settled while a bay was metres wide. Measured spine-out, the
- * whole archive is 1611mm and the twelve universes run 17mm to 384mm, so twelve carcasses
- * meant twelve near-identical near-empty boxes. This is what `docs/05-3d-shelf.md` §5 and
- * `CLAUDE.md`'s concept line described in the first place: one run that **ages along its
- * length**, universes marked by joinery rather than by being separate furniture.
- *
- * It is deliberately a **single level**. The camera is locked off and travels horizontally,
- * so a run that wrapped onto a second shelf would break both the travel and the one thing
- * that makes a section legible — that a universe is a contiguous stretch you walk past.
- * At roughly 2.4m long and 21cm tall this is a gallery shelf run, not a bookcase, which is
- * the honest shape for 152 spines.
- */
-const CABINET_LEVELS = 5;
 
 /** Sized for the tallest case in the catalogue: any medium can stand anywhere on the run. */
 const LEVEL_PITCH = Math.max(...Object.values(DIMENSIONS).map((d) => d.h)) + ROW_CLEARANCE + BOARD_THICKNESS;
 
-/**
- * The top face of the run's board — the surface every case stands on, and the origin the
- * whole room is measured from. Zero: the run is mounted on a wall rather than standing on
- * the floor, so there is no reason for it to hang off the floor's coordinate.
- */
-const FLOOR_BOARD_Y = 0;
 
 /**
  * A partition between one universe's stretch and the next, and the clear air either side of
@@ -437,7 +421,6 @@ const UPRIGHT_WIDTH = 0.07;
 const BACK_PANEL_THICKNESS = 0.03;
 
 /** Where every case's back sits: against the back panel, as they do on a real shelf. */
-const CASE_BACK_Z = -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS;
 
 /**
  * The joinery, counted so the layout test can assert it without re-deriving it.
@@ -487,6 +470,74 @@ export function unitWear(runs: ShelfRun[]): number[] {
  *
  * Runs arrive in the order they should stand and already sorted; this function does not sort.
  */
+/**
+ * The room's three walls, as frames rather than as special cases.
+ *
+ * Every cabinet is laid out in **wall-local** coordinates — `u` along the wall, `y` up, `d` out
+ * into the room — and then turned into world space by the wall's own yaw. That is the whole
+ * trick: the back wall is the identity case, and the two side walls are the same code read at
+ * ninety degrees. Nothing downstream needs to know which wall it is on except the camera, and
+ * the camera is told.
+ *
+ * Local +Z points **out of the wall into the room**, so a case's cover faces the viewer when
+ * its yaw is the wall's yaw, and its spine faces the viewer at yaw + SPINE_YAW.
+ */
+export const WALL_YAW = [0, Math.PI / 2, -Math.PI / 2] as const;
+export type WallId = 0 | 1 | 2;
+
+/** The direction a wall faces, which is where the camera stands to look at it. */
+export function wallOutward(yaw: number): { x: number; z: number } {
+  return { x: Math.sin(yaw), z: Math.cos(yaw) };
+}
+
+/**
+ * How much room one title takes standing face-out. The measurement that decides everything
+ * else: face-out is roughly thirteen times hungrier than spine-out, which is why a room this
+ * size can be filled at all by a collection that is only 1.6m of spine.
+ */
+const FACE_PITCH = 1.4;
+
+/** The narrowest a cabinet gets, however little it holds. Below this it reads as a slot. */
+const MIN_BAY = 4.5;
+
+/** The arched recess at the centre of the back wall — the room's focal point. */
+const ARCH_WIDTH = 9;
+/** However small the collection, a room you stand inside has a minimum that reads as a room. */
+const MIN_ROOM_WIDTH = 46;
+/** How far a case stands out from the wall plane: back against the carcass, as they do. */
+const CASE_FACE_D = 1.28;
+/** Cupboard doors sit fractionally proud of the carcass, as doors do, and are thin. */
+const DOOR_INSET = 0.06;
+const DOOR_THICKNESS = 0.09;
+
+/**
+ * Every carcass is the same height — Q21, the owner's correction. What varies is how much of
+ * it is open shelf and how much is cupboard door below, and *that* is what encodes the size of
+ * the collection. One cornice line all the way round the room.
+ */
+const CABINET_HEIGHT = 20;
+const TOP_RAIL = 0.3;
+const MAX_OPEN_LEVELS = 8;
+
+/**
+ * How many open shelves a bay gets.
+ *
+ * Chosen so the open section lands at a tall, narrow aspect rather than a wide squat one:
+ * width is roughly `n * FACE_PITCH / L` and open height is `L * LEVEL_PITCH`, so asking for
+ * width ≈ 0.55 × height gives `L = sqrt(1.23n)`. Derived rather than dialled, so a universe
+ * that grows gets a taller bay instead of a wider one and the room keeps its proportions.
+ */
+export function openLevelsFor(titles: number): number {
+  const fit = Math.floor((CABINET_HEIGHT - TOP_RAIL) / LEVEL_PITCH);
+  return Math.min(MAX_OPEN_LEVELS, fit, Math.max(1, Math.round(Math.sqrt(1.23 * titles))));
+}
+
+/**
+ * The archive as a room: three walls of fitted cabinets, one bay per universe, the largest
+ * collection facing you as you arrive.
+ *
+ * Runs arrive in the order they should stand and already sorted; this function does not sort.
+ */
 export function buildShelfLayout(
   runs: ShelfRun[],
   atlasCells: Record<string, CellPx>,
@@ -504,8 +555,6 @@ export function buildShelfLayout(
   const universes: UniverseShelf[] = [];
   const bounds = { minX: 0, maxX: 0, minY: Infinity, maxY: -Infinity };
 
-  // One bucket per medium across the whole room, because an InstancedMesh needs its
-  // instances grouped by the material they share — a shelf unit is not a draw call.
   const buckets = new Map<Form, ShelfLayout["media"][number]>();
   const bucketFor = (form: Form) => {
     let bucket = buckets.get(form);
@@ -516,38 +565,52 @@ export function buildShelfLayout(
     return bucket;
   };
 
-  /** Adds one case to its medium's bucket and returns where it went. */
-  const place = (title: ShelfTitleData, x: number, y: number, z: number): ShelfItem => {
+  const bayItems: ShelfItem[][] = runs.map(() => []);
+
+  const quatFor = (yaw: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+  /** Adds one case to its medium's bucket and returns where it went, in world space. */
+  const place = (
+    title: ShelfTitleData,
+    x: number,
+    y: number,
+    z: number,
+    yaw: number,
+    spineOut: boolean
+  ): ShelfItem => {
     const form = title.form ?? title.medium;
     const dims = DIMENSIONS[form];
     const ds = depthScale(title.runtimeMin, logRange);
     const coverZ = (dims.d * ds) / 2 + COVER_INSET;
     const bucket = bucketFor(form);
     const instance = bucket.slugs.length;
+    const quat = quatFor(yaw);
 
-    // Base geometry is built at the medium's nominal depth; only Z scales per instance.
-    bucket.bodyMatrices.push(matrix(x, y, z, 1, 1, ds, SPINE_QUAT));
+    bucket.bodyMatrices.push(matrix(x, y, z, 1, 1, ds, quat));
     const cellPx = atlasCells[title.slug];
     bucket.coverUvs.push(cropCellUv(cellPx ?? { x: 0, y: 0 }, cellSize, atlasSize, dims.w / dims.h));
-    // At rest the cover sits *at the case's own centre*, i.e. inside an opaque box, so it is
-    // simply not there until the case is drawn out. Cover-out could leave it proud because it
-    // faced open air; spine-out it would face the neighbour 2mm away and z-fight through it.
-    // poseCover() scales the same offset by the pull, so the two agree at amount = 0.
-    bucket.coverMatrices.push(matrix(x, y, z, 1, 1, 1, SPINE_QUAT));
+    // **Face-out, the cover has to be proud at rest — it *is* the thing on display.**
+    //
+    // Spine-out it must be parked inside the case instead, because a plane 1.5mm proud of a
+    // spine z-fights through the neighbour 2mm away. Getting this the same for both left every
+    // shelf looking empty: the artwork was there, buried inside an opaque box.
+    const faceOffset = spineOut ? 0 : coverZ;
+    bucket.coverMatrices.push(
+      matrix(x + Math.sin(yaw) * faceOffset, y, z + Math.cos(yaw) * faceOffset, 1, 1, 1, quat)
+    );
     bucket.slugs.push(title.slug);
 
     if (!cellPx) {
       blankCovers.push({
         slug: title.slug,
         tint: title.tint,
-        // Same reasoning as the cover above: parked inside the body until it is presented.
         position: { x, y, z },
         size: { w: dims.w - CORNER_RADIUS * 0.6, h: dims.h - CORNER_RADIUS * 0.6 },
       });
     }
 
-    // Thickness is the footprint along the shelf now, not width.
-    bounds.maxX = Math.max(bounds.maxX, x + (dims.d * ds) / 2);
+    bounds.maxX = Math.max(bounds.maxX, x + dims.w / 2);
+    bounds.minX = Math.min(bounds.minX, x - dims.w / 2);
     bounds.minY = Math.min(bounds.minY, y - dims.h / 2);
     bounds.maxY = Math.max(bounds.maxY, y + dims.h / 2);
 
@@ -565,189 +628,198 @@ export function buildShelfLayout(
       z,
       ds,
       coverZ,
+      yaw,
+      wallYaw: yaw - (spineOut ? SPINE_YAW : 0),
+      spineOut,
     };
   };
 
-  /** What one title occupies along the run, spine-out: its thickness plus its gap. */
-  const spineLength = (t: ShelfTitleData) =>
-    DIMENSIONS[t.form ?? t.medium].d * depthScale(t.runtimeMin, logRange) + SPINE_GAP;
+  // ---- Pass 1: how big is each bay? -----------------------------------------------------
+  //
+  // The biggest collection takes the back wall, and the rest fall either side of it in order.
+  // Found rather than hard-coded: if the catalogue is reordered or a universe overtakes the
+  // MCU, the room re-composes itself instead of quietly putting the wrong thing in front of
+  // the door.
+  const sizes = runs.map((r) => r.titles.length);
+  const biggest = sizes.indexOf(Math.max(...sizes));
 
-  // One run, left to right. Each universe is a contiguous stretch of it, divided from the next
-  // by a partition rather than by clear air, and each stretch's own boards carry that
-  // section's wear — which is what lets the furniture age *along the length* instead of
-  // twelve separate objects each being uniformly one age.
-  const runTop = FLOOR_BOARD_Y + CABINET_LEVELS * LEVEL_PITCH;
-  const runBottom = FLOOR_BOARD_Y - BOARD_THICKNESS - PLINTH_HEIGHT;
-  const runHeight = runTop - runBottom;
-  const runCentreY = (runBottom + runTop) / 2;
+  type Bay = { run: ShelfRun; wear: number; titles: ShelfTitleData[]; open: number; width: number };
+  const bays: Bay[] = runs.map((run, i) => {
+    const open = openLevelsFor(run.titles.length);
+    const perLevel = Math.max(1, Math.ceil(run.titles.length / open));
+    return {
+      run,
+      wear: wearByUnit[i],
+      titles: run.titles,
+      open,
+      width: Math.max(MIN_BAY, perLevel * FACE_PITCH),
+    };
+  });
 
-  let cursor = 0;
-  const dividerX: number[] = [];
-  const sections: { start: number; end: number; wear: number }[] = [];
+  // The rest split evenly either side, in order, so the walk reads as one route: down the
+  // left wall, across the back, and up the right. Splitting on the biggest one's *index*
+  // instead left one wall bare whenever the largest collection happened to come first in the
+  // catalogue — which it does.
+  const rest = bays.map((_, i) => i).filter((i) => i !== biggest);
+  const half = Math.ceil(rest.length / 2);
+  const walls: { id: WallId; bays: number[] }[] = [
+    { id: 1, bays: rest.slice(0, half) },
+    { id: 0, bays: [biggest] },
+    { id: 2, bays: rest.slice(half) },
+  ];
 
-  runs.forEach((run, runIndex) => {
-    const wear = wearByUnit[runIndex];
-    const items: ShelfItem[] = [];
-    const sectionStart = cursor;
+  const wallLength = (ids: number[]) =>
+    ids.reduce((sum, i) => sum + bays[i].width, 0) + Math.max(0, ids.length - 1) * DIVIDER_PAD * 2;
 
-    // A bay of the cabinet: one universe, stacked down its own column of shelves. Split by
-    // equal *length* rather than equal count, because 3mm cards and 32mm clamshells in equal
-    // numbers make wildly unequal shelves and a bay whose rows ended at different points reads
-    // as half-finished rather than as full.
-    const sectionLength = run.titles.reduce((sum, t) => sum + spineLength(t), 0);
-    const target = sectionLength / CABINET_LEVELS;
-    const shelves: ShelfTitleData[][] = Array.from({ length: CABINET_LEVELS }, () => []);
-    let level = 0;
-    let filled = 0;
-    run.titles.forEach((title) => {
-      const length = spineLength(title);
-      // Move on once this shelf is more than half-way through the title that would overrun it,
-      // so a long title lands on whichever shelf it mostly belongs to.
-      if (level < CABINET_LEVELS - 1 && filled + length / 2 > target) {
-        level += 1;
-        filled = 0;
-      }
-      shelves[level].push(title);
-      filled += length;
-    });
+  // The room is sized to its contents rather than the other way round.
+  const backLength = wallLength(walls[1].bays) + ARCH_WIDTH;
+  const sideLength = Math.max(wallLength(walls[0].bays), wallLength(walls[2].bays), backLength * 0.8);
+  const halfWidth = Math.max(backLength, MIN_ROOM_WIDTH) / 2;
 
-    let packed = sectionStart;
-    shelves.forEach((row, rowLevel) => {
-      // Level 0 is the top shelf, so a bay fills the way a bookcase is read: along the top,
-      // then down. The cabinet stands on the floor, so the *bottom* shelf is the origin and
-      // the stack is measured up from it.
-      const rowTop = FLOOR_BOARD_Y + (CABINET_LEVELS - 1 - rowLevel) * LEVEL_PITCH;
-      let x = cursor;
-      row.forEach((title) => {
+  /** Wall-local (u, y, d) to world. See WALL_YAW. */
+  const toWorld = (wall: WallId, u: number, y: number, d: number) => {
+    // Back wall on the z = 0 plane opening toward +z; the sides face each other across it.
+    // Travel runs front-to-back down the left wall, left-to-right across the back, then
+    // back-to-front up the right — one continuous U, which is how you would actually walk it.
+    if (wall === 0) return { x: -halfWidth + u, y, z: d };
+    if (wall === 1) return { x: -halfWidth + d, y, z: sideLength - u };
+    return { x: halfWidth - d, y, z: u };
+  };
+
+  // ---- Pass 2: lay each wall out ---------------------------------------------------------
+  const runTop = CABINET_HEIGHT;
+  const runBottom = 0;
+
+  for (const wall of walls) {
+    const total = wallLength(wall.bays) + (wall.id === 0 ? ARCH_WIDTH : 0);
+    const span = wall.id === 0 ? halfWidth * 2 : sideLength;
+    let u = (span - total) / 2; // centred on its wall
+
+    wall.bays.forEach((index, position) => {
+      const bay = bays[index];
+      const start = u;
+
+      // The arch sits in the middle of the back wall, so the back wall's single bay is split
+      // either side of it. With one bay that means the arch takes the centre and the cabinet
+      // sits to its left, which is what the reference does with its doorway.
+      if (wall.id === 0 && position === 1) u += ARCH_WIDTH;
+
+      const perLevel = Math.max(1, Math.ceil(bay.titles.length / bay.open));
+      bay.titles.forEach((title, i) => {
+        const level = Math.floor(i / perLevel);
+        const column = i % perLevel;
+        // Level 0 is the top shelf: a bay fills the way a bookcase is read, along the top and
+        // then down, and the open shelving hangs from the cornice so it lands at eye level.
+        const shelfTop = runTop - TOP_RAIL - level * LEVEL_PITCH;
         const dims = DIMENSIONS[title.form ?? title.medium];
-        const length = spineLength(title);
-        // Backs aligned to the back panel, as a real shelf stacks them — so the *fronts* step
-        // in and out with each case's width, which is a thing you can actually see now that
-        // width points into the shelf.
-        items.push(place(title, x + (length - SPINE_GAP) / 2, rowTop + dims.h / 2, CASE_BACK_Z + dims.w / 2));
-        x += length;
+        const at = toWorld(
+          wall.id,
+          start + column * FACE_PITCH + FACE_PITCH / 2,
+          shelfTop - LEVEL_PITCH + dims.h / 2 + BOARD_THICKNESS,
+          CASE_FACE_D
+        );
+        bayItems[index].push(place(title, at.x, at.y, at.z, WALL_YAW[wall.id], false));
       });
-      packed = Math.max(packed, x - SPINE_GAP);
+
+      // The fourteen that belong outside time, in story order: hung above the cabinet with
+      // nothing underneath them. Scattered by a hash of the slug so the same title hangs in
+      // the same place on every render and every machine.
+      bay.run.floating.forEach((title, i) => {
+        const spread = bay.run.floating.length > 1 ? i / (bay.run.floating.length - 1) : 0.5;
+        const jitter = hashUnit(title.slug);
+        const hung = toWorld(
+          wall.id,
+          start + 0.6 + spread * Math.max(bay.width - 1.2, 0.4),
+          runTop + 1.2 + jitter * 2.4,
+          BOARD_DEPTH * 0.6 + (hashUnit(`${title.slug}-d`) - 0.5) * 0.8
+        );
+        bayItems[index].push(place(title, hung.x, hung.y, hung.z, WALL_YAW[wall.id], false));
+      });
+
+      // The joinery for this bay: a board under every open shelf, the carcass sides, the top,
+      // the back panel, and the cupboard doors filling everything below the open section.
+      const quat = quatFor(WALL_YAW[wall.id]);
+      const mid = start + bay.width / 2;
+      for (let level = 0; level < bay.open; level++) {
+        const shelfTop = runTop - TOP_RAIL - level * LEVEL_PITCH;
+        const at = toWorld(wall.id, mid, shelfTop - LEVEL_PITCH - BOARD_THICKNESS / 2, BOARD_DEPTH / 2);
+        boardSlabMatrices.push(matrix(at.x, at.y, at.z, bay.width, BOARD_THICKNESS, BOARD_DEPTH, quat));
+        boardSlabWear.push(bay.wear);
+        const lip = toWorld(wall.id, mid, shelfTop - LEVEL_PITCH - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH);
+        boardLipMatrices.push(matrix(lip.x, lip.y, lip.z, bay.width, BOARD_LIP_HEIGHT, 0.04, quat));
+        boardLipWear.push(bay.wear);
+      }
+
+      // The cupboard below. Its height is the whole point of Q21: the less a universe holds,
+      // the more of its cabinet is a closed door, and the top line never moves.
+      const doorTop = runTop - TOP_RAIL - bay.open * LEVEL_PITCH;
+      const doorHeight = doorTop - runBottom - PLINTH_HEIGHT;
+      if (doorHeight > 0.2) {
+        const at = toWorld(wall.id, mid, runBottom + PLINTH_HEIGHT + doorHeight / 2, BOARD_DEPTH - DOOR_INSET);
+        boardSlabMatrices.push(matrix(at.x, at.y, at.z, bay.width - 0.12, doorHeight, DOOR_THICKNESS, quat));
+        boardSlabWear.push(bay.wear);
+      }
+
+      // Carcass: back panel, the top, and the plinth.
+      const back = toWorld(wall.id, mid, (runBottom + runTop) / 2, BACK_PANEL_THICKNESS / 2);
+      boardSlabMatrices.push(
+        matrix(back.x, back.y, back.z, bay.width, runTop - runBottom, BACK_PANEL_THICKNESS, quat)
+      );
+      boardSlabWear.push(bay.wear);
+
+      const top = toWorld(wall.id, mid, runTop - TOP_RAIL / 2, BOARD_DEPTH / 2);
+      boardSlabMatrices.push(matrix(top.x, top.y, top.z, bay.width + UPRIGHT_WIDTH * 2, TOP_RAIL, BOARD_DEPTH, quat));
+      boardSlabWear.push(bay.wear);
+
+      const plinth = toWorld(wall.id, mid, runBottom + PLINTH_HEIGHT / 2, (BOARD_DEPTH - PLINTH_SETBACK) / 2);
+      boardSlabMatrices.push(
+        matrix(plinth.x, plinth.y, plinth.z, bay.width, PLINTH_HEIGHT, BOARD_DEPTH - PLINTH_SETBACK, quat)
+      );
+      boardSlabWear.push(bay.wear);
+
+      // The pilasters either side, which is what turns a row of boxes into fitted joinery.
+      for (const side of [-1, 1]) {
+        const post = toWorld(wall.id, mid + side * (bay.width / 2 + UPRIGHT_WIDTH / 2), (runBottom + runTop) / 2, BOARD_DEPTH / 2);
+        boardSlabMatrices.push(
+          matrix(post.x, post.y, post.z, UPRIGHT_WIDTH, runTop - runBottom, BOARD_DEPTH, quat)
+        );
+        boardSlabWear.push(bay.wear);
+      }
+
+      const centre = toWorld(wall.id, mid, (runBottom + runTop) / 2, 0);
+      const face = toWorld(wall.id, mid, (runBottom + runTop) / 2, BOARD_DEPTH);
+      universes.push({
+        key: bay.run.key,
+        label: bay.run.label,
+        wall: wall.id,
+        yaw: WALL_YAW[wall.id],
+        width: bay.width,
+        openLevels: bay.open,
+        startX: centre.x - bay.width / 2,
+        endX: centre.x + bay.width / 2,
+        face: { x: face.x, y: face.y, z: face.z },
+        wear: bay.wear,
+        centreY: (runBottom + runTop) / 2,
+        height: runTop - runBottom,
+        items: bayItems[index],
+      });
+
+      u = start + bay.width + DIVIDER_PAD * 2;
     });
-
-    // A bay is at least wide enough to carry its nameplate. Spider-Verse is two films and 17mm
-    // of spine; with no floor it would be a bay narrower than the plate above it, which reads
-    // as a mistake rather than as a small collection.
-    const sectionEnd = Math.max(packed, sectionStart + MIN_SECTION_WIDTH);
-    const sectionWidth = sectionEnd - sectionStart;
-
-    // The unanchored ones (story order's fourteen). They hang above their own section with
-    // nothing underneath, spread across its width and scattered by a hash of the slug, so the
-    // same title hangs in the same place on every render and every machine.
-    run.floating.forEach((title, i) => {
-      const spread = run.floating.length > 1 ? i / (run.floating.length - 1) : 0.5;
-      const jitter = hashUnit(title.slug);
-      const hangX = sectionStart + 0.25 + spread * Math.max(sectionWidth - 0.5, 0.3) + (jitter - 0.5) * 0.3;
-      const hangY = runTop + 0.8 + jitter * 1.6;
-      const hangZ = CASE_BACK_Z + DIMENSIONS.amaray.w / 2 + (hashUnit(`${title.slug}-z`) - 0.5) * 0.6;
-      items.push(place(title, hangX, hangY, hangZ));
-    });
-
-    // Recorded, not emitted. The boards cannot be sized from the section alone: they have to
-    // reach the *divider centres* either side, or the padding around each divider becomes a
-    // hole in the shelf and twelve sections read as twelve boxes standing in a row — which is
-    // precisely the thing one run exists not to be.
-    sections.push({ start: sectionStart, end: sectionEnd, wear });
-
-    universes.push({
-      key: run.key,
-      label: run.label,
-      startX: sectionStart,
-      endX: sectionEnd,
-      wear,
-      centreY: runCentreY,
-      height: runHeight,
-      items,
-    });
-
-    cursor = sectionEnd;
-    if (runIndex < runs.length - 1) {
-      dividerX.push(cursor + DIVIDER_PAD + UPRIGHT_WIDTH / 2);
-      cursor += DIVIDER_PAD * 2 + UPRIGHT_WIDTH;
-    }
-  });
-
-  // The boards, now that the divider positions are known. Each spans from the boundary behind
-  // it to the boundary in front — the divider centres, or the run's own ends — so consecutive
-  // boards share an edge and the shelf is unbroken along its whole length, while each still
-  // carries its own section's wear. Continuous timber, a gradient of age.
-  const runLeft = -UPRIGHT_WIDTH / 2;
-  const runRight = cursor + UPRIGHT_WIDTH / 2;
-  sections.forEach((section, i) => {
-    const left = i === 0 ? runLeft : dividerX[i - 1];
-    const right = i === sections.length - 1 ? runRight : dividerX[i];
-    const span = right - left;
-    const mid = (left + right) / 2;
-    // One board per level, plus the cabinet's own top. Each butts to its neighbours across the
-    // divider, so the cabinet is unbroken along its length while the wear still steps per bay.
-    for (let level = 0; level < CABINET_LEVELS; level++) {
-      const shelfTop = FLOOR_BOARD_Y + level * LEVEL_PITCH;
-      boardSlabMatrices.push(matrix(mid, shelfTop - BOARD_THICKNESS / 2, 0, span, BOARD_THICKNESS, BOARD_DEPTH));
-      boardSlabWear.push(section.wear);
-      // The lip: a brighter trim strip along each board's front-top edge.
-      boardLipMatrices.push(matrix(mid, shelfTop - BOARD_LIP_HEIGHT / 2, BOARD_DEPTH / 2, span, BOARD_LIP_HEIGHT, 0.03));
-      boardLipWear.push(section.wear);
-    }
-    boardSlabMatrices.push(matrix(mid, runTop - BOARD_THICKNESS / 2, 0, span, BOARD_THICKNESS, BOARD_DEPTH));
-    boardSlabWear.push(section.wear);
-    boardSlabMatrices.push(
-      matrix(mid, runCentreY, -BOARD_DEPTH / 2 + BACK_PANEL_THICKNESS, span, runHeight, BACK_PANEL_THICKNESS)
-    );
-    boardSlabWear.push(section.wear);
-    // The plinth. Set back from the front, the way a plinth always is — the recess is what
-    // reads as a base rather than as the carcass simply continuing to the floor.
-    boardSlabMatrices.push(
-      matrix(
-        mid,
-        runBottom + PLINTH_HEIGHT / 2,
-        -PLINTH_SETBACK / 2,
-        span,
-        PLINTH_HEIGHT,
-        BOARD_DEPTH - PLINTH_SETBACK
-      )
-    );
-    boardSlabWear.push(section.wear);
-  });
-
-  // The partitions between sections. They take the mean wear rather than either neighbour's:
-  // a divider belongs to both sides, and giving it one side's value would read as the gradient
-  // stepping in the wrong place.
-  const meanWear = wearByUnit.length ? wearByUnit.reduce((a, b) => a + b, 0) / wearByUnit.length : 0.5;
-  for (const x of dividerX) {
-    boardSlabMatrices.push(matrix(x, runCentreY, 0, UPRIGHT_WIDTH, runHeight, BOARD_DEPTH));
-    boardSlabWear.push(meanWear);
   }
 
-  // And the two ends. docs/05-3d-shelf.md §12 Q18: **the gallery ends.** A real wall at each
-  // extreme, because this is an archive of a finite thing and a wall says *complete* in a way
-  // no caption can. Each end takes the wear of the section it closes, so the oldest end of the
-  // run is visibly the oldest.
-  const endWear = [wearByUnit[0] ?? meanWear, wearByUnit[wearByUnit.length - 1] ?? meanWear];
-  [runLeft, runRight].forEach((x, i) => {
-    boardSlabMatrices.push(matrix(x, runCentreY, 0, UPRIGHT_WIDTH, runHeight, BOARD_DEPTH));
-    boardSlabWear.push(endWear[i]);
-  });
-
-  // Frame the furniture, not just the cases: the carcass runs from its own top board down to
-  // below the bottom shelf, and a camera fitted to the cases alone crops both.
-  // Down to the foot of the plinth, so the room's floor can be put exactly where the cabinet
-  // actually stands rather than at a guessed distance below it.
   bounds.minY = Math.min(bounds.minY, runBottom);
-  bounds.maxY = Math.max(bounds.maxY, ...universes.map((u) => u.centreY * 2 - (FLOOR_BOARD_Y - BOARD_THICKNESS)));
+  bounds.maxY = Math.max(bounds.maxY, runTop);
 
   return {
     media: [...buckets.values()],
-    universes,
+    universes: runs.map((r) => universes.find((u) => u.key === r.key)!),
     blankCovers,
     boardSlabMatrices,
     boardLipMatrices,
     boardSlabWear,
     boardLipWear,
     bounds,
+    room: { halfWidth, depth: sideLength, height: CABINET_HEIGHT },
   };
 }

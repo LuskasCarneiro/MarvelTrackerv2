@@ -36,6 +36,9 @@ async function wakeChrome(page: import("@playwright/test").Page) {
 
 test.describe("the shelf", () => {
   test("renders the room and opens the case you click", async ({ page }) => {
+    // Software GL plus a room's worth of geometry: under the whole suite this overruns the
+    // 30s default, and the overrun reads as a picking failure rather than as the budget.
+    test.slow();
     const drawCalls: string[] = [];
     page.on("console", (message) => {
       if (message.text().includes("[shelf] draw calls")) drawCalls.push(message.text());
@@ -66,15 +69,31 @@ test.describe("the shelf", () => {
     // few percent — which is a test failing for being out of date rather than for finding a
     // fault. So walk down the middle and take the first point that actually hits a case.
     const box = (await canvas.boundingBox())!;
-    for (const fraction of [0.62, 0.55, 0.7, 0.45, 0.78]) {
-      await page.mouse.click(box.x + box.width * 0.55, box.y + box.height * fraction);
+    // A small grid rather than one column: the room is entered from the middle now, so the
+    // horizontal centre of the frame is often bare wall between two cabinets. Sweeping both
+    // axes keeps this a test of "clicking a case opens that case" rather than a test of where
+    // the furniture happened to sit on the day it was written.
+    // Six points, not a dense grid: each miss costs its own wait, and twenty-eight of them
+    // overran the test budget and failed as a timeout — which reads as "picking is broken"
+    // when picking was fine. Aimed at where cabinets actually stand: the back wall, and both
+    // side walls near the frame edges.
+    const points = [
+      [0.45, 0.45],
+      [0.45, 0.32],
+      [0.12, 0.3],
+      [0.88, 0.3],
+      [0.2, 0.38],
+      [0.8, 0.38],
+    ] as const;
+    for (const [fx, fy] of points) {
+      await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
       const opened = await page
-        .waitForURL(/\/title\/[a-z0-9-]+$/, { timeout: 4_000 })
+        .waitForURL(/\/title\/[a-z0-9-]+$/, { timeout: 2_000 })
         .then(() => true)
         .catch(() => false);
       if (opened) break;
     }
-    await expect(page, "no click down the middle of the canvas hit a case").toHaveURL(
+    await expect(page, "no click anywhere on the canvas hit a case").toHaveURL(
       /\/title\/[a-z0-9-]+$/
     );
     await expect(page.locator("h1")).toBeVisible();

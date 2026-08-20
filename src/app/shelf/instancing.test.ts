@@ -3,8 +3,8 @@ import {
   buildShelfLayout,
   cropCellUv,
   depthScale,
-  DIMENSIONS,
   carcassPieceCount,
+  WALL_YAW,
   runtimeLogRange,
   type ShelfRun,
   type ShelfTitleData,
@@ -106,42 +106,35 @@ describe("buildShelfLayout — one continuous run", () => {
     expect(layout.media.flatMap((m) => m.slugs)).toHaveLength(mcu.length + sony.length);
   });
 
-  it("joins the sections into one run, divided rather than separated", () => {
-    const [first, second] = layout.universes;
-    // A divider and its clearance, not a gap between two pieces of furniture. The old layout
-    // put whole units 1.2 apart; if that ever came back this would catch it.
-    const between = second.startX - first.endX;
-    expect(between).toBeGreaterThan(0);
-    expect(between).toBeLessThan(0.5);
-    // ...and every case in a section is within that section's own span.
-    for (const item of second.items) expect(item.x).toBeGreaterThan(first.endX);
-    // One run means one shelf height: every section sits at the same level.
-    expect(second.centreY).toBeCloseTo(first.centreY, 6);
-    expect(second.height).toBeCloseTo(first.height, 6);
+  it("puts every universe on a wall, and faces its cases the way the wall faces", () => {
+    // Replaces an assertion that sections were adjacent along one run. They are not adjacent
+    // any more — they are on three different walls — and the invariant that matters now is
+    // that a bay and everything standing in it agree about which way is out of the wall. Get
+    // this wrong and a whole universe faces into the plaster, silently.
+    for (const u of layout.universes) {
+      expect(WALL_YAW[u.wall]).toBeCloseTo(u.yaw, 6);
+      for (const item of u.items) expect(item.yaw).toBeCloseTo(u.yaw, 6);
+    }
+    expect(new Set(layout.universes.map((u) => u.wall)).size).toBeGreaterThan(1);
   });
 
-  it("packs a shelf left to right with the spines a hair apart", () => {
-    // Grouped by which board they stand on, because a bay is a *stack* of shelves now and a
-    // fixed slice of the titles would straddle two of them — where x quite correctly resets.
-    const byShelf = new Map<string, typeof layout.universes[number]["items"]>();
-    for (const item of layout.universes[0].items) {
-      const foot = (item.y - DIMENSIONS[item.form].h / 2).toFixed(4);
+  it("stands the cases at an even pitch along each shelf", () => {
+    const bay = layout.universes[0];
+    const along = (i: (typeof bay.items)[number]) => (bay.wall === 0 ? i.x : i.z);
+    const byShelf = new Map<string, typeof bay.items>();
+    for (const item of bay.items) {
+      const foot = item.y.toFixed(4);
       byShelf.set(foot, [...(byShelf.get(foot) ?? []), item]);
     }
-    const row = [...byShelf.values()].sort((a, b) => b.length - a.length)[0].sort((a, b) => a.x - b.x);
-    expect(row.length).toBeGreaterThan(1);
-    for (let i = 1; i < row.length; i++) expect(row[i].x).toBeGreaterThan(row[i - 1].x);
+    const row = [...byShelf.values()].sort((a, b) => b.length - a.length)[0];
+    if (row.length < 3) return; // nothing to say about a shelf holding one or two
 
-    // All standing on the same board. Their *centres* differ, because a VHS is taller than an
-    // Amaray, so the thing that has to match is where their feet are — which is also the bug
-    // this would catch: cases hovering above the board, or sunk into it.
-    const feet = row.map((p) => (p.y - DIMENSIONS[p.form].h / 2).toFixed(6));
-    expect(new Set(feet).size).toBe(1);
-
-    // Adjacent spines are exactly one gap apart. This is the whole of "spine-out and packed":
-    // if the advance ever went back to using case *width* the gap here would jump to ~100mm.
-    const halfThickness = (p: (typeof row)[number]) => (DIMENSIONS[p.form].d * p.ds) / 2;
-    expect(row[1].x - row[0].x - halfThickness(row[0]) - halfThickness(row[1])).toBeCloseTo(0.002, 6);
+    const at = row.map(along).sort((a, b) => a - b);
+    const gaps = at.slice(1).map((v, i) => v - at[i]);
+    // Evenly spaced, without naming the pitch — the number is a layout choice and will move,
+    // but that the spacing is *uniform* is what must not. Uneven gaps mean the shelf index and
+    // the column index have come apart, which reads as a few cases mysteriously bunched up.
+    for (const gap of gaps) expect(gap).toBeCloseTo(gaps[0], 6);
   });
 
   it("builds one run's worth of joinery, not one carcass per universe", () => {
@@ -188,10 +181,9 @@ describe("buildShelfLayout — one continuous run", () => {
     // every section is a different age at two draw calls.
     expect(aged.boardSlabWear).toHaveLength(aged.boardSlabMatrices.length);
     expect(aged.boardLipWear).toHaveLength(aged.boardLipMatrices.length);
-    // 0.5 is the divider between the two sections. It belongs to both sides, so it takes the
-    // mean rather than either neighbour's value — otherwise the gradient visibly steps in the
-    // wrong place, half a partition early.
-    expect(new Set(aged.boardSlabWear)).toEqual(new Set([1, 0.5, 0]));
+    // Each bay's joinery carries that bay's own age, and there is nothing between them to
+    // take a middle value — the bays stand on walls now, not butted along one run.
+    expect(new Set(aged.boardSlabWear)).toEqual(new Set([1, 0]));
   });
 
   it("agrees with itself about which instance is which title", () => {
@@ -203,18 +195,16 @@ describe("buildShelfLayout — one continuous run", () => {
     }
   });
 
-  it("stands every case on its back edge, whatever its width", () => {
-    // Spine-out, a case's *width* points into the shelf, so a 110mm VHS and a 135mm Amaray
-    // reach different distances forward. Real shelves are loaded back-to-back, and that is
-    // what makes the fronts step in and out — a detail you can only see once width is the
-    // depth axis. The bug this catches is aligning their fronts (or their centres) instead,
-    // which would bury the narrow ones behind their neighbours.
-    const titles = [title("wide", "amaray"), title("narrow", "vhs")];
-    const mixed = buildShelfLayout([{ key: "u", label: "U", titles, floating: [] }], {}, cellSize, 4096);
-    const [wide, narrow] = mixed.universes[0].items;
-    const backOf = (p: (typeof mixed.universes)[number]["items"][number]) => p.z - DIMENSIONS[p.form].w / 2;
-    expect(backOf(narrow)).toBeCloseTo(backOf(wide), 6);
-    expect(narrow.z).toBeLessThan(wide.z); // ...so the narrower one sits further back
+  it("stands every case the same distance out from its own wall", () => {
+    // Face-out, cases sit against the carcass rather than backs-aligned by width, so what has
+    // to hold is that a bay's cases share one depth off their wall. A case drifting forward of
+    // its shelf is the tell that a wall transform was applied twice, or not at all.
+    for (const u of layout.universes) {
+      const shelved = u.items.filter((i) => i.y < u.centreY + u.height);
+      if (!shelved.length) continue;
+      const depth = shelved.map((i) => (u.wall === 0 ? i.z : Math.abs(i.x)));
+      expect(Math.max(...depth) - Math.min(...depth)).toBeLessThan(0.6);
+    }
   });
 
   describe("the titles that belong outside time", () => {

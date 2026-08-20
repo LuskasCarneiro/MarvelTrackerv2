@@ -26,6 +26,7 @@ import {
   formForStoryYear,
   ROUND_FORMS,
   SPINE_YAW,
+  wallOutward,
   type Form,
   type ShelfTitleData,
   type ShelfItem,
@@ -293,7 +294,7 @@ const SUBSTRATE_REPEAT = 4;
  * distance and not a reading one, and the neighbouring alcoves have to stay in view.
  */
 const BAY_FILL_X = 0.5;
-const BAY_FILL_Y = 0.6;
+const BAY_FILL_Y = 0.8;
 /** Never closer than arm's length, never so far the room stops reading as a room. */
 const STAND_MIN = 3.2;
 const STAND_MAX = 44;
@@ -315,7 +316,10 @@ const STAND_MAX = 44;
 const WIDE_FACTOR = 5.0;
 
 /** Air kept between the cabinet and the frame edge when the camera is tracking along it. */
-const CABINET_MARGIN = 2.5;
+/** Where the centre view stands, as a fraction of the room's depth from the back wall. */
+const CENTRE_STAND = 1.6;
+/** How far the picture light stands off the face of the bay it lights. */
+const LAMP_STANDOFF = 2.2;
 
 function standingDistance(
   camera: THREE.PerspectiveCamera,
@@ -353,7 +357,10 @@ const ROOM_BACK_Z = -0.3;
  * does not error, it simply renders the room inside out and unlit. 58 against a 44 maximum.
  */
 const ROOM_FRONT = 58;
-const ROOM_MARGIN_X = 16;
+/** How thick the walls read where they meet, and how much floor there is beyond the front
+ *  cabinets so the centre stand is inside the room rather than in its front wall. */
+const WALL_THICKNESS = 1.2;
+const ROOM_FRONT_MARGIN = 26;
 /**
  * Air above the run. With the floor 1.4m below it, this puts the ceiling about 2.7m up — an
  * ordinary domestic room. It used to be 3.6 (36cm!) on the reasoning that the ceiling "is in
@@ -912,7 +919,15 @@ const TAP_SLOP = 8;
 /** The camera's vertical field of view, how much shelf should fit across the frame at
  * minimum — about four cases, which is what keeps a phone usable — and the air left above
  * and below a unit so it does not touch the edges. */
-const FOV = 42;
+/**
+ * A wide lens, because this is now interior photography rather than a shot of one shelf.
+ *
+ * 42 degrees is about a 50mm lens, and from the middle of the room it puts *both side walls
+ * outside the frustum entirely* — the geometry is fine, you simply cannot see it. Seeing a
+ * side wall 2.1m away over its whole depth needs the camera about 6m back at 42 degrees, which
+ * is outside the building. Interiors are shot at roughly 24mm for exactly this reason.
+ */
+const FOV = 54;
 
 /** A plane's own half-turn, so the back cover faces out of the back of the case instead of
  * into it. Constant, so it is built once rather than per frame. */
@@ -961,7 +976,11 @@ function poseCase(
   // cover, instead of a separate flourish bolted onto it. At amount = 0 this equals the
   // SPINE_YAW the layout baked into the resting matrices, which is what stops the case
   // jumping the first time it is touched.
-  const yaw = SPINE_YAW * (1 - amount) + PRESENT_YAW * amount + TURN_YAW * turn;
+  // Each case carries its own resting yaw now, because the room has three walls and a case on
+  // the left wall is turned ninety degrees from one on the back. Drawn out, it turns to face
+  // whoever is standing at *its* wall — `wallYaw + PRESENT_YAW` — rather than to a fixed
+  // direction that would have been right on exactly one of the three.
+  const yaw = item.yaw + (item.wallYaw + PRESENT_YAW - item.yaw) * amount + TURN_YAW * turn;
   quaternion.setFromEuler(euler.set(0, yaw, 0));
   // The printed faces sit flush inside the case until it is drawn out. Spine-out, a cover
   // proud of its own face would poke through the neighbour 2mm away; scaling the offset by
@@ -977,7 +996,10 @@ function poseCase(
   // the whole way out. The ramp is over the first few percent of the pull instead, so the
   // cover is proud as soon as the case has cleared its neighbours and is visible for the whole
   // of the animation.
-  offset.set(0, 0, faceZ * Math.min(1, amount / COVER_EMERGE)).applyQuaternion(quaternion);
+  // Face-out cases keep their cover proud throughout — it is what is on display. Only a
+  // spine-out case has to hide it while shelved, and only because of its neighbours.
+  const emerge = item.spineOut ? Math.min(1, amount / COVER_EMERGE) : 1;
+  offset.set(0, 0, faceZ * emerge).applyQuaternion(quaternion);
   // The case travels from its slot to the presentation point in front of the eye, rather than
   // simply nosing forward out of the shelf. With a locked-off camera this is the whole
   // interaction: the viewer does not go to the object, the object comes to the viewer.
@@ -1009,9 +1031,13 @@ function ShelfContent({
   storyOrder,
   spineTitles,
   wide,
+  centred,
 }: {
   /** Standing back to see the whole unit, rather than close in on one case. */
   wide: boolean;
+  /** Standing in the middle of the room with all three walls in shot, rather than up at a
+   *  bay. This is what you arrive to, and what Escape returns you to. */
+  centred: boolean;
   layout: Layout;
   /** Every title in the catalogue, for the spine atlas. Stable across ordering and universe. */
   spineTitles: SpineTitle[];
@@ -1261,33 +1287,31 @@ function ShelfContent({
     // Computed here, at the top, because the poses below need it — it used to sit down in the
     // camera section and was read before it was initialised, which is a crash rather than a
     // subtle fault only because `const` is honest about it.
-    // Halfway up the cabinet *and its nameplates*, so the whole piece of furniture and the
-    // brass above it sit in the frame together.
+    // **Where you stand, in a room with three walls.**
+    //
+    // A bay knows its own wall's outward direction, so standing to look at it is the same
+    // arithmetic on every wall: back off along that normal from the middle of the bay's face,
+    // and look back at it. The back wall is the identity case and the two sides are the same
+    // code read at ninety degrees — which is the whole reason the layout hands over a yaw
+    // rather than an x-coordinate.
     const eyeY = universe.centreY + PLAQUE_HEADROOM / 2;
     const standZ = standingDistance(
       state.camera as THREE.PerspectiveCamera,
-      universe.endX - universe.startX,
+      universe.width,
       universe.height + PLAQUE_HEADROOM,
       wide ? WIDE_FACTOR : 1
     );
+    const out = wallOutward(universe.yaw);
 
-    // Where to stand along the cabinet. Centring flatly on the current bay was right while the
-    // shelf was a 2.4m run you walked *past* — most of it was off-frame either way. A cabinet
-    // is one object that fits in the shot, so that same rule parked it hard against one edge
-    // with a wall of empty plaster beside it, in a room whose whole point is being a room.
-    // Clamped to keep the cabinet in frame, and centred outright once it fits entirely.
-    const cam = state.camera as THREE.PerspectiveCamera;
-    const halfVisible = standZ * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2) * cam.aspect;
-    const cabinetLeft = 0;
-    const cabinetRight = layout.bounds.maxX;
-    const fitsWhole = cabinetRight - cabinetLeft + CABINET_MARGIN * 2 <= halfVisible * 2;
-    const bayCentreX = fitsWhole
-      ? (cabinetLeft + cabinetRight) / 2
-      : THREE.MathUtils.clamp(
-          (universe.startX + universe.endX) / 2,
-          cabinetRight + CABINET_MARGIN - halfVisible,
-          cabinetLeft - CABINET_MARGIN + halfVisible
-        );
+    // Arriving, and whenever you step back out: the middle of the room, facing the back wall,
+    // with all three walls in shot. This is the view the reference image is taken from.
+    const centreZ = layout.room.depth * CENTRE_STAND;
+    const target = centred
+      ? { x: 0, y: eyeY, z: 0 }
+      : { x: universe.face.x, y: eyeY, z: universe.face.z };
+    const stand = centred
+      ? { x: 0, y: eyeY, z: centreZ }
+      : { x: universe.face.x + out.x * standZ, y: eyeY, z: universe.face.z + out.z * standZ };
 
     // Ease the turn towards whatever the DOM button last asked for. Reduced motion arrives
     // rather than travels, exactly as the camera does. Computed before the hold point rather
@@ -1298,10 +1322,17 @@ function ShelfContent({
     // Derived from where the viewer is standing rather than from the shelf, so it is always
     // the same arm's length from the eye whichever bay you are at and whichever shelf the
     // title sits on — and closer by TURN_APPROACH once turned, so the back can be read.
+    // In front of the camera along its own view direction, rather than at a fixed z. With one
+    // wall those were the same number; with three, a fixed z holds the case somewhere off to
+    // the side of anyone standing at a side wall.
+    const forwardX = target.x - stand.x;
+    const forwardZ = target.z - stand.z;
+    const forwardLen = Math.hypot(forwardX, forwardZ) || 1;
+    const reach = HOLD_GAP - TURN_APPROACH * turn.current;
     const hold: Hold = {
-      x: bayCentreX,
+      x: stand.x + (forwardX / forwardLen) * reach,
       y: eyeY - HOLD_DROP,
-      z: standZ - HOLD_GAP + TURN_APPROACH * turn.current,
+      z: stand.z + (forwardZ / forwardLen) * reach,
     };
 
     // A turned case is held fully out. Without the max() the walk's own sine would keep
@@ -1396,23 +1427,25 @@ function ShelfContent({
      */
     const ease = instant ? 1 : Math.min(1, dt * 3.2);
 
-    camera.position.x += (bayCentreX - camera.position.x) * ease;
+    camera.position.x += (stand.x - camera.position.x) * ease;
     camera.position.y += (eyeY - camera.position.y) * ease;
-    camera.position.z += (standZ - camera.position.z) * ease;
-    // Square on, always. `lookAt` every frame rather than once, because the position is still
-    // easing towards the bay and a stale orientation reads as a swimming horizon.
-    camera.lookAt(bayCentreX, eyeY, 0);
+    camera.position.z += (stand.z - camera.position.z) * ease;
+    // `lookAt` every frame rather than once: the position is still easing toward the bay, and
+    // a stale orientation reads as a swimming horizon. This is also the only place the camera
+    // is allowed to turn — see WALL_YAW and Q6. It is on rails, not orbiting.
+    camera.lookAt(target.x, target.y, target.z);
 
     // The spotlight over this bay travels with the viewer — and now rides at this bay's own
     // height, so it is a picture light over whatever furniture is actually there.
     if (lamp.current) {
-      lamp.current.position.x = camera.position.x;
+      lamp.current.position.x = target.x + out.x * LAMP_STANDOFF;
       lamp.current.position.y = universe.centreY + universe.height / 2 + LAMP_ABOVE;
+      lamp.current.position.z = target.z + out.z * LAMP_STANDOFF;
       // A SpotLight aims at its `target`, which is a plain Object3D that three does *not* add
       // to the scene for you — so its world matrix is never updated by the normal traversal
       // and the cone stays pointing wherever it was born. Moving it here and updating it by
       // hand is the whole fix; without it the lamp lights the floor and nothing else.
-      lamp.current.target.position.set(camera.position.x, universe.centreY, 0);
+      lamp.current.target.position.set(target.x, universe.centreY, target.z);
       lamp.current.target.updateMatrixWorld();
     }
     if (holdLight.current) {
@@ -1634,14 +1667,26 @@ function Plaques({ bays, atlas, texture }: { bays: UniverseShelf[]; atlas: Plaqu
  * The far end of all of it is eaten by the lamp's falloff and then by fog, so most of this is
  * never seen at full brightness — which is the point. It is there to be *fallen on*.
  */
-function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; maxY: number } }) {
-  const floorY = bounds.minY - ROOM_FLOOR_DROP;
-  const ceilingY = bounds.maxY + ROOM_HEADROOM;
-  const startX = -ROOM_MARGIN_X;
-  const endX = bounds.maxX + ROOM_MARGIN_X;
+/**
+ * The room, sized by the cabinets rather than by constants.
+ *
+ * The layout works out how much wall it needs and hands back `room`; this builds the shell
+ * around it. The old version measured off case bounds and a pile of fixed margins, which was
+ * fine for one flat elevation and cannot describe a U — the side walls have to land exactly
+ * where the side cabinets stand or the joinery floats away from the plaster.
+ */
+function Room({ room }: { room: { halfWidth: number; depth: number; height: number } }) {
+  const floorY = -ROOM_FLOOR_DROP;
+  const ceilingY = room.height + ROOM_HEADROOM;
+  const startX = -room.halfWidth - WALL_THICKNESS;
+  const endX = room.halfWidth + WALL_THICKNESS;
   const width = endX - startX;
   const height = ceilingY - floorY;
-  const depth = ROOM_FRONT - ROOM_BACK_Z;
+  // Back wall on z = 0, opening toward the viewer, with a little beyond the front cabinets so
+  // the camera at the centre stand is inside the box rather than looking through its face.
+  const backZ = -WALL_THICKNESS;
+  const frontZ = room.depth + ROOM_FRONT_MARGIN;
+  const depth = frontZ - backZ;
 
   const floorTexture = useMemo(() => {
     const created = new THREE.CanvasTexture(buildRoomSurface("floor"));
@@ -1704,7 +1749,7 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
         />
       </mesh>
 
-      <mesh castShadow receiveShadow position={[(startX + endX) / 2, floorY + SKIRTING_HEIGHT / 2, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
+      <mesh castShadow receiveShadow position={[(startX + endX) / 2, floorY + SKIRTING_HEIGHT / 2, backZ + SKIRTING_DEPTH / 2]}>
         <boxGeometry args={[width, SKIRTING_HEIGHT, SKIRTING_DEPTH]} />
         <meshPhongMaterial color={ROOM_SKIRTING} shininess={22} specular="#332a20" />
       </mesh>
@@ -1720,7 +1765,7 @@ function Room({ bounds }: { bounds: { minX: number; maxX: number; minY: number; 
 
       {/* A picture rail, which is what a room like this actually has where wall meets ceiling,
           and what stops the corner being a bare seam between two flat colours. */}
-      <mesh castShadow receiveShadow position={[(startX + endX) / 2, ceilingY - RAIL_DROP, ROOM_BACK_Z + SKIRTING_DEPTH / 2]}>
+      <mesh castShadow receiveShadow position={[(startX + endX) / 2, ceilingY - RAIL_DROP, backZ + SKIRTING_DEPTH / 2]}>
         <boxGeometry args={[width, RAIL_HEIGHT, SKIRTING_DEPTH]} />
         <meshPhongMaterial color={ROOM_SKIRTING} shininess={18} specular="#2b2620" />
       </mesh>
@@ -1855,6 +1900,10 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
   /** Standing back to see the whole bookcase. The close framing is better for reading one
    * case and worse for knowing where you are; this is the way back out. */
   const [wide, setWide] = useState(false);
+  /** Arrive in the middle of the room. Picking a universe walks you to its wall; Escape
+   *  brings you back, so the establishing shot is always one key away rather than something
+   *  you see once and never again. */
+  const [centred, setCentred] = useState(true);
   const [query, setQuery] = useState("");
   const [missed, setMissed] = useState(false);
   /**
@@ -1990,6 +2039,9 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       // You cannot carry a case you were reading to another bookcase.
       setTurned(false);
       setCurrent(next);
+      // Choosing a universe walks you to its wall. This is the only thing that leaves the
+      // establishing shot, so arriving and then picking is a deliberate step *into* the room.
+      setCentred(false);
     },
     [layout]
   );
@@ -2025,6 +2077,10 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       const index = layout.universes[bay].items.findIndex((i) => i.slug === match.slug);
       setTurned(false);
       setCurrent(bay);
+      // Searching walks you to the title's wall. Without this you stayed in the middle of the
+      // room while a case on a side wall turned to face whoever was standing *there* — so it
+      // arrived edge-on to you, which reads as the pull-out being broken.
+      setCentred(false);
       // Half a step past the title's own index is the peak of the pull.
       progress.current = index + 0.5;
       return true;
@@ -2070,7 +2126,13 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
       else if (e.key === "ArrowLeft") goToUniverse(current - 1);
       else if (e.key === "Home") progress.current = 0;
       else if (e.key === "t" || e.key === "T") setTurned((was) => !was);
-      else if (e.key === "Escape") setTurned(false);
+      else if (e.key === "Escape") {
+        // Escape steps back rather than only putting the case down: turned case first, then
+        // out to the middle of the room. Two presses always return you to the view you
+        // arrived at, from anywhere.
+        if (turned) setTurned(false);
+        else setCentred(true);
+      }
       else return;
       e.preventDefault();
     }
@@ -2412,6 +2474,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
             storyOrder={order === "story"}
             spineTitles={spineTitles}
             wide={wide}
+            centred={centred}
           />
           {/* Inside the boundary deliberately: React holds every child of a Suspense
               boundary back until every suspending call within it resolves, so this only
@@ -2423,7 +2486,7 @@ export default function ShelfScene({ universes }: { universes: UniverseData[] })
         </Suspense>
 
         {/* Replaces the bare ground plane that used to stand in for a floor. */}
-        <Room bounds={layout.bounds} />
+        <Room room={layout.room} />
 
         {/* No controls. The camera is locked off and driven entirely by the frame loop
             above — see the comment there. An OrbitControls rig used to live here; it is
