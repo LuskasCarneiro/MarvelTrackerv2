@@ -362,6 +362,11 @@ export type ShelfLayout = {
   boardLipMatrices: THREE.Matrix4[];
   /** Concealed strip lighting under every shelf — emissive geometry, not lights. See Q9. */
   boardGlowMatrices: THREE.Matrix4[];
+  /**
+   * The lit recess at the centre of the wall you face, and where its featured poster hangs.
+   * Null only if there is no back wall at all, which cannot happen with any real catalogue.
+   */
+  arch: { position: { x: number; y: number; z: number }; yaw: number; width: number; height: number } | null;
   /** Wear per board instance, in the same order as the matrices above, so the furniture can
    * be tinted per unit without a material or a draw call per bookcase. */
   boardSlabWear: number[];
@@ -521,7 +526,15 @@ const EMPTY_RUN: ShelfRun = { key: "", label: "", titles: [], floating: [] };
 const meanOf = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0.5);
 
 /** The arched recess at the centre of the back wall — the room's focal point. */
-const ARCH_WIDTH = 9;
+const ARCH_WIDTH = 13;
+/** The niche's proportions: how thick its jambs, head and sill are, how deep it is recessed,
+ *  and the brass surround that makes the poster inside read as a framed painting. */
+const ARCH_JAMB = 1.1;
+const ARCH_HEAD = 2.4;
+const ARCH_SILL = 5;
+const ARCH_DEPTH_BACK = 0.4;
+const ARCH_FRAME = 0.55;
+const ARCH_FRAME_PROUD = 0.16;
 /**
  * However small the collection, a room you stand inside has a minimum that reads as a room.
  *
@@ -587,6 +600,7 @@ export function buildShelfLayout(
   const boardLipWear: number[] = [];
   const wearByUnit = unitWear(runs);
   const universes: UniverseShelf[] = [];
+  let arch: ShelfLayout["arch"] = null;
   const bounds = { minX: 0, maxX: 0, minY: Infinity, maxY: -Infinity };
 
   const buckets = new Map<Form, ShelfLayout["media"][number]>();
@@ -692,6 +706,8 @@ export function buildShelfLayout(
     width: number;
     /** Carcass with nothing in it, put there so a wall is never bare. */
     filler?: boolean;
+    /** The central niche, not a cupboard: brass-framed, lit, holding one featured title. */
+    arch?: boolean;
   };
   const bays: Bay[] = runs.map((run, i) => {
     const open = openLevelsFor(run.titles.length);
@@ -728,7 +744,7 @@ export function buildShelfLayout(
    */
   const addFillers = (wall: { id: WallId; bays: number[] }) => {
     const span = wall.id === 0 ? halfWidth * 2 : sideLength;
-    const used = wallLength(wall.bays) + (wall.id === 0 ? ARCH_WIDTH : 0);
+    const used = wallLength(wall.bays) + (wall.id === 0 ? ARCH_WIDTH : 0); // arch not yet inserted
     const leftover = span - used - DIVIDER_PAD * 4;
     if (leftover < MIN_BAY) return;
 
@@ -764,6 +780,20 @@ export function buildShelfLayout(
   // their temporal dead zone and the whole scene fails to build.
   walls.forEach(addFillers);
 
+  /**
+   * **The arch goes in the middle of the back wall's run, as an entry rather than a gap.**
+   *
+   * It used to be a reserved width that nothing ever drew into, which is why the owner kept
+   * asking where it was. Inserting it at the midpoint of the finished list — after the filler
+   * cupboards, so it counts them — puts it at the centre of the wall you face on arrival,
+   * which is the strongest composition in the reference photo.
+   */
+  const backWall = walls.find((w) => w.id === 0);
+  if (backWall) {
+    bays.push({ run: EMPTY_RUN, wear: meanOf(wearByUnit), titles: [], open: 0, width: ARCH_WIDTH, arch: true });
+    backWall.bays.splice(Math.ceil(backWall.bays.length / 2), 0, bays.length - 1);
+  }
+
   /** Wall-local (u, y, d) to world. See WALL_YAW. */
   const toWorld = (wall: WallId, u: number, y: number, d: number) => {
     // Back wall on the z = 0 plane opening toward +z; the sides face each other across it.
@@ -779,18 +809,18 @@ export function buildShelfLayout(
   const runBottom = 0;
 
   for (const wall of walls) {
-    const total = wallLength(wall.bays) + (wall.id === 0 ? ARCH_WIDTH : 0);
+    // No arch reservation here: by now it is in `wall.bays` and `wallLength` counts it.
+    const total = wallLength(wall.bays);
     const span = wall.id === 0 ? halfWidth * 2 : sideLength;
     let u = (span - total) / 2; // centred on its wall
 
-    wall.bays.forEach((index, position) => {
+    wall.bays.forEach((index) => {
       const bay = bays[index];
       const start = u;
 
       // The arch sits in the middle of the back wall, so the back wall's single bay is split
       // either side of it. With one bay that means the arch takes the centre and the cabinet
       // sits to its left, which is what the reference does with its doorway.
-      if (wall.id === 0 && position === 1) u += ARCH_WIDTH;
 
       const perLevel = Math.max(1, Math.ceil(bay.titles.length / bay.open));
       bay.titles.forEach((title, i) => {
@@ -936,6 +966,60 @@ export function buildShelfLayout(
 
       const centre = toWorld(wall.id, mid, (runBottom + runTop) / 2, 0);
       const face = toWorld(wall.id, mid, (runBottom + runTop) / 2, BOARD_DEPTH);
+      if (bay.arch) {
+        const quatA = quatFor(WALL_YAW[wall.id]);
+        const mid = start + bay.width / 2;
+        const openW = bay.width - ARCH_JAMB * 2;
+        const openTop = runTop - TOP_RAIL - ARCH_HEAD;
+        const openBottom = runBottom + ARCH_SILL;
+        const openH = openTop - openBottom;
+
+        // The recess itself: a panel set well back, so the niche reads as depth rather than as
+        // a picture hung flat on the run.
+        const back = toWorld(wall.id, mid, (openTop + openBottom) / 2, ARCH_DEPTH_BACK);
+        boardSlabMatrices.push(matrix(back.x, back.y, back.z, openW, openH, BACK_PANEL_THICKNESS, quatA));
+        boardSlabWear.push(bay.wear);
+
+        // Jambs, head and sill in cabinetry, framing the opening.
+        for (const side of [-1, 1]) {
+          const jamb = toWorld(wall.id, mid + side * (openW + ARCH_JAMB) / 2, (runBottom + runTop) / 2, BOARD_DEPTH / 2);
+          boardSlabMatrices.push(matrix(jamb.x, jamb.y, jamb.z, ARCH_JAMB, runTop - runBottom, BOARD_DEPTH, quatA));
+          boardSlabWear.push(bay.wear);
+        }
+        const head = toWorld(wall.id, mid, (openTop + runTop - TOP_RAIL) / 2, BOARD_DEPTH / 2);
+        boardSlabMatrices.push(matrix(head.x, head.y, head.z, openW, runTop - TOP_RAIL - openTop, BOARD_DEPTH, quatA));
+        boardSlabWear.push(bay.wear);
+        const sill = toWorld(wall.id, mid, (runBottom + openBottom) / 2, BOARD_DEPTH / 2);
+        boardSlabMatrices.push(matrix(sill.x, sill.y, sill.z, openW, openBottom - runBottom, BOARD_DEPTH, quatA));
+        boardSlabWear.push(bay.wear);
+
+        // A brass surround on the opening — the owner asked for the poster to sit in a frame
+        // "like it was a painting", and this is the frame.
+        const frameAt = (du: number, dy: number, w: number, h: number) => {
+          const at = toWorld(wall.id, mid + du, (openTop + openBottom) / 2 + dy, BOARD_DEPTH + ARCH_FRAME_PROUD / 2);
+          boardLipMatrices.push(matrix(at.x, at.y, at.z, w, h, ARCH_FRAME_PROUD, quatA));
+          boardLipWear.push(bay.wear);
+        };
+        frameAt(0, openH / 2, openW + ARCH_FRAME * 2, ARCH_FRAME);
+        frameAt(0, -openH / 2, openW + ARCH_FRAME * 2, ARCH_FRAME);
+        frameAt(-(openW + ARCH_FRAME) / 2, 0, ARCH_FRAME, openH);
+        frameAt((openW + ARCH_FRAME) / 2, 0, ARCH_FRAME, openH);
+
+        // Just behind the brass surround, not deep in the recess. Sunk at the back of the
+        // niche the artwork was being occluded by the joinery around the opening — and a
+        // framed painting hangs near the front of its rebate anyway, not against the wall.
+        const face = toWorld(wall.id, mid, (openTop + openBottom) / 2, BOARD_DEPTH - 0.08);
+        arch = {
+          position: { x: face.x, y: face.y, z: face.z },
+          yaw: WALL_YAW[wall.id],
+          width: openW - ARCH_FRAME,
+          height: openH - ARCH_FRAME,
+        };
+
+        u = start + bay.width + DIVIDER_PAD * 2;
+        return;
+      }
+
       if (bay.filler) {
         u = start + bay.width + DIVIDER_PAD * 2;
         return;
@@ -973,6 +1057,7 @@ export function buildShelfLayout(
     boardSlabWear,
     boardLipWear,
     boardGlowMatrices,
+    arch,
     bounds,
     room: { halfWidth, depth: sideLength, height: CABINET_HEIGHT },
   };

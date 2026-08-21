@@ -165,10 +165,11 @@ describe("buildShelfLayout — one continuous run", () => {
     // hold is that every piece the layout emits has a wear value to go with it.
     expect(layout.boardSlabMatrices.length).toBeGreaterThanOrEqual(carcassPieceCount(runs.length));
     expect(layout.boardSlabWear).toHaveLength(layout.boardSlabMatrices.length);
-    // One lip per board, and **more than one board per bay** — which is the whole of "it is a
-    // cabinet, not a ledge". Every bay gets the same number, or the cabinet has a stepped top.
-    expect(layout.boardLipMatrices.length % runs.length).toBe(0);
-    expect(layout.boardLipMatrices.length / runs.length).toBeGreaterThan(1);
+    // Brass: a lip on every open shelf, plus the door rules and the arch surround. It is no
+    // longer a clean multiple of the bay count — filler cupboards and the arch are joinery
+    // belonging to no universe — so what must hold is that there is brass in quantity and
+    // that every piece of it has a wear value.
+    expect(layout.boardLipMatrices.length).toBeGreaterThan(runs.length);
     expect(layout.boardLipWear).toHaveLength(layout.boardLipMatrices.length);
   });
 

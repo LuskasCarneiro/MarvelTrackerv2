@@ -35,6 +35,7 @@ import {
   type UniverseData,
   type UniverseShelf,
   type CellUv,
+  cropCellUv,
 } from "./instancing";
 
 type AtlasCellPx = { atlas: number; x: number; y: number };
@@ -319,6 +320,11 @@ const WIDE_FACTOR = 5.0;
 /** Air kept between the cabinet and the frame edge when the camera is tracking along it. */
 /** Where the centre view stands, as a fraction of the room's depth from the back wall. */
 const CENTRE_STAND = 1.6;
+/** The niche's own lamp: how far in front of the poster it hangs, how far above it, and how
+ *  hard it throws. The one light in this room aimed at a single object. */
+const ARCH_LAMP_STANDOFF = 7;
+const ARCH_LAMP_RISE = 5;
+const ARCH_LAMP_INTENSITY = 120;
 /** How far the picture light stands off the face of the bay it lights. */
 const LAMP_STANDOFF = 2.2;
 
@@ -1160,6 +1166,35 @@ function ShelfContent({
   }, [substrates]);
 
   const spineAtlas = useMemo(() => buildSpineAtlas(spineTitles), [spineTitles]);
+
+  /**
+   * The window into the atlas for whatever hangs in the arch.
+   *
+   * `docs/07-the-room.md` Q27: the first Iron Man, because it is where all of this starts, it
+   * never changes under someone who has not asked for a change, and it gives the centre of the
+   * room a meaning whether or not you have chosen your own. The favourite that will override
+   * it is Q23 and needs a migration, so this stands alone until then.
+   *
+   * Cloned because offset and repeat live on the texture, while the cases window theirs
+   * per-instance in a shader — one extra reference, no extra upload, since three keeps a single
+   * GPU image behind clones of one source. Never disposed: that would free the image the 152
+   * covers are drawing from.
+   */
+  const featuredMap = useMemo(() => {
+    if (!layout.arch) return null;
+    const all = layout.universes.flatMap((u) => u.items);
+    const item = all.find((i) => i.slug.startsWith("iron-man-2008")) ?? all[0];
+    if (!item) return null;
+    const map = texture.clone();
+    map.needsUpdate = true;
+    const cell = atlasCells[item.slug];
+    if (cell) {
+      const uv = cropCellUv(cell, CELL_SIZE, ATLAS_SIZE, layout.arch.width / layout.arch.height);
+      map.offset.set(uv.u0, uv.v0);
+      map.repeat.set(uv.du, uv.dv);
+    }
+    return map;
+  }, [texture, layout]);
   const spineTexture = useMemo(() => {
     const created = new THREE.CanvasTexture(spineAtlas.canvas);
     created.colorSpace = THREE.SRGBColorSpace;
@@ -1512,6 +1547,43 @@ function ShelfContent({
 
   return (
     <>
+      {/**
+       * The featured title, hung in the arch at the centre of the wall you face, and lit by a
+       * spotlight of its own — which is what makes a recess read as a recess. The travelling
+       * lamp lights whichever bay you are standing at, and the niche is never that bay.
+       *
+       * Rendered from inside ShelfContent rather than from a component of its own, and that is
+       * the fix rather than a detail: a separate component calling `useTexture` for the same
+       * atlas suspended and never resolved, so the niche had its frame and its light and an
+       * empty middle — no error, no warning, just nothing there. Here the atlas is already
+       * loaded and in scope, so there is no second load to go wrong.
+       */}
+      {layout.arch && featuredMap && (
+        <group>
+          <mesh
+            position={[layout.arch.position.x, layout.arch.position.y, layout.arch.position.z]}
+            rotation={[0, layout.arch.yaw, 0]}
+          >
+            <planeGeometry args={[layout.arch.width, layout.arch.height]} />
+            <meshPhongMaterial map={featuredMap} shininess={26} specular="#4a423a" />
+          </mesh>
+          <spotLight
+            position={[
+              layout.arch.position.x + Math.sin(layout.arch.yaw) * ARCH_LAMP_STANDOFF,
+              layout.arch.position.y + ARCH_LAMP_RISE,
+              layout.arch.position.z + Math.cos(layout.arch.yaw) * ARCH_LAMP_STANDOFF,
+            ]}
+            target-position={[layout.arch.position.x, layout.arch.position.y, layout.arch.position.z]}
+            intensity={ARCH_LAMP_INTENSITY}
+            distance={ARCH_LAMP_STANDOFF * 3}
+            angle={0.55}
+            penumbra={0.7}
+            decay={1.3}
+            color="#ffe3bb"
+          />
+        </group>
+      )}
+
       {/* Instance picking. R3F raycasts an InstancedMesh for us and puts the hit index on
           the event as `instanceId`; body and cover are built from the same title order, so
           either hit resolves through the medium's slug array. stopPropagation keeps a click
