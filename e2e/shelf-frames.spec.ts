@@ -11,9 +11,9 @@ import sharp from "sharp";
  * screenshot harness did not point at. That is v1's most expensive lesson (`CLAUDE.md`), and
  * it had been re-made here.
  *
- * One test, four states, because they are sequential — you cannot turn a case that is not
+ * One test, five states, because they are sequential — you cannot turn a case that is not
  * presented — and because the software-GL warm-up costs seconds that there is no reason to
- * pay four times.
+ * pay five times.
  */
 
 const SHOTS_DIR = path.join(process.cwd(), "shots");
@@ -37,11 +37,8 @@ async function expectDrawn(file: string) {
 }
 
 test.describe("shelf frames", () => {
-  // Software GL needs a long warm-up, and under the whole suite it overruns Playwright's 30s
-  // default. That failure reads as flake and is nothing of the kind — it is the budget.
-  test.slow();
 
-  test("captures the four states worth looking at", async ({ page }) => {
+  test("captures the five states worth looking at", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
 
@@ -61,24 +58,46 @@ test.describe("shelf frames", () => {
       await expectDrawn(file);
     };
 
-    // 1. At rest: the shelf as you arrive, nothing in your hands.
+    // The chrome now hides itself when nothing is happening (§12 Q4), so the controls are
+    // `pointer-events: none` until something wakes them. Every interaction below therefore
+    // wakes it first — and the wake is itself worth asserting, because a reveal that stopped
+    // working would leave a room with no way into it and every click silently doing nothing.
+    const root = page.locator("html");
+    const wake = async () => {
+      // Focus rather than pointer: no hit-test, so it works while the chrome is still faded,
+      // and it pins the bar open so nothing downstream races the linger. Full reasoning in
+      // shelf.spec.ts's wakeChrome().
+      await page.getByRole("button", { name: "Release order" }).focus();
+      await expect(root).toHaveAttribute("data-chrome", "shown");
+    };
+
+    // 1. At rest: the shelf as you arrive, nothing in your hands and no interface. Wait for
+    //    the chrome to actually go before shooting, so this frame is the room rather than a
+    //    race against the fade.
+    await expect(root).toHaveAttribute("data-chrome", "hidden", { timeout: 15_000 });
     await shoot("rest");
 
-    // 2. Presented: a case pulled off the shelf and held. Logan is an X-Men title, so this
+    // 2. The same shelf with its controls up, which is the other half of Q4: revealed chrome
+    //    has to be checked too, or "stripped to nothing" is only ever photographed as nothing.
+    await wake();
+    await shoot("chrome");
+
+    // 3. Presented: a case pulled off the shelf and held. Logan is an X-Men title, so this
     //    also moves bay — the frame shows the travel, not just the pull.
     await page.getByLabel("Search the archive").fill("logan");
     await page.getByRole("button", { name: "Find" }).click();
     await expect(page.getByText("Logan", { exact: true })).toBeVisible({ timeout: 30_000 });
     await shoot("presented");
 
-    // 3. Turned: the back cover, carrying the curated note. Driven by the button rather than
+    // 4. Turned: the back cover, carrying the curated note. Driven by the button rather than
     //    a click at guessed canvas coordinates — the case moves, the button does not.
+    await wake();
     await page.getByRole("button", { name: "Turn it over" }).click();
     await expect(page.getByRole("button", { name: "Turn it back" })).toBeVisible({ timeout: 15_000 });
     await shoot("turned");
 
-    // 4. Wide: standing back to take in the whole bookcase. Put the case away first, so this
-    //    frame is about the architecture and not about what is in your hands.
+    // 5. Wide: standing back to take in the whole bookcase.
+    await wake();
     await page.getByRole("button", { name: "Turn it back" }).click();
     await page.getByRole("button", { name: "Whole shelf" }).click();
     await expect(page.getByRole("button", { name: "Close up" })).toBeVisible({ timeout: 15_000 });

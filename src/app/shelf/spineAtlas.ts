@@ -1,6 +1,36 @@
 import { fitText } from './backCover';
+import { tintToHsl } from '@/lib/tint';
+import type { Medium } from '@/lib/catalogue';
 
-export type SpineTitle = { slug: string; label: string };
+export type SpineTitle = {
+  slug: string;
+  label: string;
+  /** The title's own colour, taken from its artwork. Printed as a band at the head of the
+   *  spine — the only colour most of these objects get to show while shelved. */
+  tint: string;
+  medium: Medium;
+};
+
+/**
+ * The format mark: docs/05-3d-shelf.md §12 Q7 and Q19, and the amendment in CLAUDE.md.
+ *
+ * A studio-style coloured band across the foot of the spine — the thing a real distributor
+ * prints so you can tell a DVD from a Blu-ray across a room. **A band, not a word**: the rule
+ * that survived the owner's override is that era is read, never announced, so no release ever
+ * gets its format spelled out.
+ *
+ * Blu-ray's blue is the real convention rather than an invention, which is what makes the set
+ * legible without a key. The rest sit either side of it: warm and papery for the tape era,
+ * neutral for DVD, bright metal for a steelbook, and — for a title that never had a physical
+ * release at all — a near-black that reads as an absence next to the others.
+ */
+const FORMAT_MARK: Record<Medium, string> = {
+  vhs: '#b98a48',
+  amaray: '#8d8578',
+  bluray: '#2f6fc4',
+  steel: '#c3c8d0',
+  none: '#2a2630',
+};
 
 /** Pixel rectangle of one cell within the atlas, top-left origin (the ordinary raster
  *  convention — the caller converts to UV). */
@@ -67,6 +97,18 @@ const LEFT_MARGIN = 14; // inset from the cell's left edge, so labels don't run 
 const VERTICAL_PAD = 6; // minimum transparent margin above/below the glyphs, for alpha-testing
 
 /**
+ * Which end of a cell is which, once the geometry has finished with it.
+ *
+ * `spineGeometryFor()` remaps the plane's UVs to `(1 - v, u)`, so texture-U runs *down* the
+ * spine: U = 0 is the top of the case and U = 1 is where it stands on the board. Everything
+ * below is written in those terms, because getting it backwards prints the format mark on the
+ * ceiling-facing edge where nobody can see it — and it would look like a texture bug rather
+ * than an orientation one.
+ */
+const HEAD_BAND = 0.055; // the tint, at the top of the spine
+const FOOT_BAND = 0.075; // the format mark, at the foot — slightly deeper, so it reads as a base
+
+/**
  * Draws every label and returns the atlas.
  *
  * Font stack is a plain generic (sans-serif) rather than next/font — this runs on a raw
@@ -92,9 +134,34 @@ export function buildSpineAtlas(titles: SpineTitle[]): SpineAtlas {
     if (!cell) return; // packSpineCells always returns one cell per title; guard keeps TS happy
     cellMap[title.slug] = cell;
 
+    // The two bands first, so the title can be drawn over them if it ever overruns.
+    // Full cell height: the band crosses the whole thickness of the spine, as printing does.
+    const headWidth = Math.round(cell.w * HEAD_BAND);
+    const footWidth = Math.round(cell.w * FOOT_BAND);
+
+    // The title's own colour, at the head. Darkened and desaturated from the artwork value:
+    // these are printed bands on a dark case in a dim room, and the raw tint at full
+    // lightness reads as a row of glowing tabs rather than as ink.
+    const { h, s, l } = tintToHsl(title.tint);
+    ctx.fillStyle = `hsl(${h * 360} ${Math.min(s, 0.5) * 100}% ${Math.min(l, 0.44) * 100}%)`;
+    ctx.fillRect(cell.x, cell.y, headWidth, cell.h);
+
+    // The format mark, at the foot. See FORMAT_MARK.
+    ctx.fillStyle = FORMAT_MARK[title.medium];
+    ctx.fillRect(cell.x + cell.w - footWidth, cell.y, footWidth, cell.h);
+
+    // A title that never had a physical release gets the bands and nothing else: it is a 3mm
+    // card, the title would be unreadable on it anyway, and printing one would claim an
+    // object that does not exist. See SPINE_FORMS in ShelfScene.tsx.
+    if (title.medium === 'none') return;
+
     const fontSize = Math.max(10, Math.min(cell.h - VERTICAL_PAD * 2, 22));
     ctx.font = `700 ${fontSize}px sans-serif`;
-    ctx.fillStyle = '#f2ebe1'; // --color-label-bright, spine text on a dark case
+    // --color-label-mid. This used to be the *material's* colour, which multiplied the whole
+    // texture; now that the texture also carries the tint and the format mark, tinting it in
+    // the material would mute Blu-ray's blue into the same warm grey as everything else. The
+    // ink colour belongs to the ink.
+    ctx.fillStyle = '#c8bcac';
     ctx.textBaseline = 'middle';
     // Supported in Chromium, not universally (e.g. older Firefox/Safari); assigning it is a
     // harmless no-op where it's ignored, so no feature-detect is needed — labels there just
@@ -104,11 +171,15 @@ export function buildSpineAtlas(titles: SpineTitle[]): SpineAtlas {
     // Text is drawn horizontally within its cell — the scene rotates the geometry, not us.
     // Available width is measured in pre-condense space since CONDENSE is applied after
     // fitText has already chosen what fits.
-    const availableWidth = (cell.w - LEFT_MARGIN) / CONDENSE;
+    // The title lives between the two bands, not across them: it starts below the tint and
+    // stops above the format mark, so a long title is truncated by fitText rather than
+    // running over the printing either side of it.
+    const textStart = headWidth + LEFT_MARGIN;
+    const availableWidth = (cell.w - textStart - footWidth - LEFT_MARGIN) / CONDENSE;
     const text = fitText(ctx, title.label.toUpperCase(), availableWidth);
 
     ctx.save();
-    ctx.translate(cell.x + LEFT_MARGIN, cell.y + cell.h / 2);
+    ctx.translate(cell.x + textStart, cell.y + cell.h / 2);
     ctx.scale(CONDENSE, 1);
     ctx.fillText(text, 0, 0);
     ctx.restore();

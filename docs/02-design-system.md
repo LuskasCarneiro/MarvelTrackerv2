@@ -226,6 +226,29 @@ Known real-world exceptions (Blade shipped on both VHS and DVD in 1998; several 
 titles later got Blu-ray) are handled by an override in the data with a source, never by
 bending the rule.
 
+### Each era's foot band
+
+Settled by the owner on 2026-08-18 (`docs/05-3d-shelf.md` §12 Q7/Q19) and built on
+2026-08-19. **Every spine carries a coloured band across its foot**, the way a distributor
+prints one so you can tell a DVD from a Blu-ray across a room. It lives in `spineAtlas.ts`.
+
+| Medium | Foot band | Why that colour |
+|---|---|---|
+| `vhs` | `#b98a48` | warm and papery — a printed card label |
+| `amaray` | `#8d8578` | neutral grey; DVD never had a signature colour |
+| `bluray` | `#2f6fc4` | **the actual convention.** This is the one that makes the set readable without a key |
+| `steel` | `#c3c8d0` | bright metal, matching what the object is |
+| `none` | `#2a2630` | near-black: it reads as an *absence* beside the others, which is the point |
+
+> **This is the exception to "nothing is labelled".** `CLAUDE.md` carries the amendment and
+> the record that I argued against it and was overruled. What survives is the spirit: it is a
+> **band, not a word** — no release ever gets its format spelled out. Era is read, never
+> announced.
+>
+> The head of the spine carries the title's own tint from the same module, darkened and
+> desaturated: raw artwork values at full lightness read as a row of glowing tabs rather than
+> as ink on a dark case in a dim room.
+
 ---
 
 ## Motion budget

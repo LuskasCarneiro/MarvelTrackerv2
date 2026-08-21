@@ -542,6 +542,108 @@ dimension you cannot see when everything faces you.
 8. Re-tune `HOLD_GAP` and `TURN_APPROACH` — both were fitted to cover-out cases, and both
    have recorded reasoning that stays true even as the values change.
 
+### What happened when it was built — 2026-08-19
+
+**Steps 1–5, 7 and most of 8 are done.** Step 6, the alcoved room, is blocked on a decision
+that only appeared once the numbers existed. Step 2 is done and it invalidated a lot.
+
+#### Step 2's measurement, which was overdue and which changes the record
+
+`scripts/measure-frames.mjs` runs a **headed** Chromium on the machine's own X display so it
+gets the real GPU, and refuses to report anything if it finds itself on a software rasteriser.
+
+| | renderer | rest | holding | wide |
+|---|---|---|---|---|
+| `main` before the rebuild | Intel HD Graphics 5500 | 16.8 / 33.3 | 18.4 / 23.0 | 16.7 / 16.8 |
+| after the rebuild | same | **16.7 / 16.8** | **16.7 / 16.7** | **16.7 / 16.8** |
+
+(p50 / p95 in ms, 1440×900.) **Sixty frames a second in every state, on a 2015 integrated
+GPU** — and the rebuilt scene drops no frames at all where `main` drops some at rest. Scene
+ready fell from 3.9s to 1.9s.
+
+Every performance number previously in this repo — 1.8fps, 3.5fps, "three lamps cost a third
+of the framerate", the deferred atlas — came from headless SwiftShader and was wrong by
+roughly **thirty times**. Consequences, all now recorded in the code:
+
+- **The three-lamp refusal is void.** The comment in `ShelfScene.tsx` has been amended to say
+  so. One lamp stays, but on §2's design intent — neighbouring bays are meant to be *in the
+  dark, waiting* — and that is a decision to be argued, not defended with a dead number.
+- **The 3MB eager atlas is not a performance problem.** It is a 1.9s wait, which is a
+  loading-experience question and not a framerate one.
+- **Q14 was right and for a better reason than it was given.** There was never a framerate
+  problem to target.
+
+#### The arithmetic that blocks step 6
+
+Spine-out, the catalogue is **1611mm of shelf in total** — under two shelf levels of an
+ordinary bookcase. Per universe, measured:
+
+| | mm of spine | | | mm of spine |
+|---|---|---|---|---|
+| MCU (57 titles) | 384 | | Sony | 93 |
+| Vintage | 224 | | Fox | 73 |
+| Netflix | 202 | | Hulu | 72 |
+| Classic era | 181 | | Fantastic Four | 37 |
+| X-Men | 151 | | Animation | 29 |
+| ABC | 149 | | **Spider-Verse (2 titles)** | **17** |
+
+**A 22-fold range, and the largest section is one 384mm shelf.** At the first minimum width I
+tried, *every* unit including the MCU sat on the floor value and the room became twelve
+identical boxes. Units are sized to their contents now, which shows the shape of the
+collection, but it leaves the open question:
+
+> **Twelve alcoves (Q9/Q13) was settled when a bay was metres wide. It cannot mean the same
+> thing when the whole archive is 1.6m and one section is 17mm.** The options are (a) narrow
+> bays sized to content, as built today; (b) one continuous run with architectural dividers,
+> which is what §5 of this document and `CLAUDE.md`'s concept line both describe, and which
+> the ageing-along-the-run idea wants; or (c) alcoves at a fixed size with mostly-empty
+> shelves. **This is the owner's call and it is not made here.** Everything else in the
+> rebuild is independent of it.
+
+#### Answered 2026-08-19 — (b), one continuous run, and the room is a light wall
+
+**The owner chose (b), and added two things: build the room, and paint it a light colour "like
+you would see in a normal wall".** Q9 and Q13 are superseded; there are no alcoves.
+
+| | |
+|---|---|
+| **The run** | One shelf, **a single level**, about 2.4m long. Universes are contiguous stretches of it, divided by a partition rather than by clear air |
+| **Why single-level** | The camera is locked off and travels horizontally. A run that wrapped onto a second shelf would break the travel *and* the thing that makes a section legible — that a universe is a stretch you walk past |
+| **The wear gradient** | Per-section boards, butted at the divider centres, each carrying its own section's wear. Continuous timber, a gradient of age — which is what one run buys over twelve carcasses, and is asserted in the layout test because a screenshot cannot catch it |
+| **The ends** | Q18 survives intact: a real end wall at each extreme |
+| **The room** | Warm off-white (`#d9d2c6`), a lighter ceiling, a picture rail, a skirting. Floor 1.4m below the run, ceiling ~2.7m — a domestic room, measured |
+
+**Three consequences that were not obvious and are now recorded in code:**
+
+1. **The chrome had to be re-inked.** This project's text tokens are built for light-on-dark;
+   `--color-label-mid` is 10.1:1 on the page ground and about **1.6:1 on plaster**. The tokens
+   are redefined inside `.shelf-chrome` on this route, so every utility beneath follows and no
+   component needs to know which room it stands in. Measured on the render: 12.4 / 8.3 / 6.6.
+2. **The close shot cannot show the floor, and that is not a bug.** The camera is locked
+   square-on at eye level; a person facing a wall sees wall. The room is the *wide* shot's
+   job, which is why `WIDE_FACTOR` went from 1.55 to 3.2.
+3. **`ROOM_FRONT` must exceed `STAND_MAX`.** At the new wide distance the camera stepped out
+   through the front wall of the room. The walls are `BackSide`, so this does not error — it
+   renders the room inside out and unlit, which looks like a lighting failure and is a camera
+   one.
+
+**Measured after, on the same hardware:** 16.7ms p50 in every state, still. p95 shows an
+occasional dropped frame while a case is animating; at rest and wide it is clean.
+
+#### Smaller findings worth keeping
+
+- **`none` now carries a printed spine**, reversing an earlier refusal. It is 66 of 152
+  titles; excluded, 43% of the shelf was unmarked black slivers with no tint and no format
+  mark. It gets the two bands and never a title, which is the part the old reasoning had right.
+- **The unlit spine material outlived its reason.** It was unlit because a sideways-facing
+  spine rendered black; spine-out it faces the lamp squarely. It stays unlit on the half of
+  the argument that did not expire — printing is ink, not a surface that reflects a room.
+- **The lamp was three times too bright for the new room** and blew every brass plate to flat
+  white, engraving included. 95 → 42, and the plate's specular dulled because its lighting is
+  already painted into its texture.
+- **Thickness is legible at last.** §12 listed it as unsolved; it was unsolvable cover-out,
+  because thickness was the one axis pointing away from the viewer.
+
 ### Known and deliberately deferred
 
 - **The cover atlas is 3 MB and loads eagerly.** With spines primary it may no longer need to.

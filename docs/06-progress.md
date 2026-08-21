@@ -258,6 +258,80 @@ is brightest.
 
 ## Log
 
+### 2026-08-19 (latest) — "the shelves seem like they are floating"
+
+The owner's words, and they were right three times over. Fixed, and every fix was a constant
+that had outlived its reason:
+
+- **There were no shadows at all.** The note that disabled them named its own upgrade path —
+  a contact shadow *"if a unit reads as floating without one"*. It read as floating without
+  one. **Measured after: 16.7ms p50 and p95, cleaner than the build before them.** The
+  refusal, like the three-lamp one, rested on the SwiftShader number.
+- **Nothing was holding the run up**, which is the literal definition of a floating shelf. It
+  has brackets now — specified as two endpoints, angle and length derived, so neither end can
+  drift into space. The first attempt had the sign inverted, which fixes the strut's high end
+  to the wall and leaves its low end hanging.
+- **The wall was one flat colour.** The plaster texture existed and had been switched off as
+  "at the edge of perception" — which is the entire point of it.
+- **⚠️ The one that took longest: fog to `#14100d` from 13 to 38 units**, left from when the
+  room was near-black. Painting the room white did not touch it, so once the wide shot stood
+  back far enough to see the room, *every surface* was past the fog's far plane and resolved to
+  black. It rendered as a void with a lit case in it and looked exactly like a lighting failure.
+- The wide shot now stands back far enough to show floor, ceiling and both ends — derived from
+  the eye's height above the floor, not dialled in. The room gained a light of its own; the
+  picture light no longer casts, because a room lit through a window has **one** shadow
+  direction and two casters gave every case two shadows.
+
+> **Three times in two days, changing a ground invalidated something measured against the old
+> one** — the text tokens, the lamp intensity, and the fog. When the next ground changes, go
+> looking for the fourth. Vault: *Changing the ground invalidates everything measured against it*.
+
+### 2026-08-19 (later) — one continuous run, in a room with the lights on
+
+The owner answered §12's open question: **(b), one continuous run**, plus *"dont forget to also
+build the room, and make the room a light color like you would see in a normal wall"*.
+
+- **Twelve carcasses became one run.** A single level, ~2.4m long, universes as contiguous
+  stretches divided by partitions, a real end wall at each extreme. Per-section boards butted
+  at the divider centres so the timber is continuous while the **wear gradient ages along the
+  length** — the thing one run buys over twelve, and now asserted in the layout test because
+  no screenshot can catch it.
+- **The room is painted.** Warm off-white walls, a lighter ceiling, a picture rail, a skirting;
+  floor 1.4m below the run, ceiling ~2.7m. Ambient and a hemisphere light carry it instead of
+  the travelling lamp, which is now an accent at 20 rather than the room's only source at 95.
+- **The chrome had to be re-inked**, and this is the part worth remembering: the text tokens
+  are built for light-on-dark and `--color-label-mid` is ~1.6:1 on plaster. Redefining the
+  tokens inside `.shelf-chrome` re-inks every utility beneath without a single component
+  knowing which room it is in. Measured on the render at 12.4 / 8.3 / 6.6.
+- **`CLAUDE.md`'s palette line is amended, not contradicted** — the same treatment the format
+  mark got. It was a decision, and a cold session must not "restore" the dark room.
+- **Still 16.7ms p50 in every state** on the same 2015 Intel GPU.
+
+### 2026-08-19 — the shelf was turned around, and the machine was finally asked
+
+Executed `docs/05-3d-shelf.md` §12. **Steps 1–5, 7 and most of 8 are done; step 6 (the
+alcoved room) is blocked on one decision for the owner.** Full detail lives in §12's "What
+happened when it was built"; the short version:
+
+- **Measured on real hardware first, as §12 demanded.** Intel HD Graphics 5500, headed
+  Chromium on the machine's own display: **16.7ms in every state, no dropped frames.** Every
+  performance number this repo has ever recorded came from headless SwiftShader and was wrong
+  by about thirty times. `scripts/measure-frames.mjs` is the instrument, and it refuses to
+  report if it finds itself on a software rasteriser. The "three lamps cost a third of the
+  framerate" refusal is void and the comment saying so has been corrected in place.
+- **Spine-out (Q1).** Packing advances by thickness, rows fill left-to-right and are split by
+  equal *length*, cases stand backs-aligned. The pull-out — the one thing the owner said they
+  liked — is untouched in feel and now carries the turn: spine-out at rest, face-on when
+  drawn. **Thickness is legible at last**, which §12 listed as unsolved.
+- **Spines carry the tint band and the format mark** (Q7/Q19). `none` joined the printed
+  forms, reversing an earlier refusal: it is 66 of 152 titles and excluding it left 43% of the
+  shelf unmarked. Bands only, never a title.
+- **The chrome is stripped to nothing** (Q4/Q21/Q11) and floats over the room, so the room
+  now has the whole window rather than a band where the controls used to be.
+- **⚠️ For the owner:** spine-out, the whole archive is **1611mm of shelf**, and the twelve
+  universes run from 17mm to 384mm. Twelve alcoves was settled when a bay was metres wide.
+  §12 sets out the three options and does not choose between them.
+
 ### 2026-08-18 — the owner rejected the look, and the rebuild was settled by interview
 
 **The owner saw it and did not like it.** Asked which of four things was wrong they picked
